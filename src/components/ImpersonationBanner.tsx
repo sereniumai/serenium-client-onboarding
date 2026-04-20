@@ -42,7 +42,7 @@ export function ImpersonationBanner() {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: -40, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-        className="sticky top-0 z-[60] bg-gradient-to-r from-orange via-orange-hover to-orange text-white"
+        className="relative z-[60] bg-gradient-to-r from-orange via-orange-hover to-orange text-white"
       >
         <div className="mx-auto max-w-7xl px-6 py-2.5 flex items-center justify-between gap-4 text-sm">
           <div className="flex items-center gap-2 min-w-0">

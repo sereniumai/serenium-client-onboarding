@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Plus, Trash2, Upload as UploadIcon, X } from 'lucide-react';
 import { useAutosave } from '../hooks/useAutosave';
@@ -46,7 +46,7 @@ function SimpleField({ field, organizationId, fieldKey, userId, onStatusChange }
   const { value, setValue, status } = useAutosave<string>(organizationId, fieldKey, userId);
   const v = value ?? '';
 
-  onStatusChange?.(status);
+  useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
 
   const common = {
     id: fieldKey,
@@ -81,7 +81,7 @@ function SimpleField({ field, organizationId, fieldKey, userId, onStatusChange }
 function MultiselectField({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
   const { value, setValue, status } = useAutosave<string[]>(organizationId, fieldKey, userId);
   const selected = value ?? [];
-  onStatusChange?.(status);
+  useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
 
   const toggle = (opt: string) => {
     setValue(selected.includes(opt) ? selected.filter(x => x !== opt) : [...selected, opt]);
@@ -112,7 +112,7 @@ function MultiselectField({ field, organizationId, fieldKey, userId, onStatusCha
 function RepeatableField({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
   const { value, setValue, status } = useAutosave<string[]>(organizationId, fieldKey, userId);
   const items = value ?? [''];
-  onStatusChange?.(status);
+  useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
 
   const update = (i: number, v: string) => {
     const next = [...items];
