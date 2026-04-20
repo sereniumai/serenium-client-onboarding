@@ -1,6 +1,19 @@
 import { db } from './mockDb';
-import { SERVICES, getService } from '../config/modules';
+import { SERVICES, getService, type ModuleDef } from '../config/modules';
+import { evaluate } from './condition';
 import type { ServiceKey, ModuleStatus } from '../types';
+
+/** Returns true if module is hidden (conditional evaluates false). */
+export function moduleIsHidden(organizationId: string, svcKey: ServiceKey, mod: ModuleDef): boolean {
+  if (!mod.conditional) return false;
+  return !evaluate(mod.conditional, organizationId, `${svcKey}.${mod.key}`);
+}
+
+/** Returns true if module is locked by admin flag. */
+export function moduleIsAdminLocked(organizationId: string, mod: ModuleDef): boolean {
+  if (!mod.lockedUntilAdminFlag) return false;
+  return !db.getAdminFlag(organizationId, mod.lockedUntilAdminFlag);
+}
 
 export interface ModuleSummary {
   moduleKey: string;
@@ -21,7 +34,7 @@ export function getOrgProgress(organizationId: string) {
   let total = 0;
   let complete = 0;
 
-  // Compute Business Profile completeness first — Website modules require it.
+  // Compute Business Profile completeness first — other services require it.
   let bpAllComplete = true;
   const bpEntry = enabledSvcs.find(s => s.serviceKey === 'business_profile');
   if (bpEntry) {
@@ -42,10 +55,11 @@ export function getOrgProgress(organizationId: string) {
     const disabledModKeys = new Set(svcEntry?.disabledModuleKeys ?? []);
     const summaries: ModuleSummary[] = [];
     let prevComplete = true;
-    const requiresBp = svcKey === 'website';
+    const requiresBp = svcKey !== 'business_profile';
 
     for (const m of svc.modules) {
       if (disabledModKeys.has(m.key)) continue;
+      if (moduleIsHidden(organizationId, svcKey, m)) continue;
       const mp = moduleProgress.find(p => p.serviceKey === svcKey && p.moduleKey === m.key);
       const status = mp?.status ?? 'not_started';
 
@@ -60,7 +74,8 @@ export function getOrgProgress(organizationId: string) {
         submissions.find(s => s.fieldKey === `${svcKey}.${m.key}.${f.key}` && s.value != null && s.value !== '')
       ).length;
 
-      const canStart = (!m.requiresPrevious || prevComplete) && (!requiresBp || bpAllComplete);
+      const adminUnlocked = !moduleIsAdminLocked(organizationId, m);
+      const canStart = adminUnlocked && (!m.requiresPrevious || prevComplete) && (!requiresBp || bpAllComplete);
 
       summaries.push({
         moduleKey: m.key, status,
@@ -91,7 +106,7 @@ export function getEnabledModulesForService(organizationId: string, serviceKey: 
   const svcEntry = db.listServicesForOrganization(organizationId).find(s => s.serviceKey === serviceKey);
   if (!svcEntry) return [];
   const disabled = new Set(svcEntry.disabledModuleKeys ?? []);
-  return svc.modules.filter(m => !disabled.has(m.key));
+  return svc.modules.filter(m => !disabled.has(m.key) && !moduleIsHidden(organizationId, serviceKey, m));
 }
 
 export function moduleIsReady(org: string, svcKey: ServiceKey, moduleKey: string): boolean {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, Plus, Trash2, Megaphone, MessageSquare, Globe, Building2, Check, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Plus, Trash2, Megaphone, MessageSquare, Globe, Building2, Headphones, Check, ChevronDown } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { db } from '../../lib/mockDb';
@@ -15,6 +15,7 @@ const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
   business_profile: Building2,
   facebook_ads: Megaphone,
   ai_sms: MessageSquare,
+  ai_receptionist: Headphones,
   website: Globe,
 };
 
@@ -27,7 +28,7 @@ export function NewClientWizard() {
   const [primaryEmail, setPrimaryEmail] = useState('');
   const [primaryPhone, setPrimaryPhone] = useState('');
 
-  const [services, setServices] = useState<ServiceKey[]>(['facebook_ads', 'ai_sms']);
+  const [services, setServices] = useState<ServiceKey[]>(['facebook_ads', 'ai_sms', 'ai_receptionist']);
   // Modules NOT included, per service (opt-out). Empty/absent = all included.
   const [disabledModules, setDisabledModules] = useState<Partial<Record<ServiceKey, string[]>>>({});
   const [users, setUsers] = useState<UserRow[]>([{ fullName: '', email: '', role: 'owner' }]);

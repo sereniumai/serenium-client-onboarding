@@ -35,6 +35,7 @@ function ConditionalLinkBlock({ orgId, svcKey, modKey, links }: { orgId: string;
 import { useAuth } from '../../auth/AuthContext';
 import { db } from '../../lib/mockDb';
 import { getService, getModule } from '../../config/modules';
+import { evaluate } from '../../lib/condition';
 import { loomEmbedUrl } from '../../lib/loom';
 import { moduleIsReady } from '../../lib/progress';
 import { useDbVersion } from '../../hooks/useDb';
@@ -56,6 +57,12 @@ export function ModulePage() {
 
   if (!org || !svc || !mod) return <Navigate to={`/onboarding/${orgSlug}`} replace />;
   if (!db.isModuleEnabledForOrg(org.id, svc.key, mod.key)) return <Navigate to={`/onboarding/${org.slug}`} replace />;
+  if (mod.conditional && !evaluate(mod.conditional, org.id, `${svc.key}.${mod.key}`)) {
+    return <Navigate to={`/onboarding/${org.slug}`} replace />;
+  }
+  const adminLockedReason = mod.lockedUntilAdminFlag && !db.getAdminFlag(org.id, mod.lockedUntilAdminFlag)
+    ? (mod.lockedMessage ?? 'This step is locked until we finish setup on our end.')
+    : null;
 
   const taskCompletions = db.getTaskCompletions(org.id);
   const progress = db.listModuleProgress(org.id);
@@ -241,11 +248,34 @@ export function ModulePage() {
               );
             })()}
 
+            {/* LOCKED BANNER */}
+            {adminLockedReason && (
+              <div className="card mb-8 border-orange/30 bg-orange/5">
+                <p className="eyebrow mb-2">Not ready yet</p>
+                <p className="text-sm text-white/80">{adminLockedReason}</p>
+              </div>
+            )}
+
+            {/* RETELL FORWARDING NUMBER — shown for the call forwarding step once admin sets it */}
+            {mod.lockedUntilAdminFlag === 'ai_receptionist_ready_for_connection' && db.getRetellNumber(org.id) && (
+              <div className="card mb-8 border-orange/50">
+                <p className="eyebrow mb-2">Your Serenium forwarding number</p>
+                <p className="font-display font-black text-3xl md:text-4xl tracking-tight tabular-nums">{db.getRetellNumber(org.id)}</p>
+                <p className="text-xs text-white/50 mt-2">Use this number in the forwarding instructions below.</p>
+              </div>
+            )}
+
             {/* INSTRUCTIONS */}
             {mod.instructions && (
               <div className="card mb-10">
                 <p className="eyebrow mb-3">Instructions</p>
                 <Markdown>{mod.instructions}</Markdown>
+
+                {mod.externalLink && (
+                  <a href={mod.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-orange hover:text-orange-hover mt-4">
+                    → Open external guide
+                  </a>
+                )}
 
                 {mod.links && Object.keys(mod.links).length > 0 && (
                   <ul className="mt-4 space-y-1.5">
@@ -327,7 +357,7 @@ export function ModulePage() {
                   Edit submission
                 </motion.button>
               ) : (
-                <motion.button whileTap={{ scale: 0.98 }} onClick={markComplete} disabled={!ready} className="btn-primary w-full sm:w-auto">
+                <motion.button whileTap={{ scale: 0.98 }} onClick={markComplete} disabled={!ready || !!adminLockedReason} className="btn-primary w-full sm:w-auto">
                   Submit this step
                   <ArrowRight className="h-4 w-4" />
                 </motion.button>

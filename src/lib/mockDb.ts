@@ -6,7 +6,7 @@ import type {
 } from '../types';
 import { SERVICES } from '../config/modules';
 
-const KEY = 'serenium.mockdb.v5';
+const KEY = 'serenium.mockdb.v6';
 
 interface DBShape {
   profiles: Profile[];
@@ -25,6 +25,10 @@ interface DBShape {
   activity: ActivityLogEntry[];
   reportViews: Record<string, string>; // "<userId>.<orgId>" -> ISO timestamp
   adminNotes: AdminNote[];
+  /** Admin-controlled per-org flags, e.g. { "<orgId>": { ai_receptionist_ready_for_connection: true } } */
+  adminFlags: Record<string, Record<string, boolean>>;
+  /** Admin-entered Retell forwarding numbers per org */
+  retellNumbers: Record<string, string>;
   sessions: { userId: string } | null;
 }
 
@@ -63,6 +67,8 @@ const seed = (): DBShape => {
     activity: [],
     reportViews: {},
     adminNotes: [],
+    adminFlags: {},
+    retellNumbers: {},
     sessions: null,
   };
 };
@@ -86,6 +92,8 @@ const load = (): DBShape => {
       activity: parsed.activity ?? [],
       reportViews: parsed.reportViews ?? {},
       adminNotes: parsed.adminNotes ?? [],
+      adminFlags: parsed.adminFlags ?? {},
+      retellNumbers: parsed.retellNumbers ?? {},
     };
     return full;
   } catch { return seed(); }
@@ -544,6 +552,29 @@ export const db = {
     const m = d.organizationMembers.find(x => x.organizationId === organizationId && x.userId === userId);
     if (!m) return;
     m.role = role;
+    save(d);
+  },
+
+  // --- Admin flags (per org) ---
+  getAdminFlag(organizationId: string, flag: string): boolean {
+    return !!load().adminFlags[organizationId]?.[flag];
+  },
+
+  setAdminFlag(organizationId: string, flag: string, value: boolean) {
+    const d = load();
+    d.adminFlags[organizationId] ||= {};
+    d.adminFlags[organizationId][flag] = value;
+    save(d);
+  },
+
+  getRetellNumber(organizationId: string): string | null {
+    return load().retellNumbers[organizationId] ?? null;
+  },
+
+  setRetellNumber(organizationId: string, num: string | null) {
+    const d = load();
+    if (num && num.trim()) d.retellNumbers[organizationId] = num.trim();
+    else delete d.retellNumbers[organizationId];
     save(d);
   },
 

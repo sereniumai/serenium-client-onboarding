@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Lock, PlayCircle, Circle, ChevronDown, Megaphone, MessageSquare, Globe, Building2 } from 'lucide-react';
+import { CheckCircle2, Lock, PlayCircle, Circle, ChevronDown, Megaphone, MessageSquare, Globe, Building2, Headphones } from 'lucide-react';
 import { getService } from '../config/modules';
 import { getOrgProgress, getEnabledModulesForService } from '../lib/progress';
 import type { ServiceKey } from '../types';
 import { cn } from '../lib/cn';
 
 const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, website: Globe,
+  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, ai_receptionist: Headphones, website: Globe,
 };
 
 export function CurriculumSidebar({ organizationId, orgSlug }: { organizationId: string; orgSlug: string }) {
@@ -107,7 +107,7 @@ function ServiceGroup({
               const isActive = activeModule === m.key;
               const state = m.summary.status;
               const locked = !m.summary.canStart && state !== 'complete';
-              const href = `/onboarding/${orgSlug}/services/${svcKey}/${m.key}`;
+              const href = `/onboarding/${orgSlug}/services/${svcKey}#module-${m.key}`;
 
               return (
                 <li key={m.key}>

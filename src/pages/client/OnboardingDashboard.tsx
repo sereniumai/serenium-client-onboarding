@@ -1,6 +1,6 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Clock, Lock, Megaphone, MessageSquare, Globe, Building2, PlayCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Clock, Lock, Megaphone, MessageSquare, Globe, Building2, Headphones, PlayCircle, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { CircleProgress } from '../../components/CircleProgress';
@@ -19,9 +19,10 @@ import { cn } from '../../lib/cn';
 
 const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
   business_profile: Building2,
-  facebook_ads: Megaphone,
-  ai_sms:       MessageSquare,
-  website:      Globe,
+  facebook_ads:     Megaphone,
+  ai_sms:           MessageSquare,
+  ai_receptionist:  Headphones,
+  website:          Globe,
 };
 
 function motivation(pct: number, hasReports: boolean) {
@@ -49,18 +50,16 @@ export function OnboardingDashboard() {
   const latestReport = reports[0];
   const onboardingDone = progress.totalModules > 0 && progress.overall === 100;
 
-  // Find next action — first non-complete, available module
-  let nextAction: { svcKey: ServiceKey; moduleKey: string; title: string; minutes: number } | null = null;
-  outer: for (const svcKey of progress.enabledServices) {
-    const mods = getEnabledModulesForService(org.id, svcKey);
+  // Find next service with unfinished steps (top-level section, not individual module)
+  let nextService: { svcKey: ServiceKey; label: string; hasStarted: boolean } | null = null;
+  for (const svcKey of progress.enabledServices) {
     const summaries = progress.perService[svcKey];
-    for (let i = 0; i < mods.length; i++) {
-      const s = summaries[i];
-      if (s.status !== 'complete' && s.canStart) {
-        nextAction = { svcKey, moduleKey: mods[i].key, title: mods[i].title, minutes: mods[i].estimatedMinutes ?? 5 };
-        break outer;
-      }
-    }
+    const anyIncomplete = summaries.some(s => s.status !== 'complete');
+    if (!anyIncomplete) continue;
+    const anyInProgress = summaries.some(s => s.status !== 'not_started');
+    const svc = getService(svcKey)!;
+    nextService = { svcKey, label: svc.label, hasStarted: anyInProgress };
+    break;
   }
 
   const remainingMinutes = progress.enabledServices.reduce((sum, svcKey) => {
@@ -85,29 +84,26 @@ export function OnboardingDashboard() {
               </h1>
               <p className="text-white/60 text-lg max-w-xl">{motivation(progress.overall, reports.length > 0)}</p>
 
-              {nextAction && !onboardingDone && (
+              {nextService && !onboardingDone && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-8"
                 >
                   <Link
-                    to={`/onboarding/${org.slug}/services/${nextAction.svcKey}/${nextAction.moduleKey}`}
-                    className="group relative flex items-center gap-4 sm:gap-5 px-4 sm:px-6 py-4 rounded-2xl bg-gradient-to-r from-orange via-orange-hover to-orange bg-[length:200%_auto] text-white shadow-orange-glow hover:shadow-[0_0_60px_rgba(255,107,31,0.5)] transition-all animate-breathe overflow-hidden max-w-full"
+                    to={`/onboarding/${org.slug}/services/${nextService.svcKey}`}
+                    className="group relative flex items-center gap-4 sm:gap-5 px-5 sm:px-7 py-4 rounded-2xl bg-gradient-to-r from-orange via-orange-hover to-orange bg-[length:200%_auto] text-white shadow-orange-glow hover:shadow-[0_0_60px_rgba(255,107,31,0.5)] transition-all animate-breathe overflow-hidden max-w-full"
                   >
                     <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[1200ms] ease-in-out bg-gradient-to-r from-transparent via-white/20 to-transparent" aria-hidden />
                     <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
                       <PlayCircle className="h-5 w-5" />
                     </div>
                     <div className="text-left min-w-0 flex-1">
-                      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-white/80 font-semibold">{progress.overall === 0 ? 'Start here' : 'Pick up where you left off'}</p>
-                      <p className="font-semibold text-sm sm:text-base truncate">{nextAction.title}</p>
+                      <p className="font-semibold text-base sm:text-lg truncate">
+                        {nextService.hasStarted ? 'Continue' : 'Start'} {nextService.label}
+                      </p>
                     </div>
-                    <div className="hidden sm:flex items-center gap-2 text-sm font-medium shrink-0">
-                      ~{nextAction.minutes} min
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </div>
-                    <ArrowRight className="h-5 w-5 sm:hidden shrink-0 transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="h-5 w-5 shrink-0 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </motion.div>
               )}
@@ -251,7 +247,8 @@ function ModuleRow({ index, orgSlug, serviceKey, moduleKey, title, description, 
   const locked = state === 'locked';
   const complete = state === 'complete';
   const inProgress = state === 'in_progress';
-  const href = `/onboarding/${orgSlug}/services/${serviceKey}/${moduleKey}`;
+  const href = `/onboarding/${orgSlug}/services/${serviceKey}#module-${moduleKey}`;
+  void minutes;
 
   const content = (
     <div className={cn(

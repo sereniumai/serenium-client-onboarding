@@ -3,7 +3,7 @@ import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  ChevronLeft, Users, CheckCircle2, Clock, Megaphone, MessageSquare, Globe, Building2,
+  ChevronLeft, Users, CheckCircle2, Clock, Megaphone, MessageSquare, Globe, Building2, Headphones, PhoneForwarded,
   FileText, Image as ImageIcon, Film, Download, UserCircle, Trash2, Plus,
   StickyNote, ShieldOff, Save, Edit3, ChevronDown,
 } from 'lucide-react';
@@ -21,7 +21,7 @@ import { ActivityFeed } from '../../components/ActivityFeed';
 import { toast } from 'sonner';
 
 const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, website: Globe,
+  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, ai_receptionist: Headphones, website: Globe,
 };
 
 type Tab = 'overview' | 'reports' | 'services' | 'users' | 'submissions' | 'files' | 'notes';
@@ -363,6 +363,8 @@ function ServiceAccordion({
         </div>
       </div>
 
+      {enabled && svcKey === 'ai_receptionist' && <AiReceptionistAdminControls orgId={orgId} />}
+
       {enabled && (
         <div className="border-t border-border-subtle">
           <div className="px-5 py-3 flex items-center justify-between bg-bg-tertiary/30">
@@ -480,6 +482,65 @@ function UsersTab({ orgId, members }: { orgId: string; members: ReturnType<typeo
           )}
         </tbody>
       </table>
+      </div>
+    </div>
+  );
+}
+
+function AiReceptionistAdminControls({ orgId }: { orgId: string }) {
+  const flag = db.getAdminFlag(orgId, 'ai_receptionist_ready_for_connection');
+  const [num, setNum] = useState(db.getRetellNumber(orgId) ?? '');
+
+  const toggleFlag = () => {
+    db.setAdminFlag(orgId, 'ai_receptionist_ready_for_connection', !flag);
+    toast.success(!flag ? 'Call forwarding step unlocked for this client' : 'Call forwarding step re-locked');
+  };
+
+  const saveNum = () => {
+    db.setRetellNumber(orgId, num.trim() || null);
+    toast.success(num.trim() ? 'Forwarding number saved' : 'Forwarding number cleared');
+  };
+
+  return (
+    <div className="border-t border-border-subtle p-5 bg-bg-tertiary/20">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="h-9 w-9 rounded-lg bg-orange/10 text-orange flex items-center justify-center shrink-0">
+          <PhoneForwarded className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-sm">AI is built and ready for connection</p>
+              <p className="text-xs text-white/50">Flipping this on unlocks the call-forwarding step for the client.</p>
+            </div>
+            <button
+              onClick={toggleFlag}
+              role="switch"
+              aria-checked={flag}
+              className={cn(
+                'relative h-7 w-12 rounded-full transition-colors shrink-0',
+                flag ? 'bg-orange' : 'bg-bg-tertiary border border-border-subtle'
+              )}>
+              <span className={cn(
+                'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
+                flag ? 'translate-x-5' : 'translate-x-0.5'
+              )} />
+            </button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label className="label">Retell forwarding number</label>
+        <div className="flex gap-2">
+          <input
+            value={num}
+            onChange={e => setNum(e.target.value)}
+            onBlur={saveNum}
+            placeholder="+1 555 123 4567"
+            className="input flex-1 tabular-nums"
+          />
+        </div>
+        <p className="text-xs text-white/40 mt-1.5">Displayed to the client on the call-forwarding step so they can forward to this number.</p>
       </div>
     </div>
   );

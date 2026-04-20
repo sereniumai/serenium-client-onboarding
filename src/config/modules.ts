@@ -1,8 +1,9 @@
 import type { ServiceKey } from '../types';
+import type { Condition } from '../lib/condition';
 
 export type FieldType =
   | 'text' | 'textarea' | 'email' | 'phone' | 'number'
-  | 'select' | 'multiselect' | 'url' | 'color' | 'checkbox'
+  | 'select' | 'multiselect' | 'url' | 'color' | 'checkbox' | 'info'
   | 'file' | 'file_multiple' | 'repeatable';
 
 export interface Task {
@@ -10,11 +11,6 @@ export interface Task {
   label: string;
   required?: boolean;
 }
-
-export type FieldCondition =
-  | { field: string; op: 'eq'; value: string }
-  | { field: string; op: 'neq'; value: string }
-  | { field: string; op: 'includes'; value: string };
 
 export interface Field {
   key: string;
@@ -25,7 +21,11 @@ export interface Field {
   options?: string[];
   helpText?: string;
   accept?: string;
-  conditional?: FieldCondition;
+  conditional?: Condition;
+  /** For type='info' — static content shown as guidance */
+  content?: string;
+  /** For repeatable fields — minimum entries required */
+  minItems?: number;
 }
 
 export interface ModuleDef {
@@ -34,13 +34,21 @@ export interface ModuleDef {
   description?: string;
   estimatedMinutes?: number;
   videoUrl?: string;
+  videoPlaceholder?: boolean;
+  externalLink?: string;
   instructions?: string;
   tasks?: Task[];
   fields?: Field[];
+  /** When true, this module can only start after the previous enabled module is complete. */
   requiresPrevious?: boolean;
-  /** Named links rendered as a list after instructions. */
+  /** If set, module is only visible when the condition evaluates true (cross-module supported). */
+  conditional?: Condition;
+  /** If set, module is locked until admin flips this flag on this org. */
+  lockedUntilAdminFlag?: string;
+  lockedMessage?: string;
+  /** Named static links shown under instructions. */
   links?: Record<string, string>;
-  /** Links that depend on another field's value (e.g. registrar). */
+  /** Links that appear when another field equals the key (e.g. registrar). */
   conditionalLinks?: Record<string, string>;
 }
 
@@ -49,17 +57,16 @@ export interface ServiceDef {
   label: string;
   description: string;
   modules: ModuleDef[];
-  /** If true, this section is always enabled for every client and shown first. */
   mandatory?: boolean;
 }
 
 // ============================================================================
-// BUSINESS PROFILE — mandatory section, sits above service sections
+// BUSINESS PROFILE — mandatory, first in dashboard order
 // ============================================================================
 const BUSINESS_PROFILE: ServiceDef = {
   key: 'business_profile',
   label: 'Business Profile',
-  description: 'Core business info used across all services',
+  description: 'Core business info used across all services — filled out once, used everywhere',
   mandatory: true,
   modules: [
     {
@@ -67,6 +74,19 @@ const BUSINESS_PROFILE: ServiceDef = {
       title: 'Years in business',
       estimatedMinutes: 1,
       fields: [{ key: 'years_in_business', label: 'Years in business', type: 'number', required: true, placeholder: 'e.g. 12' }],
+    },
+    {
+      key: 'logo_files',
+      title: 'Logo files',
+      estimatedMinutes: 3,
+      fields: [{
+        key: 'logo_files',
+        label: 'Logo files',
+        type: 'file_multiple',
+        accept: 'image/*',
+        required: true,
+        helpText: 'High-res PNG transparent + SVG if available. Used across your website, ads, and all marketing assets.',
+      }],
     },
     {
       key: 'service_areas',
@@ -149,7 +169,7 @@ const BUSINESS_PROFILE: ServiceDef = {
 };
 
 // ============================================================================
-// FACEBOOK ADS
+// FACEBOOK ADS — placeholder, to be respec'd
 // ============================================================================
 const FACEBOOK_ADS: ServiceDef = {
   key: 'facebook_ads',
@@ -157,98 +177,11 @@ const FACEBOOK_ADS: ServiceDef = {
   description: 'Meta campaigns that drive qualified roofing leads',
   modules: [
     {
-      key: 'grant_meta_access',
-      title: 'Grant Meta Business Manager access',
-      description: 'Add Serenium as a partner so we can run ads on your behalf.',
-      estimatedMinutes: 10,
-      instructions: `This is the fastest way to get us running. You'll add Serenium as a partner inside your Meta Business Manager — no password sharing required, and you can revoke access any time.
-
-**What you'll need:**
-- Admin access to your Facebook Page
-- Access to your Meta Business Manager (business.facebook.com)
-
-**Our Partner ID:** \`1234567890\` — copy this for the form below.
-
-Walk through each task in order. Check each one off as you finish.`,
-      tasks: [
-        { key: 'meta_partner_added', label: 'Added Serenium partner ID in Business Settings', required: true },
-        { key: 'meta_ads_manager_access', label: 'Assigned Ads Manager access', required: true },
-        { key: 'meta_page_access', label: 'Assigned Facebook Page access', required: true },
-        { key: 'meta_pixel_access', label: 'Assigned Pixel access', required: true },
-        { key: 'meta_business_verified', label: 'Confirmed business verification status', required: false },
-      ],
-      fields: [
-        { key: 'meta_business_id', label: 'Your Meta Business ID', type: 'text', required: true, placeholder: 'e.g. 9876543210', helpText: 'Find this under Business Settings → Business Info.' },
-        { key: 'meta_page_name', label: 'Facebook Page name', type: 'text', required: true, placeholder: 'Sure West Roofing' },
-        { key: 'meta_notes', label: 'Anything we should know?', type: 'textarea', placeholder: 'Optional — existing pixels, ad accounts, or previous agency setups.' },
-      ],
-    },
-    {
-      key: 'ad_account_billing',
-      title: 'Set up ad account billing',
-      description: 'Add a payment method on your ad account.',
-      estimatedMinutes: 5,
-      requiresPrevious: true,
-      instructions: `Meta requires the ad account owner to add billing directly. **We never take payment credentials** — you'll add the card yourself in Ads Manager.
-
-After you've added a card, fill out the confirmations below.`,
-      tasks: [
-        { key: 'billing_payment_method', label: 'Payment method added in Ads Manager', required: true },
-        { key: 'billing_currency', label: 'Currency confirmed (CAD for most Canadian roofers)', required: true },
-        { key: 'billing_timezone', label: 'Timezone confirmed (America/Toronto, America/Edmonton, etc.)', required: true },
-      ],
-      fields: [
-        { key: 'ad_account_id', label: 'Ad Account ID', type: 'text', required: true, placeholder: 'act_1234567890' },
-        { key: 'ad_account_currency', label: 'Currency', type: 'select', options: ['CAD', 'USD'], required: true },
-        { key: 'ad_account_timezone', label: 'Timezone', type: 'select', options: ['America/Edmonton', 'America/Toronto', 'America/Vancouver', 'America/Winnipeg', 'America/Halifax', 'America/St_Johns'], required: true },
-      ],
-    },
-    {
-      key: 'brand_assets',
-      title: 'Upload brand assets',
-      description: 'Logo, job photos, video footage, and team photos.',
-      estimatedMinutes: 15,
-      requiresPrevious: true,
-      instructions: `Quality creative = quality leads. The more you give us, the better the ads.
-
-**Minimums we'd love to have:**
-- 1 high-resolution logo (transparent PNG preferred)
-- 15–30 photos of completed jobs (before/after pairs are gold)
-- Any video footage you have — drone shots, crews working, timelapses, testimonials
-- Photos of your team, especially the owner`,
-      fields: [
-        { key: 'brand_logo', label: 'Logo (transparent PNG preferred)', type: 'file', accept: 'image/*', required: true },
-        { key: 'job_photos', label: 'Completed job photos (15–30 minimum)', type: 'file_multiple', accept: 'image/*', required: true },
-        { key: 'video_footage', label: 'Video footage (optional but recommended)', type: 'file_multiple', accept: 'video/*' },
-        { key: 'team_photos', label: 'Team photos — especially the owner', type: 'file_multiple', accept: 'image/*' },
-      ],
-    },
-    {
-      key: 'testimonials',
-      title: 'Testimonials and social proof',
-      description: 'Reviews, written testimonials, and video testimonials.',
-      estimatedMinutes: 10,
-      requiresPrevious: true,
-      instructions: `Social proof closes leads faster than any ad copy. Upload whatever you have.`,
-      fields: [
-        { key: 'review_screenshots', label: 'Google review screenshots', type: 'file_multiple', accept: 'image/*' },
-        { key: 'written_testimonials', label: 'Written testimonials', type: 'repeatable', helpText: 'Name, location, and the testimonial text.' },
-        { key: 'video_testimonials', label: 'Video testimonials (optional)', type: 'file_multiple', accept: 'video/*' },
-      ],
-    },
-    {
-      key: 'landing_page',
-      title: 'Landing page setup',
-      description: 'Where leads land after clicking your ad.',
-      estimatedMinutes: 5,
-      requiresPrevious: true,
-      instructions: `Two options: use our pre-built landing page template, or we'll install the Meta Pixel on your existing site.`,
-      fields: [
-        { key: 'landing_page_choice', label: 'Landing page option', type: 'select', required: true, options: ['Use Serenium landing page', 'Use my own website'] },
-        { key: 'landing_page_subdomain', label: 'Preferred subdomain (if using Serenium page)', type: 'text', placeholder: 'offers.surewest.ca' },
-        { key: 'existing_site_url', label: 'Existing site URL (if using own)', type: 'url', placeholder: 'https://surewest.ca' },
-        { key: 'existing_site_access', label: 'Site admin access handoff', type: 'textarea', placeholder: 'Hosting login, WordPress admin, etc. — we\'ll handle pixel install.' },
-      ],
+      key: 'coming_soon',
+      title: 'Facebook Ads setup — coming soon',
+      estimatedMinutes: 1,
+      instructions: `The Facebook Ads onboarding flow is being redesigned. Your Serenium team will guide you directly for now. This section will populate here as soon as it's ready.`,
+      fields: [],
     },
   ],
 };
@@ -259,84 +192,213 @@ After you've added a card, fill out the confirmations below.`,
 const AI_SMS: ServiceDef = {
   key: 'ai_sms',
   label: 'AI SMS',
-  description: 'Automated lead qualification in under 60 seconds',
+  description: 'Automated lead qualification via GoHighLevel + Appointwise',
   modules: [
     {
-      key: 'connect_calendar',
-      title: 'Connect your Google Calendar',
-      description: 'So the AI can book appointments directly into your calendar.',
-      estimatedMinutes: 15,
-      instructions: `This is the most common stall point — do it now so the rest goes smoothly.
-
-Walk through the steps below in GoHighLevel (GHL). If you don't have GHL access yet, ping us and we'll invite you.`,
+      key: 'connect_google_calendar',
+      title: 'Connect Google Calendar',
+      estimatedMinutes: 10,
+      videoPlaceholder: true,
+      externalLink: 'https://help.gohighlevel.com/support/solutions/articles/155000002369-integrating-google-with-highlevel-calendars',
+      instructions: `Connect your Google Calendar in GoHighLevel so the AI can book directly into your schedule.`,
       tasks: [
-        { key: 'ghl_login', label: 'Logged into GHL', required: true },
+        { key: 'ghl_login',             label: 'Logged into GHL', required: true },
         { key: 'ghl_calendar_settings', label: 'Navigated to Calendar settings', required: true },
-        { key: 'ghl_connect_clicked', label: 'Clicked Connect → Google', required: true },
-        { key: 'ghl_authorized', label: 'Authorized Google Calendar access', required: true },
-        { key: 'ghl_calendar_selected', label: 'Selected the correct calendar', required: true },
-        { key: 'ghl_availability_set', label: 'Set availability windows', required: true },
-        { key: 'ghl_connection_confirmed', label: 'Confirmed connection visible in GHL', required: true },
+        { key: 'ghl_connect_google',    label: 'Clicked Connect Google Calendar, authorized with Google', required: true },
+        { key: 'ghl_calendar_selected', label: 'Selected the correct calendar to sync', required: true },
+        { key: 'ghl_connection_visible',label: 'Confirmed connection is visible in GHL', required: true },
       ],
+      fields: [{ key: 'calendar_connected', type: 'checkbox', label: "I've connected my Google Calendar", required: true }],
+      links: {
+        'GHL Google Calendar integration guide': 'https://help.gohighlevel.com/support/solutions/articles/155000002369-integrating-google-with-highlevel-calendars',
+      },
     },
     {
-      key: 'availability',
-      title: 'Set availability and booking preferences',
-      description: 'When are you available, and how should bookings flow?',
+      key: 'set_availability',
+      title: 'Set your availability in GHL',
       estimatedMinutes: 10,
       requiresPrevious: true,
-      instructions: `These rules drive every AI conversation. Be realistic — overcommitting means the AI books slots you can't actually hit.`,
-      fields: [
-        { key: 'working_hours', label: 'Working hours per day', type: 'repeatable', required: true, helpText: 'e.g. Mon 8am–5pm, Tue 8am–5pm…' },
-        { key: 'lunch_breaks', label: 'Lunch breaks', type: 'text', placeholder: '12:00pm – 1:00pm' },
-        { key: 'weekend_availability', label: 'Weekend availability', type: 'select', options: ['None', 'Saturday only', 'Saturday & Sunday'] },
-        { key: 'buffer_minutes', label: 'Buffer between appointments (minutes)', type: 'number', placeholder: '30' },
-        { key: 'max_bookings_per_day', label: 'Max bookings per day', type: 'number', placeholder: '4' },
-        { key: 'min_notice_hours', label: 'Minimum notice period (hours)', type: 'number', placeholder: '24' },
-      ],
+      videoPlaceholder: true,
+      externalLink: 'https://help.gohighlevel.com/support/solutions/articles/155000001716-calendar-availability-weekly-working-hours-date-specific-hours',
+      instructions: `Log into GHL and set your working hours, availability, and booking preferences directly in Calendar settings.`,
+      fields: [{ key: 'availability_set', type: 'checkbox', label: "I've set my availability in GHL", required: true }],
+      links: {
+        'GHL availability guide': 'https://help.gohighlevel.com/support/solutions/articles/155000001716-calendar-availability-weekly-working-hours-date-specific-hours',
+      },
     },
     {
       key: 'train_ai',
       title: 'Train your AI assistant',
-      description: 'Voice, FAQs, objections, pricing guidance.',
       estimatedMinutes: 30,
       requiresPrevious: true,
       instructions: `This is the brains of the operation. The more specific you are, the more your AI sounds like you.`,
       fields: [
-        { key: 'tone_of_voice', label: 'Tone of voice', type: 'select', required: true, options: ['Casual & friendly', 'Professional', 'Direct & no-nonsense', 'Warm & consultative'] },
-        { key: 'faqs', label: 'Frequently asked questions (minimum 5)', type: 'repeatable', required: true, helpText: 'Question + your ideal answer.' },
-        { key: 'objections', label: 'Common objections & responses', type: 'repeatable', required: true, helpText: 'e.g. "Too expensive" → "Here\'s why it\'s worth it…"' },
-        { key: 'pricing_guidance', label: 'Pricing guidance', type: 'textarea', required: true, helpText: 'What can the AI ballpark vs punt to a human?' },
-        { key: 'qualifiers', label: 'Service qualifiers', type: 'textarea', helpText: 'Roof age, material type, insurance vs cash, urgency — what do you need to know to qualify a lead?' },
+        { key: 'faqs', label: 'FAQs (question + ideal answer)', type: 'repeatable', minItems: 5, required: true, helpText: 'Minimum 5.' },
+        { key: 'objections', label: 'Common objections + how to respond', type: 'repeatable', minItems: 3, required: true, helpText: 'Minimum 3.' },
+        { key: 'pricing_allowed', label: 'Is the AI allowed to give pricing guidance?', type: 'select', options: ['Yes', 'No'], required: true },
+        { key: 'pricing_guidance', label: 'Pricing guidance', type: 'textarea', helpText: 'Write freely what the AI can share about pricing.', conditional: { field: 'pricing_allowed', op: 'eq', value: 'Yes' } },
+        { key: 'pricing_punt_confirm', label: 'Confirm: the AI will always punt pricing to a human', type: 'checkbox', conditional: { field: 'pricing_allowed', op: 'eq', value: 'No' } },
+        { key: 'qualification_questions', label: 'What info does the AI need to collect from every lead?', type: 'repeatable', required: true, helpText: 'Examples: location, roof age, roof material, insurance vs cash, urgency, property type — add any you need.' },
+        { key: 'ai_never_say', label: 'Anything the AI should NEVER say or promise', type: 'textarea' },
       ],
     },
     {
-      key: 'notifications',
+      key: 'notification_preferences',
       title: 'Notification preferences',
-      description: 'Who gets pinged when an appointment books?',
       estimatedMinutes: 5,
       requiresPrevious: true,
-      instructions: `Every booked appointment will ping you in real time. Pick your preferred method.`,
       fields: [
-        { key: 'notification_recipients', label: 'Who gets notified?', type: 'repeatable', required: true, helpText: 'Name, phone, email for each person.' },
-        { key: 'notification_backup', label: 'Backup contact', type: 'text' },
+        { key: 'appointment_notification_recipients', label: 'Who gets notified when an appointment is booked (name, phone, email)', type: 'repeatable', required: true },
         { key: 'notification_method', label: 'Preferred notification method', type: 'multiselect', options: ['SMS', 'Email', 'Both'], required: true },
-        { key: 'after_hours_handling', label: 'After-hours handling preference', type: 'select', options: ['AI handles & books, notify next morning', 'AI handles & pings immediately', 'AI asks lead to wait, pings you'] },
+        { key: 'after_hours_handling', label: 'After-hours handling', type: 'select', options: ['AI responds immediately 24/7', 'AI responds but flags for human next business day', 'Hold until business hours'], required: true },
       ],
     },
     {
-      key: 'casl_consent',
-      title: 'Lead form consent language (CASL)',
-      description: 'Canadian anti-spam compliance for SMS messages.',
+      key: 'emergency_handling',
+      title: 'Emergency handling',
+      estimatedMinutes: 5,
+      requiresPrevious: true,
+      conditional: { path: 'business_profile.emergency_service.emergency_offered', op: 'eq', value: 'Yes' },
+      fields: [
+        { key: 'emergency_contact_chain', label: 'Who the AI contacts for emergency leads (name, phone, email, ranked by priority)', type: 'repeatable', required: true },
+        { key: 'emergency_definition', label: 'What counts as an emergency', type: 'textarea', required: true, helpText: 'Describe what situations should trigger emergency escalation.' },
+        { key: 'emergency_qualify_or_escalate', label: 'Qualification before escalation?', type: 'select', options: ['Qualify first', 'Skip qualification, escalate immediately'], required: true },
+      ],
+    },
+  ],
+};
+
+// ============================================================================
+// AI RECEPTIONIST
+// ============================================================================
+const AI_RECEPTIONIST: ServiceDef = {
+  key: 'ai_receptionist',
+  label: 'AI Receptionist',
+  description: 'Inbound call AI built on Retell',
+  modules: [
+    {
+      key: 'train_ai_receptionist',
+      title: 'Train your AI receptionist',
+      estimatedMinutes: 20,
+      instructions: `We write the prompts — this module just collects the info we need.`,
+      fields: [
+        { key: 'faqs', label: 'FAQs callers commonly ask (question + ideal answer)', type: 'repeatable', required: true },
+        { key: 'pricing_allowed', label: 'Is the AI allowed to give pricing over the phone?', type: 'select', options: ['Yes', 'No'], required: true },
+        { key: 'pricing_guidance', label: 'Pricing guidance', type: 'textarea', helpText: 'Write freely.', conditional: { field: 'pricing_allowed', op: 'eq', value: 'Yes' } },
+        { key: 'pricing_punt_confirm', label: 'Confirm: the AI will always punt pricing to a human', type: 'checkbox', conditional: { field: 'pricing_allowed', op: 'eq', value: 'No' } },
+        { key: 'qualification_questions', label: 'What info does the AI need to collect from every caller?', type: 'repeatable', required: true, helpText: 'Examples: location, roof age, roof material, insurance vs cash, urgency, property type — add any you need.' },
+        { key: 'ai_never_say', label: 'Anything the AI should NEVER say over the phone', type: 'textarea' },
+      ],
+    },
+    {
+      key: 'call_handling_preferences',
+      title: 'Call handling preferences',
+      estimatedMinutes: 5,
+      requiresPrevious: true,
+      fields: [
+        { key: 'human_request_handling', label: 'When callers want to speak to a human', type: 'select', options: ['Transfer the call', 'Always take a message'], required: true },
+        { key: 'transfer_contacts', label: 'Who to transfer to (name, phone, available hours)', type: 'repeatable', conditional: { field: 'human_request_handling', op: 'eq', value: 'Transfer the call' } },
+        { key: 'transfer_fallback', label: 'Backup if transfer fails', type: 'select', options: ['Voicemail', 'Back to AI', 'Callback via SMS'], conditional: { field: 'human_request_handling', op: 'eq', value: 'Transfer the call' } },
+      ],
+    },
+    {
+      key: 'email_summary_recipients',
+      title: 'Email summary recipients',
+      estimatedMinutes: 3,
+      requiresPrevious: true,
+      instructions: `Who receives the call summary email after every call.`,
+      fields: [
+        { key: 'primary_email', label: 'Primary email recipient', type: 'email', required: true },
+        { key: 'additional_emails', label: 'Additional recipients (email)', type: 'repeatable' },
+      ],
+    },
+    {
+      key: 'emergency_handling',
+      title: 'Emergency handling',
+      estimatedMinutes: 5,
+      requiresPrevious: true,
+      conditional: { path: 'business_profile.emergency_service.emergency_offered', op: 'eq', value: 'Yes' },
+      fields: [
+        { key: 'emergency_contact_chain', label: 'Who the AI contacts for emergency calls (name, phone, email, ranked by priority)', type: 'repeatable', required: true },
+        { key: 'emergency_definition', label: 'What counts as an emergency on a phone call', type: 'textarea', required: true },
+        { key: 'emergency_transfer_or_details', label: 'Transfer or take details?', type: 'select', options: ['Transfer immediately', 'Take details then escalate'], required: true },
+      ],
+    },
+    {
+      key: 'call_forwarding_setup',
+      title: 'Set up call forwarding to Retell',
       estimatedMinutes: 10,
       requiresPrevious: true,
-      instructions: `**CASL requires express consent** before we can text a lead. Your lead form must have explicit SMS opt-in language.
-
-If you're using Serenium's lead form, we've already handled this. If you're using your own, upload a screenshot for our review.`,
-      tasks: [{ key: 'casl_consent_confirmed', label: 'Lead form has express SMS consent language', required: true }],
+      lockedUntilAdminFlag: 'ai_receptionist_ready_for_connection',
+      lockedMessage: "This step unlocks once we've built your AI. We'll let you know when it's ready.",
+      instructions: `Final step — only unlocks once the previous steps are complete and we've built your AI.`,
       fields: [
-        { key: 'lead_form_source', label: 'Lead form source', type: 'select', required: true, options: ['Using Serenium lead form', 'Using my own form (upload screenshot)'] },
-        { key: 'lead_form_screenshot', label: 'Screenshot of your consent checkbox', type: 'file', accept: 'image/*' },
+        {
+          key: 'forwarding_mode',
+          label: 'How do you want calls to reach the AI?',
+          type: 'select',
+          required: true,
+          options: [
+            'Option A — Forward all calls directly to the AI (phone never rings)',
+            "Option B — Let my phone ring first, then forward if I don't answer",
+          ],
+        },
+        {
+          key: 'option_a_instructions',
+          type: 'info',
+          conditional: { field: 'forwarding_mode', op: 'eq', value: 'Option A — Forward all calls directly to the AI (phone never rings)' },
+          content: 'iPhone: Settings → Phone → Call Forwarding → On → Enter the Serenium forwarding number.\n\nAndroid: Phone app → Menu (3 dots) → Settings → Calls → Call Forwarding → Always Forward → Enter the Serenium forwarding number.',
+        },
+        {
+          key: 'ring_time_control',
+          label: 'Do you want to control how long your phone rings before it forwards?',
+          type: 'select',
+          options: ['No, use the default (about 20-25 seconds / 5-6 rings)', 'Yes, I want to set a specific ring time'],
+          conditional: { field: 'forwarding_mode', op: 'eq', value: "Option B — Let my phone ring first, then forward if I don't answer" },
+        },
+        {
+          key: 'option_b_default_instructions',
+          type: 'info',
+          conditional: {
+            all: [
+              { field: 'forwarding_mode', op: 'eq', value: "Option B — Let my phone ring first, then forward if I don't answer" },
+              { field: 'ring_time_control', op: 'eq', value: 'No, use the default (about 20-25 seconds / 5-6 rings)' },
+            ],
+          },
+          content: 'Dial: **004*[forwarding number]#** and press call.\n\nTo turn off: dial **##004#** and press call.',
+        },
+        {
+          key: 'ring_seconds',
+          label: 'Choose how long your phone should ring before forwarding',
+          type: 'select',
+          options: ['10 seconds (recommended)', '20 seconds', '30 seconds'],
+          conditional: {
+            all: [
+              { field: 'forwarding_mode', op: 'eq', value: "Option B — Let my phone ring first, then forward if I don't answer" },
+              { field: 'ring_time_control', op: 'eq', value: 'Yes, I want to set a specific ring time' },
+            ],
+          },
+        },
+        {
+          key: 'option_b_custom_instructions',
+          type: 'info',
+          conditional: {
+            all: [
+              { field: 'forwarding_mode', op: 'eq', value: "Option B — Let my phone ring first, then forward if I don't answer" },
+              { field: 'ring_time_control', op: 'eq', value: 'Yes, I want to set a specific ring time' },
+            ],
+          },
+          content: 'Dial: **004*[forwarding number]*[seconds]#** and press call.\n\nExample for 10 seconds: **004*4165551234*10#**.\n\nTo turn off: dial **##004#** and press call.',
+        },
+        {
+          key: 'carrier',
+          label: 'Which carrier are you with?',
+          type: 'select',
+          options: ['Rogers', 'Bell', 'Telus', 'Freedom', 'Koodo', 'Fido', 'Virgin Plus', 'Public Mobile', 'Other'],
+          helpText: 'We only use this if you need help troubleshooting.',
+        },
+        { key: 'forwarding_setup_confirmed', label: "I've set up call forwarding using the method above", type: 'checkbox', required: true },
+        { key: 'forwarding_tested', label: "I've tested by calling my business line and confirmed it reaches the AI", type: 'checkbox', required: true },
       ],
     },
   ],
@@ -348,18 +410,16 @@ If you're using Serenium's lead form, we've already handled this. If you're usin
 const WEBSITE: ServiceDef = {
   key: 'website',
   label: 'Website',
-  description: 'Custom website build with foundational SEO baked in',
+  description: 'Custom website build with foundational SEO baked in (analytics, Search Console, GBP, schema, meta, on-page basics)',
   modules: [
     {
       key: 'brand_and_style',
       title: 'Brand and style',
       estimatedMinutes: 15,
-      instructions: `Paint us a picture of your brand. Share colors, logos, fonts, and a few sites that capture the feel you want.`,
       fields: [
         { key: 'primary_color', label: 'Primary brand color', type: 'color', required: true },
         { key: 'secondary_color', label: 'Secondary brand color', type: 'color', required: true },
         { key: 'accent_color', label: 'Accent / tertiary color (optional)', type: 'color' },
-        { key: 'logo_files', label: 'Logo files (high-res PNG transparent + SVG if available)', type: 'file_multiple', accept: 'image/*', required: true },
         { key: 'brand_guidelines', label: 'Any existing brand guidelines (PDF)', type: 'file' },
         { key: 'typography_preferences', label: 'Typography preferences (if any)', type: 'textarea' },
         { key: 'liked_websites', label: '3 websites you like + why', type: 'repeatable', required: true },
@@ -370,26 +430,16 @@ const WEBSITE: ServiceDef = {
       key: 'imagery_and_media',
       title: 'Imagery and media',
       estimatedMinutes: 10,
-      instructions: `Share a link to a Google Drive or Dropbox folder with all your photos and videos.
-
-**Suggested subfolders:**
-- Completed Jobs
-- Team
-- Building
-- Drone Footage
-- Video Testimonials
-- Equipment`,
       fields: [
-        { key: 'media_folder_link', label: 'Google Drive / Dropbox folder link', type: 'url', required: true, helpText: 'Make sure the link has view access for contact@sereniumai.com or anyone with the link.' },
+        { key: 'media_folder_link', label: 'Google Drive / Dropbox folder link with all photos and videos', type: 'url', required: true, helpText: 'Suggested subfolders: Completed Jobs / Team / Building / Drone Footage / Video Testimonials / Equipment' },
       ],
     },
     {
       key: 'content',
       title: 'Content',
       estimatedMinutes: 15,
-      instructions: `Tell us your story and the questions customers ask you most.`,
       fields: [
-        { key: 'business_story', label: 'Business story (text or voice note)', type: 'textarea' },
+        { key: 'business_story', label: 'Business story (text or voice note upload)', type: 'textarea' },
         { key: 'faq_questions', label: 'Common customer questions for FAQ page', type: 'repeatable' },
       ],
     },
@@ -397,7 +447,6 @@ const WEBSITE: ServiceDef = {
       key: 'forms_and_conversion',
       title: 'Forms and conversion',
       estimatedMinutes: 10,
-      instructions: `How should leads reach you? Pick the fields on your lead form and where submissions go.`,
       fields: [
         { key: 'lead_form_fields', label: 'Lead form fields', type: 'multiselect', required: true, options: ['Name', 'Phone', 'Email', 'Service needed', 'Timeframe', 'Address'] },
         { key: 'primary_cta', label: 'Primary CTA across the site', type: 'select', required: true, options: ['Free quote', 'Book inspection', 'Call now', 'Financing'] },
@@ -426,7 +475,6 @@ const WEBSITE: ServiceDef = {
       key: 'cms_access',
       title: 'CMS / existing site access',
       estimatedMinutes: 5,
-      instructions: `If you have an existing site we'll need access to it during migration. If not, skip this step.`,
       fields: [
         { key: 'has_current_site', label: 'Do you have a current website?', type: 'select', options: ['Yes', 'No'], required: true },
         { key: 'cms_platform', label: 'What platform is it on?', type: 'select', options: ['WordPress', 'Other'], conditional: { field: 'has_current_site', op: 'eq', value: 'Yes' } },
@@ -456,11 +504,16 @@ const WEBSITE: ServiceDef = {
 };
 
 // ============================================================================
-// EXPORTS
+// EXPORTS — SERVICES in dashboard order
 // ============================================================================
-export const SERVICES: ServiceDef[] = [BUSINESS_PROFILE, FACEBOOK_ADS, AI_SMS, WEBSITE];
+export const SERVICES: ServiceDef[] = [
+  BUSINESS_PROFILE,
+  FACEBOOK_ADS,
+  AI_SMS,
+  AI_RECEPTIONIST,
+  WEBSITE,
+];
 
-/** Services admins select per client. Business Profile is always on. */
 export const SELECTABLE_SERVICES: ServiceDef[] = SERVICES.filter(s => !s.mandatory);
 
 export function getService(key: ServiceKey): ServiceDef | undefined {

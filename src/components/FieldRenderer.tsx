@@ -4,7 +4,9 @@ import { motion } from 'framer-motion';
 import { Plus, Trash2, Upload as UploadIcon, X, Check } from 'lucide-react';
 import { useAutosave } from '../hooks/useAutosave';
 import { db } from '../lib/mockDb';
-import type { Field, FieldCondition } from '../config/modules';
+import type { Field } from '../config/modules';
+import { evaluate } from '../lib/condition';
+import { Markdown } from './Markdown';
 import { cn } from '../lib/cn';
 
 interface Props {
@@ -15,23 +17,24 @@ interface Props {
   onStatusChange?: (s: 'idle' | 'saving' | 'saved' | 'error') => void;
 }
 
-function checkCondition(cond: FieldCondition, organizationId: string, fieldKey: string): boolean {
-  // fieldKey = "<svc>.<mod>.<field>" — siblings share the first two segments
-  const parts = fieldKey.split('.');
-  const prefix = parts.slice(0, 2).join('.');
-  const siblingKey = `${prefix}.${cond.field}`;
-  const sub = db.getSubmission(organizationId, siblingKey);
-  const value = sub?.value;
-  switch (cond.op) {
-    case 'eq': return value === cond.value;
-    case 'neq': return value !== cond.value;
-    case 'includes': return Array.isArray(value) && (value as unknown[]).includes(cond.value);
-  }
-}
-
 export function FieldRenderer({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
-  if (field.conditional && !checkCondition(field.conditional, organizationId, fieldKey)) {
+  const prefix = fieldKey.split('.').slice(0, 2).join('.');
+
+  if (field.conditional && !evaluate(field.conditional, organizationId, prefix)) {
     return null;
+  }
+
+  if (field.type === 'info') {
+    const retell = db.getRetellNumber(organizationId);
+    const interpolated = field.content
+      ? field.content.replace(/\[forwarding number\]/g, retell ?? '[your Serenium forwarding number]')
+      : '';
+    return (
+      <div className="rounded-lg border border-orange/30 bg-orange/5 p-4 text-sm text-white/80">
+        {field.label && <p className="font-semibold text-white mb-2">{field.label}</p>}
+        {interpolated && <Markdown>{interpolated}</Markdown>}
+      </div>
+    );
   }
 
   if (field.type === 'checkbox') {

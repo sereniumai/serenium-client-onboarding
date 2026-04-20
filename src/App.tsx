@@ -7,6 +7,7 @@ import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { OnboardingDashboard } from './pages/client/OnboardingDashboard';
 import { ModulePage } from './pages/client/ModulePage';
+import { ServicePage } from './pages/client/ServicePage';
 import { ReportsPage } from './pages/client/ReportsPage';
 import { AdminHome } from './pages/admin/AdminHome';
 import { NewClientWizard } from './pages/admin/NewClientWizard';
@@ -48,6 +49,9 @@ function App() {
           } />
           <Route path="/onboarding/:orgSlug/reports" element={
             <AuthGuard><ReportsPage /></AuthGuard>
+          } />
+          <Route path="/onboarding/:orgSlug/services/:serviceKey" element={
+            <AuthGuard><ServicePage /></AuthGuard>
           } />
           <Route path="/onboarding/:orgSlug/services/:serviceKey/:moduleKey" element={
             <AuthGuard><ModulePage /></AuthGuard>
