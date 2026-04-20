@@ -536,7 +536,7 @@ export const db = {
   },
 
   // --- Member management ---
-  addMember(input: { organizationId: string; fullName: string; email: string; role: MemberRole }) {
+  addMember(input: { organizationId: string; fullName: string; email: string; role: MemberRole }): { token: string } | null {
     const d = load();
     const existing = d.profiles.find(p => p.email.toLowerCase() === input.email.toLowerCase());
     const now = new Date().toISOString();
@@ -545,11 +545,12 @@ export const db = {
       d.profiles.push({ id: userId, fullName: input.fullName, email: input.email, role: 'client' });
     }
     const member = d.organizationMembers.find(m => m.organizationId === input.organizationId && m.userId === userId);
+    const token = uid();
     if (!member) {
       d.organizationMembers.push({ organizationId: input.organizationId, userId, role: input.role, invitedAt: now, acceptedAt: now });
       d.invitations.push({
         id: uid(), organizationId: input.organizationId, email: input.email, fullName: input.fullName,
-        role: input.role, token: uid(),
+        role: input.role, token,
         expiresAt: new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString(),
         acceptedAt: now, createdAt: now,
       });
@@ -557,8 +558,11 @@ export const db = {
         organizationId: input.organizationId, userId,
         action: 'member_joined', metadata: { email: input.email, fullName: input.fullName },
       });
+      save(d);
+      return { token };
     }
     save(d);
+    return null;
   },
 
   removeMember(organizationId: string, userId: string) {

@@ -405,8 +405,17 @@ function UsersTab({ orgId, members }: { orgId: string; members: ReturnType<typeo
 
   const add = () => {
     if (!email.trim()) return;
-    db.addMember({ organizationId: orgId, fullName: fullName.trim(), email: email.trim(), role });
-    toast.success('User added', { description: `${fullName.trim() || email.trim()} can now log in` });
+    const result = db.addMember({ organizationId: orgId, fullName: fullName.trim(), email: email.trim(), role });
+    if (result) {
+      const inviteUrl = `${window.location.origin}/register?token=${result.token}`;
+      navigator.clipboard?.writeText(inviteUrl).catch(() => { /* clipboard may be unavailable */ });
+      toast.success('User added · invite link copied', {
+        description: `${fullName.trim() || email.trim()} — link is on your clipboard`,
+        duration: 6000,
+      });
+    } else {
+      toast.success('User added', { description: `${fullName.trim() || email.trim()} was already a member` });
+    }
     setFullName(''); setEmail(''); setRole('member'); setAdding(false);
   };
 

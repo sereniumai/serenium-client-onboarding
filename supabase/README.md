@@ -31,3 +31,34 @@ Copy the URL + keys from **Project Settings → API** into:
 - `report-files` (private) — monthly report attachments under `{org_id}/{report_id}/`
 - `welcome-video` (private) — global singleton under `welcome/`
 - `logos` (public) — client logos under `{org_id}/`
+
+## Edge functions (email via Resend)
+
+Deploy:
+
+```bash
+supabase functions deploy send-invitation
+supabase functions deploy send-stalled-nudge
+```
+
+Set secrets (dashboard → Edge Functions → Secrets, or CLI):
+
+```bash
+supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx
+supabase secrets set RESEND_FROM_ADDRESS="Serenium <noreply@sereniumai.com>"
+supabase secrets set PORTAL_BASE_URL=https://clients.sereniumai.com
+```
+
+Schedule the stalled-client nudge (Supabase SQL Editor):
+
+```sql
+select cron.schedule(
+  'stalled-nudge-daily',
+  '0 9 * * *',   -- every day at 09:00 UTC
+  $$ select net.http_post(
+       'https://<project-ref>.functions.supabase.co/send-stalled-nudge',
+       '{}'::jsonb,
+       '{"Content-Type": "application/json"}'::jsonb
+     ) $$
+);
+```
