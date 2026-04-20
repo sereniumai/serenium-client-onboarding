@@ -188,12 +188,16 @@ function ModuleSection({
   const embed = loom || (storedVideo ? loomEmbedUrl(storedVideo) : null);
   const hasVideo = !!embed || !!module.videoPlaceholder;
 
+  const svcEntry = db.listServicesForOrganization(orgId).find(s => s.serviceKey === serviceKey);
+  const disabledFieldSet = new Set(svcEntry?.disabledFieldKeys ?? []);
+  const enabledFields = (module.fields ?? []).filter(f => !disabledFieldSet.has(`${module.key}.${f.key}`));
+
   const readyFor = (() => {
     const requiredTasks = module.tasks?.filter(t => t.required !== false) ?? [];
     const tasksDone = requiredTasks.every(t =>
       taskCompletions.find(c => c.taskKey === `${serviceKey}.${module.key}.${t.key}` && c.completed)
     );
-    const requiredFields = module.fields?.filter(f => f.required && f.type !== 'info') ?? [];
+    const requiredFields = enabledFields.filter(f => f.required && f.type !== 'info');
     const submissions = db.listSubmissionsForOrg(orgId);
     const fieldsDone = requiredFields.every(f =>
       submissions.find(s => s.fieldKey === `${serviceKey}.${module.key}.${f.key}` && s.value != null && s.value !== '' && s.value !== false)
@@ -327,9 +331,9 @@ function ModuleSection({
         )}
 
         {/* Fields */}
-        {module.fields && module.fields.length > 0 && (
+        {enabledFields.length > 0 && (
           <div className="space-y-5">
-            {module.fields.map(f => (
+            {enabledFields.map(f => (
               <FieldRenderer
                 key={f.key}
                 field={f}

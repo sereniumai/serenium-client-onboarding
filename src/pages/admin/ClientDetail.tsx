@@ -13,7 +13,7 @@ import { db } from '../../lib/mockDb';
 import { useAuth } from '../../auth/AuthContext';
 import { useDbVersion } from '../../hooks/useDb';
 import { getOrgProgress } from '../../lib/progress';
-import { getService, SERVICES, getModule } from '../../config/modules';
+import { getService, SERVICES, getModule, type ServiceDef } from '../../config/modules';
 import type { ServiceKey, AdminNote, MemberRole } from '../../types';
 import { cn } from '../../lib/cn';
 import { ReportsAdmin } from './ReportsAdmin';
@@ -254,12 +254,13 @@ function ServicesTab({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-white/60">
-        Business Profile is always on. Toggle the remaining services, and pick exactly which steps this client needs to complete. Unchecked steps are hidden from the client — submitted data is preserved if you re-enable.
+        Business Profile is always on. Toggle services, steps, or individual fields. Unchecked items are hidden from the client — submitted data is preserved if you re-enable.
       </p>
       {SERVICES.map(svc => {
         const entry = all.find(s => s.serviceKey === svc.key);
         const on = !!entry?.enabled;
-        const disabledKeys = new Set(entry?.disabledModuleKeys ?? []);
+        const disabledModKeys = new Set(entry?.disabledModuleKeys ?? []);
+        const disabledFieldKeys = new Set(entry?.disabledFieldKeys ?? []);
         return (
           <ServiceAccordion
             key={svc.key}
@@ -270,7 +271,8 @@ function ServicesTab({ orgId }: { orgId: string }) {
             modules={svc.modules}
             enabled={svc.mandatory || on}
             mandatory={svc.mandatory}
-            disabledKeys={disabledKeys}
+            disabledModKeys={disabledModKeys}
+            disabledFieldKeys={disabledFieldKeys}
           />
         );
       })}
@@ -279,20 +281,21 @@ function ServicesTab({ orgId }: { orgId: string }) {
 }
 
 function ServiceAccordion({
-  orgId, svcKey, serviceLabel, serviceDescription, modules, enabled, mandatory, disabledKeys,
+  orgId, svcKey, serviceLabel, serviceDescription, modules, enabled, mandatory, disabledModKeys, disabledFieldKeys,
 }: {
   orgId: string;
   svcKey: ServiceKey;
   serviceLabel: string;
   serviceDescription: string;
-  modules: Array<{ key: string; title: string; description?: string; estimatedMinutes?: number }>;
+  modules: ServiceDef['modules'];
   enabled: boolean;
   mandatory?: boolean;
-  disabledKeys: Set<string>;
+  disabledModKeys: Set<string>;
+  disabledFieldKeys: Set<string>;
 }) {
   const [open, setOpen] = useState(enabled);
   const Icon = SERVICE_ICON[svcKey];
-  const activeCount = modules.filter(m => !disabledKeys.has(m.key)).length;
+  const activeCount = modules.filter(m => !disabledModKeys.has(m.key)).length;
 
   const toggleService = (on: boolean) => {
     db.setServiceEnabled(orgId, svcKey, on);
@@ -380,30 +383,18 @@ function ServiceAccordion({
           </div>
           {open && (
             <ul className="divide-y divide-border-subtle">
-              {modules.map((m, i) => {
-                const included = !disabledKeys.has(m.key);
-                return (
-                  <li key={m.key}>
-                    <label className={cn(
-                      'flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-bg-tertiary/30 transition-colors',
-                      !included && 'opacity-50'
-                    )}>
-                      <input
-                        type="checkbox"
-                        checked={included}
-                        onChange={e => toggleModule(m.key, e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-white/30 accent-orange cursor-pointer"
-                      />
-                      <span className="text-xs text-white/40 tabular-nums w-6 shrink-0 mt-0.5">{String(i + 1).padStart(2, '0')}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{m.title}</p>
-                        {m.description && <p className="text-xs text-white/50 truncate">{m.description}</p>}
-                      </div>
-                      {m.estimatedMinutes && <span className="text-[11px] text-white/30 whitespace-nowrap">~{m.estimatedMinutes}m</span>}
-                    </label>
-                  </li>
-                );
-              })}
+              {modules.map((m, i) => (
+                <ModulePickerRow
+                  key={m.key}
+                  orgId={orgId}
+                  svcKey={svcKey}
+                  module={m}
+                  index={i}
+                  moduleEnabled={!disabledModKeys.has(m.key)}
+                  disabledFieldKeys={disabledFieldKeys}
+                  onToggleModule={(on) => toggleModule(m.key, on)}
+                />
+              ))}
             </ul>
           )}
         </div>
@@ -484,6 +475,86 @@ function UsersTab({ orgId, members }: { orgId: string; members: ReturnType<typeo
       </table>
       </div>
     </div>
+  );
+}
+
+function ModulePickerRow({
+  orgId, svcKey, module: m, index, moduleEnabled, disabledFieldKeys, onToggleModule,
+}: {
+  orgId: string;
+  svcKey: ServiceKey;
+  module: ServiceDef['modules'][number];
+  index: number;
+  moduleEnabled: boolean;
+  disabledFieldKeys: Set<string>;
+  onToggleModule: (on: boolean) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const fields = m.fields ?? [];
+  const hasFields = fields.length > 1; // show field-level toggles only for multi-field modules
+  const fieldActiveCount = fields.filter(f => !disabledFieldKeys.has(`${m.key}.${f.key}`)).length;
+
+  const toggleField = (fieldKey: string, on: boolean) => {
+    db.setFieldEnabledForOrg(orgId, svcKey, m.key, fieldKey, on);
+  };
+
+  return (
+    <li>
+      <div className={cn(
+        'flex items-start gap-3 px-5 py-3 hover:bg-bg-tertiary/30 transition-colors',
+        !moduleEnabled && 'opacity-50'
+      )}>
+        <input
+          type="checkbox"
+          checked={moduleEnabled}
+          onChange={e => onToggleModule(e.target.checked)}
+          className="mt-1 h-4 w-4 rounded border-white/30 accent-orange cursor-pointer shrink-0"
+        />
+        <span className="text-xs text-white/40 tabular-nums w-6 shrink-0 mt-0.5">{String(index + 1).padStart(2, '0')}</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm">{m.title}</p>
+          {m.description && <p className="text-xs text-white/50 truncate">{m.description}</p>}
+          {hasFields && moduleEnabled && (
+            <button
+              type="button"
+              onClick={() => setExpanded(v => !v)}
+              className="inline-flex items-center gap-1 text-[11px] text-orange hover:text-orange-hover mt-1.5"
+            >
+              <ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} />
+              {expanded ? 'Hide' : 'Customize'} fields ({fieldActiveCount}/{fields.length})
+            </button>
+          )}
+        </div>
+        {m.estimatedMinutes && <span className="text-[11px] text-white/30 whitespace-nowrap">~{m.estimatedMinutes}m</span>}
+      </div>
+      {hasFields && moduleEnabled && expanded && (
+        <div className="pl-[4.25rem] pr-5 pb-3 pt-0.5">
+          <ul className="space-y-1 border-l border-border-subtle pl-3">
+            {fields.map(f => {
+              if (f.type === 'info') return null;
+              const included = !disabledFieldKeys.has(`${m.key}.${f.key}`);
+              return (
+                <li key={f.key}>
+                  <label className={cn(
+                    'flex items-center gap-2 py-1.5 cursor-pointer text-xs',
+                    !included && 'opacity-50'
+                  )}>
+                    <input
+                      type="checkbox"
+                      checked={included}
+                      onChange={e => toggleField(f.key, e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-white/30 accent-orange cursor-pointer shrink-0"
+                    />
+                    <span className="flex-1">{f.label ?? f.key}</span>
+                    {f.required && <span className="text-orange text-[10px] uppercase tracking-wider">req</span>}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </li>
   );
 }
 

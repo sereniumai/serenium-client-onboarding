@@ -462,6 +462,9 @@ const WEBSITE: ServiceDef = {
       instructions: `Add **contact@sereniumai.com** to your registrar with admin or DNS-edit permissions. Pick your registrar below — we'll show you the exact steps.`,
       fields: [
         { key: 'registrar', label: 'Your domain registrar', type: 'select', required: true, options: ['GoDaddy', 'Namecheap', 'Cloudflare', 'Squarespace', 'Other'] },
+        { key: 'other_registrar_info', type: 'info',
+          conditional: { field: 'registrar', op: 'eq', value: 'Other' },
+          content: "Log into your registrar. Find **Account Settings / User Management / Delegate Access**. Add `contact@sereniumai.com` with admin or DNS-edit permissions. If you can't find the option, contact the registrar's support." },
         { key: 'access_granted_confirmation', label: 'I have added contact@sereniumai.com with the required permissions', type: 'checkbox' },
       ],
       conditionalLinks: {

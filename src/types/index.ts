@@ -36,6 +36,11 @@ export interface OrganizationService {
    * Using an opt-out list so new modules added later are auto-included.
    */
   disabledModuleKeys?: string[];
+  /**
+   * Field keys HIDDEN within otherwise-enabled modules. Format: "moduleKey.fieldKey".
+   * Lets admin toggle individual fields inside a multi-field module.
+   */
+  disabledFieldKeys?: string[];
 }
 
 export interface OrganizationMember {

@@ -317,6 +317,28 @@ export const db = {
     save(d);
   },
 
+  isFieldEnabledForOrg(organizationId: string, serviceKey: ServiceKey, moduleKey: string, fieldKey: string): boolean {
+    const entry = load().organizationServices.find(s =>
+      s.organizationId === organizationId && s.serviceKey === serviceKey
+    );
+    if (!entry) return false;
+    return !(entry.disabledFieldKeys ?? []).includes(`${moduleKey}.${fieldKey}`);
+  },
+
+  setFieldEnabledForOrg(organizationId: string, serviceKey: ServiceKey, moduleKey: string, fieldKey: string, enabled: boolean) {
+    const d = load();
+    const entry = d.organizationServices.find(s =>
+      s.organizationId === organizationId && s.serviceKey === serviceKey
+    );
+    if (!entry) return;
+    const disabled = new Set(entry.disabledFieldKeys ?? []);
+    const k = `${moduleKey}.${fieldKey}`;
+    if (enabled) disabled.delete(k);
+    else disabled.add(k);
+    entry.disabledFieldKeys = disabled.size ? Array.from(disabled) : undefined;
+    save(d);
+  },
+
   // --- Impersonation ---
   impersonate(userId: string) {
     const d = load();

@@ -68,7 +68,8 @@ export function getOrgProgress(organizationId: string) {
         taskCompletions.find(c => c.taskKey === `${svcKey}.${m.key}.${t.key}` && c.completed)
       ).length;
 
-      const requiredFields = m.fields?.filter(f => f.required) ?? [];
+      const disabledFieldSet = new Set(svcEntry?.disabledFieldKeys ?? []);
+      const requiredFields = m.fields?.filter(f => f.required && !disabledFieldSet.has(`${m.key}.${f.key}`)) ?? [];
       const fieldTotal = requiredFields.length;
       const fieldDone = requiredFields.filter(f =>
         submissions.find(s => s.fieldKey === `${svcKey}.${m.key}.${f.key}` && s.value != null && s.value !== '')
@@ -116,13 +117,15 @@ export function moduleIsReady(org: string, svcKey: ServiceKey, moduleKey: string
   if (!m) return false;
   const taskCompletions = db.getTaskCompletions(org);
   const submissions = db.listSubmissionsForOrg(org);
+  const svcEntry = db.listServicesForOrganization(org).find(s => s.serviceKey === svcKey);
+  const disabledFieldSet = new Set(svcEntry?.disabledFieldKeys ?? []);
 
   const requiredTasks = m.tasks?.filter(t => t.required !== false) ?? [];
   const tasksDone = requiredTasks.every(t =>
     taskCompletions.find(c => c.taskKey === `${svcKey}.${m.key}.${t.key}` && c.completed)
   );
 
-  const requiredFields = m.fields?.filter(f => f.required) ?? [];
+  const requiredFields = m.fields?.filter(f => f.required && !disabledFieldSet.has(`${m.key}.${f.key}`)) ?? [];
   const fieldsDone = requiredFields.every(f =>
     submissions.find(s => s.fieldKey === `${svcKey}.${m.key}.${f.key}` && s.value != null && s.value !== '')
   );
