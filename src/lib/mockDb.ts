@@ -258,8 +258,6 @@ export const db = {
 
   // --- Service toggle ---
   setServiceEnabled(organizationId: string, serviceKey: ServiceKey, enabled: boolean) {
-    // Business Profile is mandatory — cannot be disabled
-    if (serviceKey === 'business_profile' && !enabled) return;
     const d = load();
     const now = new Date().toISOString();
     const existing = d.organizationServices.find(s => s.organizationId === organizationId && s.serviceKey === serviceKey);

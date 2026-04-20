@@ -34,9 +34,10 @@ export function getOrgProgress(organizationId: string) {
   let total = 0;
   let complete = 0;
 
-  // Compute Business Profile completeness first — other services require it.
-  let bpAllComplete = true;
+  // Compute Business Profile completeness first — other services require it IF BP is enabled.
   const bpEntry = enabledSvcs.find(s => s.serviceKey === 'business_profile');
+  const bpIsOn = !!bpEntry;
+  let bpAllComplete = true;
   if (bpEntry) {
     const bpSvc = getService('business_profile');
     const bpDisabled = new Set(bpEntry.disabledModuleKeys ?? []);
@@ -55,7 +56,7 @@ export function getOrgProgress(organizationId: string) {
     const disabledModKeys = new Set(svcEntry?.disabledModuleKeys ?? []);
     const summaries: ModuleSummary[] = [];
     let prevComplete = true;
-    const requiresBp = svcKey !== 'business_profile';
+    const requiresBp = bpIsOn && svcKey !== 'business_profile';
 
     for (const m of svc.modules) {
       if (disabledModKeys.has(m.key)) continue;

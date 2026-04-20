@@ -255,7 +255,7 @@ function ServicesTab({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-white/60">
-        Business Profile is always on. Toggle services, steps, or individual fields. Unchecked items are hidden from the client — submitted data is preserved if you re-enable.
+        Toggle services, steps, or individual fields on/off per client. Business Profile is on by default but can be disabled if you don't need it. Unchecked items are hidden from the client — submitted data is preserved if you re-enable.
       </p>
       {SERVICES.map(svc => {
         const entry = all.find(s => s.serviceKey === svc.key);
@@ -270,8 +270,7 @@ function ServicesTab({ orgId }: { orgId: string }) {
             serviceLabel={svc.label}
             serviceDescription={svc.description}
             modules={svc.modules}
-            enabled={svc.mandatory || on}
-            mandatory={svc.mandatory}
+            enabled={on}
             disabledModKeys={disabledModKeys}
             disabledFieldKeys={disabledFieldKeys}
           />
@@ -282,7 +281,7 @@ function ServicesTab({ orgId }: { orgId: string }) {
 }
 
 function ServiceAccordion({
-  orgId, svcKey, serviceLabel, serviceDescription, modules, enabled, mandatory, disabledModKeys, disabledFieldKeys,
+  orgId, svcKey, serviceLabel, serviceDescription, modules, enabled, disabledModKeys, disabledFieldKeys,
 }: {
   orgId: string;
   svcKey: ServiceKey;
@@ -290,7 +289,6 @@ function ServiceAccordion({
   serviceDescription: string;
   modules: ServiceDef['modules'];
   enabled: boolean;
-  mandatory?: boolean;
   disabledModKeys: Set<string>;
   disabledFieldKeys: Set<string>;
 }) {
@@ -337,31 +335,26 @@ function ServiceAccordion({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-display font-bold text-base truncate">{serviceLabel}</h3>
-                {mandatory && <span className="text-[10px] uppercase tracking-wider text-orange font-semibold px-1.5 py-0.5 rounded bg-orange/10 shrink-0">Always on</span>}
-              </div>
+              <h3 className="font-display font-bold text-base truncate">{serviceLabel}</h3>
               <p className="text-xs text-white/60 truncate">{serviceDescription}</p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               {enabled && (
                 <span className="text-xs text-white/50 tabular-nums">{activeCount} / {modules.length}</span>
               )}
-              {!mandatory && (
-                <button
-                  onClick={() => toggleService(!enabled)}
-                  role="switch"
-                  aria-checked={enabled}
-                  className={cn(
-                    'relative h-7 w-12 rounded-full transition-colors shrink-0',
-                    enabled ? 'bg-orange' : 'bg-bg-tertiary border border-border-subtle'
-                  )}>
-                  <span className={cn(
-                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
-                    enabled ? 'translate-x-5' : 'translate-x-0.5'
-                  )} />
-                </button>
-              )}
+              <button
+                onClick={() => toggleService(!enabled)}
+                role="switch"
+                aria-checked={enabled}
+                className={cn(
+                  'relative h-7 w-12 rounded-full transition-colors shrink-0',
+                  enabled ? 'bg-orange' : 'bg-bg-tertiary border border-border-subtle'
+                )}>
+                <span className={cn(
+                  'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
+                  enabled ? 'translate-x-5' : 'translate-x-0.5'
+                )} />
+              </button>
             </div>
           </div>
         </div>

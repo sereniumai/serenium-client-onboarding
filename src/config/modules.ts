@@ -61,13 +61,12 @@ export interface ServiceDef {
 }
 
 // ============================================================================
-// BUSINESS PROFILE — mandatory, first in dashboard order
+// BUSINESS PROFILE — default on, shown first, but admin can disable if not needed
 // ============================================================================
 const BUSINESS_PROFILE: ServiceDef = {
   key: 'business_profile',
   label: 'Business Profile',
   description: 'Core business info used across all services — filled out once, used everywhere',
-  mandatory: true,
   modules: [
     {
       key: 'years_in_business',
@@ -517,7 +516,7 @@ export const SERVICES: ServiceDef[] = [
   WEBSITE,
 ];
 
-export const SELECTABLE_SERVICES: ServiceDef[] = SERVICES.filter(s => !s.mandatory);
+export const SELECTABLE_SERVICES: ServiceDef[] = SERVICES;
 
 export function getService(key: ServiceKey): ServiceDef | undefined {
   return SERVICES.find(s => s.key === key);
