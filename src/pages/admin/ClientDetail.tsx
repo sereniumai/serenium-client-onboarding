@@ -221,12 +221,13 @@ function OverviewTab({ org, progress }: { org: { id: string; slug?: string }; pr
               </div>
             </div>
             <div className="grid md:grid-cols-2 gap-2">
-              {svc.modules.map((m, i) => {
-                const s = summaries[i];
+              {svc.modules.map((m) => {
+                const s = summaries.find(x => x.moduleKey === m.key);
+                if (!s) return null;
                 return (
                   <Link
                     key={m.key}
-                    to={`/onboarding/${(org as { slug?: string }).slug || ''}/services/${svcKey}/${m.key}`}
+                    to={`/onboarding/${(org as { slug?: string }).slug || ''}/services/${svcKey}#module-${m.key}`}
                     className="flex items-center gap-3 p-3 rounded-lg border border-border-subtle bg-bg-tertiary/40 hover:border-border-emphasis transition-colors"
                   >
                     {s.status === 'complete' ? <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
