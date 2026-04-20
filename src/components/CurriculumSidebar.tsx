@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Lock, PlayCircle, Circle, ChevronDown, Megaphone, MessageSquare, Globe, Search } from 'lucide-react';
+import { CheckCircle2, Lock, PlayCircle, Circle, ChevronDown, Megaphone, MessageSquare, Globe, Building2 } from 'lucide-react';
 import { getService } from '../config/modules';
 import { getOrgProgress, getEnabledModulesForService } from '../lib/progress';
 import type { ServiceKey } from '../types';
 import { cn } from '../lib/cn';
 
 const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  facebook_ads: Megaphone, ai_sms: MessageSquare, website: Globe, seo: Search,
+  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, website: Globe,
 };
 
 export function CurriculumSidebar({ organizationId, orgSlug }: { organizationId: string; orgSlug: string }) {
@@ -62,7 +62,7 @@ function ServiceGroup({
 }: {
   svcKey: ServiceKey;
   svcLabel: string;
-  modules: Array<{ key: string; title: string; estimatedMinutes: number; summary: { status: string; canStart: boolean } }>;
+  modules: Array<{ key: string; title: string; estimatedMinutes?: number; summary: { status: string; canStart: boolean } }>;
   activeModule?: string;
   orgSlug: string;
   done: number;
@@ -129,7 +129,7 @@ function ServiceGroup({
                     </span>
                     <span className="text-[11px] tabular-nums text-white/40 shrink-0 w-5">{String(idx + 1).padStart(2, '0')}</span>
                     <span className="truncate flex-1">{m.title}</span>
-                    <span className="text-[10px] text-white/30 shrink-0">{m.estimatedMinutes}m</span>
+                    {m.estimatedMinutes && <span className="text-[10px] text-white/30 shrink-0">{m.estimatedMinutes}m</span>}
                   </Link>
                 </li>
               );

@@ -1,6 +1,6 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Clock, Lock, Megaphone, MessageSquare, Globe, Search, PlayCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Clock, Lock, Megaphone, MessageSquare, Globe, Building2, PlayCircle, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { CircleProgress } from '../../components/CircleProgress';
@@ -18,10 +18,10 @@ import type { ServiceKey, ModuleStatus } from '../../types';
 import { cn } from '../../lib/cn';
 
 const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
+  business_profile: Building2,
   facebook_ads: Megaphone,
   ai_sms:       MessageSquare,
   website:      Globe,
-  seo:          Search,
 };
 
 function motivation(pct: number, hasReports: boolean) {
@@ -57,7 +57,7 @@ export function OnboardingDashboard() {
     for (let i = 0; i < mods.length; i++) {
       const s = summaries[i];
       if (s.status !== 'complete' && s.canStart) {
-        nextAction = { svcKey, moduleKey: mods[i].key, title: mods[i].title, minutes: mods[i].estimatedMinutes };
+        nextAction = { svcKey, moduleKey: mods[i].key, title: mods[i].title, minutes: mods[i].estimatedMinutes ?? 5 };
         break outer;
       }
     }
@@ -66,7 +66,7 @@ export function OnboardingDashboard() {
   const remainingMinutes = progress.enabledServices.reduce((sum, svcKey) => {
     const mods = getEnabledModulesForService(org.id, svcKey);
     const summaries = progress.perService[svcKey];
-    return sum + mods.reduce((s, m, i) => s + (summaries[i].status !== 'complete' ? m.estimatedMinutes : 0), 0);
+    return sum + mods.reduce((s, m, i) => s + (summaries[i]?.status !== 'complete' ? (m.estimatedMinutes ?? 0) : 0), 0);
   }, 0);
 
   return (
@@ -217,8 +217,8 @@ export function OnboardingDashboard() {
                           serviceKey={svcKey}
                           moduleKey={m.key}
                           title={m.title}
-                          description={m.description}
-                          minutes={m.estimatedMinutes}
+                          description={m.description ?? ''}
+                          minutes={m.estimatedMinutes ?? 5}
                           state={state}
                           status={summary.status}
                         />

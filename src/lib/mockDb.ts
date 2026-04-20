@@ -6,7 +6,7 @@ import type {
 } from '../types';
 import { SERVICES } from '../config/modules';
 
-const KEY = 'serenium.mockdb.v4';
+const KEY = 'serenium.mockdb.v5';
 
 interface DBShape {
   profiles: Profile[];
@@ -44,8 +44,9 @@ const seed = (): DBShape => {
       primaryContactPhone: '403-555-0199', status: 'onboarding' as OrgStatus, createdAt: now,
     }],
     organizationServices: [
-      { organizationId: orgId, serviceKey: 'facebook_ads', enabled: true, enabledAt: now },
-      { organizationId: orgId, serviceKey: 'ai_sms',       enabled: true, enabledAt: now },
+      { organizationId: orgId, serviceKey: 'business_profile', enabled: true, enabledAt: now },
+      { organizationId: orgId, serviceKey: 'facebook_ads',     enabled: true, enabledAt: now },
+      { organizationId: orgId, serviceKey: 'ai_sms',           enabled: true, enabledAt: now },
     ],
     organizationMembers: [
       { organizationId: orgId, userId: craigId, role: 'owner', invitedAt: now, acceptedAt: now },
@@ -141,6 +142,22 @@ export const db = {
     return load().organizations.find(o => o.id === id) ?? null;
   },
 
+  updateOrganization(id: string, patch: Partial<Pick<Organization, 'businessName' | 'primaryContactName' | 'primaryContactEmail' | 'primaryContactPhone' | 'status' | 'logoUrl'>>) {
+    const d = load();
+    const o = d.organizations.find(x => x.id === id);
+    if (!o) return;
+    Object.assign(o, patch);
+    save(d);
+  },
+
+  updateProfile(userId: string, patch: Partial<Pick<Profile, 'fullName' | 'email'>>) {
+    const d = load();
+    const p = d.profiles.find(x => x.id === userId);
+    if (!p) return;
+    Object.assign(p, patch);
+    save(d);
+  },
+
   listServicesForOrganization(organizationId: string): OrganizationService[] {
     return load().organizationServices.filter(s => s.organizationId === organizationId && s.enabled);
   },
@@ -186,7 +203,9 @@ export const db = {
     };
     d.organizations.push(org);
 
-    for (const sk of input.services) {
+    // Business Profile is always enabled for every client
+    const allServices: ServiceKey[] = ['business_profile', ...input.services.filter(s => s !== 'business_profile')];
+    for (const sk of allServices) {
       const disabled = input.serviceModules?.[sk] ?? [];
       d.organizationServices.push({
         organizationId: org.id, serviceKey: sk, enabled: true, enabledAt: now,
@@ -231,6 +250,8 @@ export const db = {
 
   // --- Service toggle ---
   setServiceEnabled(organizationId: string, serviceKey: ServiceKey, enabled: boolean) {
+    // Business Profile is mandatory — cannot be disabled
+    if (serviceKey === 'business_profile' && !enabled) return;
     const d = load();
     const now = new Date().toISOString();
     const existing = d.organizationServices.find(s => s.organizationId === organizationId && s.serviceKey === serviceKey);

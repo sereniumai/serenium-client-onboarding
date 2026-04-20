@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, Megaphone, MessageSquare, Globe, Search, CheckCircle2, Video, X } from 'lucide-react';
+import { ChevronLeft, Megaphone, MessageSquare, Globe, Building2, CheckCircle2, Video, X } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { db } from '../../lib/mockDb';
@@ -11,7 +11,7 @@ import type { ServiceKey } from '../../types';
 import { cn } from '../../lib/cn';
 
 const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  facebook_ads: Megaphone, ai_sms: MessageSquare, website: Globe, seo: Search,
+  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, website: Globe,
 };
 
 export function VideosManager() {

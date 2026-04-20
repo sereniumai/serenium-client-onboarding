@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Plus, Trash2, Upload as UploadIcon, X } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Plus, Trash2, Upload as UploadIcon, X, Check } from 'lucide-react';
 import { useAutosave } from '../hooks/useAutosave';
 import { db } from '../lib/mockDb';
-import type { Field } from '../config/modules';
+import type { Field, FieldCondition } from '../config/modules';
 import { cn } from '../lib/cn';
 
 interface Props {
@@ -14,13 +15,37 @@ interface Props {
   onStatusChange?: (s: 'idle' | 'saving' | 'saved' | 'error') => void;
 }
 
+function checkCondition(cond: FieldCondition, organizationId: string, fieldKey: string): boolean {
+  // fieldKey = "<svc>.<mod>.<field>" — siblings share the first two segments
+  const parts = fieldKey.split('.');
+  const prefix = parts.slice(0, 2).join('.');
+  const siblingKey = `${prefix}.${cond.field}`;
+  const sub = db.getSubmission(organizationId, siblingKey);
+  const value = sub?.value;
+  switch (cond.op) {
+    case 'eq': return value === cond.value;
+    case 'neq': return value !== cond.value;
+    case 'includes': return Array.isArray(value) && (value as unknown[]).includes(cond.value);
+  }
+}
+
 export function FieldRenderer({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
+  if (field.conditional && !checkCondition(field.conditional, organizationId, fieldKey)) {
+    return null;
+  }
+
+  if (field.type === 'checkbox') {
+    return <CheckboxField field={field} organizationId={organizationId} fieldKey={fieldKey} userId={userId} onStatusChange={onStatusChange} />;
+  }
+
   return (
     <div>
-      <label className="label" htmlFor={fieldKey}>
-        {field.label}
-        {field.required && <span className="text-orange ml-1">*</span>}
-      </label>
+      {field.label && (
+        <label className="label" htmlFor={fieldKey}>
+          {field.label}
+          {field.required && <span className="text-orange ml-1">*</span>}
+        </label>
+      )}
       <FieldInput field={field} organizationId={organizationId} fieldKey={fieldKey} userId={userId} onStatusChange={onStatusChange} />
       {field.helpText && <p className="mt-1.5 text-xs text-white/40">{field.helpText}</p>}
     </div>
@@ -29,7 +54,6 @@ export function FieldRenderer({ field, organizationId, fieldKey, userId, onStatu
 
 function FieldInput({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
   const { type } = field;
-
   if (type === 'file' || type === 'file_multiple') {
     return <FileField field={field} organizationId={organizationId} fieldKey={fieldKey} userId={userId} />;
   }
@@ -76,6 +100,43 @@ function SimpleField({ field, organizationId, fieldKey, userId, onStatusChange }
     );
   }
   return <input {...common} type={field.type === 'phone' ? 'tel' : field.type === 'number' ? 'number' : field.type} />;
+}
+
+function CheckboxField({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
+  const { value, setValue, status } = useAutosave<boolean>(organizationId, fieldKey, userId);
+  const checked = value === true;
+  useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
+  const toggle = () => setValue(!checked);
+
+  return (
+    <div
+      role="checkbox"
+      aria-checked={checked}
+      tabIndex={0}
+      onClick={toggle}
+      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); } }}
+      className={cn(
+        'group flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors select-none',
+        checked ? 'bg-orange/5 border-orange/30' : 'border-border-subtle hover:border-border-emphasis',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 focus-visible:ring-offset-bg'
+      )}
+    >
+      <div className={cn(
+        'mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-all',
+        checked ? 'bg-orange border-orange' : 'border-white/30 group-hover:border-white/50'
+      )} aria-hidden>
+        {checked && (
+          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
+            <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+          </motion.span>
+        )}
+      </div>
+      <span className={cn('text-sm leading-relaxed', checked ? 'text-white/90' : 'text-white/80')}>
+        {field.label}
+        {field.required && <span className="text-orange ml-1">*</span>}
+      </span>
+    </div>
+  );
 }
 
 function MultiselectField({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {

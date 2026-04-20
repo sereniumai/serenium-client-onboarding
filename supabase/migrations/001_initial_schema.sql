@@ -64,7 +64,7 @@ create index if not exists organizations_status_idx on organizations(status);
 create table if not exists organization_services (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid references organizations(id) on delete cascade,
-  service_key text not null check (service_key in ('facebook_ads', 'ai_sms', 'website', 'seo')),
+  service_key text not null check (service_key in ('business_profile', 'facebook_ads', 'ai_sms', 'website')),
   enabled boolean default true,
   disabled_module_keys text[] default '{}',  -- steps hidden from this client
   enabled_at timestamptz default now(),

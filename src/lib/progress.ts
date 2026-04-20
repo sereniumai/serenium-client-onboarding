@@ -21,6 +21,20 @@ export function getOrgProgress(organizationId: string) {
   let total = 0;
   let complete = 0;
 
+  // Compute Business Profile completeness first — Website modules require it.
+  let bpAllComplete = true;
+  const bpEntry = enabledSvcs.find(s => s.serviceKey === 'business_profile');
+  if (bpEntry) {
+    const bpSvc = getService('business_profile');
+    const bpDisabled = new Set(bpEntry.disabledModuleKeys ?? []);
+    const bpEnabledMods = bpSvc?.modules.filter(m => !bpDisabled.has(m.key)) ?? [];
+    for (const m of bpEnabledMods) {
+      const mp = moduleProgress.find(p => p.serviceKey === 'business_profile' && p.moduleKey === m.key);
+      if (mp?.status !== 'complete') { bpAllComplete = false; break; }
+    }
+    if (bpEnabledMods.length === 0) bpAllComplete = true;
+  }
+
   for (const svcKey of enabled) {
     const svc = getService(svcKey);
     if (!svc) continue;
@@ -28,6 +42,7 @@ export function getOrgProgress(organizationId: string) {
     const disabledModKeys = new Set(svcEntry?.disabledModuleKeys ?? []);
     const summaries: ModuleSummary[] = [];
     let prevComplete = true;
+    const requiresBp = svcKey === 'website';
 
     for (const m of svc.modules) {
       if (disabledModKeys.has(m.key)) continue;
@@ -45,7 +60,7 @@ export function getOrgProgress(organizationId: string) {
         submissions.find(s => s.fieldKey === `${svcKey}.${m.key}.${f.key}` && s.value != null && s.value !== '')
       ).length;
 
-      const canStart = !m.requiresPrevious || prevComplete;
+      const canStart = (!m.requiresPrevious || prevComplete) && (!requiresBp || bpAllComplete);
 
       summaries.push({
         moduleKey: m.key, status,

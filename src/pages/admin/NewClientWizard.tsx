@@ -1,22 +1,22 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, Plus, Trash2, Megaphone, MessageSquare, Globe, Search, Check, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Plus, Trash2, Megaphone, MessageSquare, Globe, Building2, Check, ChevronDown } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { db } from '../../lib/mockDb';
-import { SERVICES } from '../../config/modules';
+import { SERVICES, SELECTABLE_SERVICES, getService } from '../../config/modules';
 import { toast } from 'sonner';
 import type { ServiceKey } from '../../types';
 import { cn } from '../../lib/cn';
 
 type UserRow = { fullName: string; email: string; role: 'owner' | 'member' };
 
-const SERVICE_OPTIONS: { key: ServiceKey; label: string; description: string; icon: typeof Megaphone }[] = [
-  { key: 'facebook_ads', label: 'Facebook Ads', description: 'Meta campaigns that drive qualified leads', icon: Megaphone },
-  { key: 'ai_sms',       label: 'AI SMS',       description: 'Automated lead qualification in under 60s', icon: MessageSquare },
-  { key: 'website',      label: 'Website',      description: 'Landing pages and sites built to convert', icon: Globe },
-  { key: 'seo',          label: 'SEO',          description: 'Rank locally for your service areas', icon: Search },
-];
+const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
+  business_profile: Building2,
+  facebook_ads: Megaphone,
+  ai_sms: MessageSquare,
+  website: Globe,
+};
 
 export function NewClientWizard() {
   const navigate = useNavigate();
@@ -112,11 +112,15 @@ export function NewClientWizard() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <p className="text-sm text-white/60 mb-2">Enable the services on this client's retainer. For each enabled service, pick only the steps you actually need from them — unchecked steps won't appear in their portal.</p>
-              {SERVICE_OPTIONS.map(s => {
+              <p className="text-sm text-white/60 mb-2">Business Profile is always included for every client. For each service you enable, pick only the steps you actually need from them — unchecked steps won't appear in their portal.</p>
+
+              {/* Business Profile — mandatory, per-field toggle */}
+              <BusinessProfilePicker disabled={disabledModules.business_profile ?? []} onToggle={(modKey, on) => toggleModule('business_profile', modKey, on)} />
+
+              {SELECTABLE_SERVICES.map(s => {
                 const on = services.includes(s.key);
-                const Icon = s.icon;
-                const svc = SERVICES.find(svc => svc.key === s.key)!;
+                const Icon = SERVICE_ICON[s.key];
+                const svc = getService(s.key)!;
                 const disabledSet = new Set(disabledModules[s.key] ?? []);
                 const activeCount = svc.modules.length - disabledSet.size;
                 return (
@@ -227,7 +231,7 @@ export function NewClientWizard() {
                 <div className="grid sm:grid-cols-2 gap-3 text-sm">
                   <SummaryRow label="Business" value={businessName || '—'} />
                   <SummaryRow label="Primary contact" value={primaryName || '—'} />
-                  <SummaryRow label="Services" value={services.length === 0 ? '—' : services.map(k => SERVICE_OPTIONS.find(o => o.key === k)?.label).join(', ')} />
+                  <SummaryRow label="Services" value={services.length === 0 ? 'Business Profile only' : ['Business Profile', ...services.map(k => SELECTABLE_SERVICES.find(o => o.key === k)?.label).filter(Boolean)].join(', ')} />
                   <SummaryRow label="Total steps" value={totalSteps(services, disabledModules).toString()} />
                 </div>
               </div>
@@ -272,9 +276,66 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 }
 
 function totalSteps(services: ServiceKey[], disabled: Partial<Record<ServiceKey, string[]>>): number {
-  return services.reduce((sum, key) => {
+  const bp = getService('business_profile');
+  const bpCount = bp ? bp.modules.length - (disabled.business_profile?.length ?? 0) : 0;
+  return bpCount + services.reduce((sum, key) => {
     const svc = SERVICES.find(s => s.key === key);
     if (!svc) return sum;
     return sum + svc.modules.length - (disabled[key]?.length ?? 0);
   }, 0);
+}
+
+function BusinessProfilePicker({ disabled, onToggle }: { disabled: string[]; onToggle: (modKey: string, on: boolean) => void }) {
+  const svc = getService('business_profile')!;
+  const disabledSet = new Set(disabled);
+  const activeCount = svc.modules.length - disabledSet.size;
+
+  return (
+    <div className="card p-0 overflow-hidden border-orange/40">
+      <div className="flex items-center gap-4 p-5 bg-orange/5">
+        <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0 bg-orange text-white">
+          <Building2 className="h-5 w-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold">Business Profile</p>
+            <span className="text-[10px] uppercase tracking-wider text-orange font-semibold px-1.5 py-0.5 rounded bg-orange/10">Always on</span>
+          </div>
+          <p className="text-xs text-white/60">Core info used across every service. Pick which fields you need.</p>
+        </div>
+        <span className="text-xs text-white/50 tabular-nums shrink-0">{activeCount} / {svc.modules.length}</span>
+      </div>
+      <div className="border-t border-border-subtle">
+        <div className="flex items-center justify-between px-5 py-2.5 bg-bg-tertiary/20">
+          <span className="inline-flex items-center gap-1.5 text-xs text-white/60">
+            <ChevronDown className="h-3.5 w-3.5" /> Fields included
+          </span>
+          <div className="flex items-center gap-3 text-xs">
+            <button type="button" onClick={() => svc.modules.forEach(m => onToggle(m.key, true))} className="text-orange hover:text-orange-hover">Select all</button>
+            <span className="text-white/20">·</span>
+            <button type="button" onClick={() => svc.modules.forEach(m => onToggle(m.key, false))} className="text-white/50 hover:text-white">Clear</button>
+          </div>
+        </div>
+        <ul className="divide-y divide-border-subtle max-h-[340px] overflow-y-auto">
+          {svc.modules.map(m => {
+            const included = !disabledSet.has(m.key);
+            return (
+              <li key={m.key}>
+                <label className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-bg-tertiary/20 transition-colors ${!included ? 'opacity-50' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={included}
+                    onChange={e => onToggle(m.key, e.target.checked)}
+                    className="h-4 w-4 rounded border-white/30 accent-orange cursor-pointer shrink-0"
+                  />
+                  <span className="text-sm flex-1">{m.title}</span>
+                  {m.estimatedMinutes && <span className="text-[11px] text-white/30">~{m.estimatedMinutes}m</span>}
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
 }

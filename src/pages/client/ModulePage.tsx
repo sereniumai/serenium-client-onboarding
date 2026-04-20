@@ -14,6 +14,24 @@ import { getOrgProgress } from '../../lib/progress';
 import { sfx } from '../../lib/soundFx';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
+
+function ConditionalLinkBlock({ orgId, svcKey, modKey, links }: { orgId: string; svcKey: string; modKey: string; links: Record<string, string> }) {
+  // Watch for a "registrar"-style select in this module — when picked, show the matching link.
+  // Find the select field in siblings whose value matches a link key.
+  const subs = db.listSubmissionsForOrg(orgId).filter(s => s.fieldKey.startsWith(`${svcKey}.${modKey}.`));
+  const match = subs.find(s => typeof s.value === 'string' && links[s.value as string]);
+  if (!match) return null;
+  const label = match.value as string;
+  const href = links[label];
+  return (
+    <div className="mt-4 p-3 rounded-lg border border-orange/30 bg-orange/5">
+      <p className="text-xs text-white/60 mb-1">How to do this in {label}:</p>
+      <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-orange hover:text-orange-hover">
+        → Official guide for {label}
+      </a>
+    </div>
+  );
+}
 import { useAuth } from '../../auth/AuthContext';
 import { db } from '../../lib/mockDb';
 import { getService, getModule } from '../../config/modules';
@@ -224,10 +242,26 @@ export function ModulePage() {
             })()}
 
             {/* INSTRUCTIONS */}
-            <div className="card mb-10">
-              <p className="eyebrow mb-3">Instructions</p>
-              <Markdown>{mod.instructions}</Markdown>
-            </div>
+            {mod.instructions && (
+              <div className="card mb-10">
+                <p className="eyebrow mb-3">Instructions</p>
+                <Markdown>{mod.instructions}</Markdown>
+
+                {mod.links && Object.keys(mod.links).length > 0 && (
+                  <ul className="mt-4 space-y-1.5">
+                    {Object.entries(mod.links).map(([label, href]) => (
+                      <li key={label}>
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-orange hover:text-orange-hover">
+                          → {label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {mod.conditionalLinks && <ConditionalLinkBlock orgId={org.id} svcKey={svc.key} modKey={mod.key} links={mod.conditionalLinks} />}
+              </div>
+            )}
 
             {/* TASKS */}
             {mod.tasks && mod.tasks.length > 0 && (

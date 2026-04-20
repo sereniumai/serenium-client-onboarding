@@ -3,7 +3,7 @@ import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  ChevronLeft, Users, CheckCircle2, Clock, Megaphone, MessageSquare, Globe, Search,
+  ChevronLeft, Users, CheckCircle2, Clock, Megaphone, MessageSquare, Globe, Building2,
   FileText, Image as ImageIcon, Film, Download, UserCircle, Trash2, Plus,
   StickyNote, ShieldOff, Save, Edit3, ChevronDown,
 } from 'lucide-react';
@@ -21,7 +21,7 @@ import { ActivityFeed } from '../../components/ActivityFeed';
 import { toast } from 'sonner';
 
 const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  facebook_ads: Megaphone, ai_sms: MessageSquare, website: Globe, seo: Search,
+  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, website: Globe,
 };
 
 type Tab = 'overview' | 'reports' | 'services' | 'users' | 'submissions' | 'files' | 'notes';
@@ -66,29 +66,7 @@ export function ClientDetail() {
             <ChevronLeft className="h-4 w-4" /> All clients
           </Link>
 
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5 md:gap-6 mb-6 md:mb-8">
-            <div className="min-w-0">
-              <p className="eyebrow mb-3">Client</p>
-              <h1 className="font-display font-black text-[clamp(1.75rem,6vw,3rem)] leading-[1.05] tracking-[-0.03em]">{org.businessName}</h1>
-              <p className="text-white/60 mt-2 text-sm md:text-base break-words">
-                {org.primaryContactName}
-                <span className="hidden md:inline"> · </span>
-                <span className="block md:inline">{org.primaryContactEmail}</span>
-                {org.primaryContactPhone && <><span className="hidden md:inline"> · </span><span className="block md:inline">{org.primaryContactPhone}</span></>}
-              </p>
-            </div>
-            <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
-              <div className="text-left md:text-right">
-                <p className="text-xs uppercase tracking-wider text-white/40">Progress</p>
-                <p className="font-display font-black text-3xl tabular-nums">{progress.overall}%</p>
-              </div>
-              {members[0] && (
-                <button onClick={impersonate} className="btn-secondary !py-2 !px-3 md:!py-3 md:!px-6 text-xs md:text-sm">
-                  <UserCircle className="h-4 w-4" /> <span className="hidden sm:inline">View as client</span><span className="sm:hidden">View</span>
-                </button>
-              )}
-            </div>
-          </div>
+          <OrgHeader org={org} progress={progress} hasMembers={members.length > 0} onImpersonate={impersonate} />
 
           <div className="flex gap-1 border-b border-border-subtle mb-8 overflow-x-auto">
             {TABS.map(t => (
@@ -114,6 +92,99 @@ export function ClientDetail() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function OrgHeader({ org, progress, hasMembers, onImpersonate }: {
+  org: { id: string; businessName: string; primaryContactName?: string; primaryContactEmail?: string; primaryContactPhone?: string };
+  progress: ReturnType<typeof getOrgProgress>;
+  hasMembers: boolean;
+  onImpersonate: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [businessName, setBusinessName] = useState(org.businessName);
+  const [primaryName, setPrimaryName] = useState(org.primaryContactName ?? '');
+  const [primaryEmail, setPrimaryEmail] = useState(org.primaryContactEmail ?? '');
+  const [primaryPhone, setPrimaryPhone] = useState(org.primaryContactPhone ?? '');
+
+  const save = () => {
+    db.updateOrganization(org.id, {
+      businessName: businessName.trim(),
+      primaryContactName: primaryName.trim() || undefined,
+      primaryContactEmail: primaryEmail.trim() || undefined,
+      primaryContactPhone: primaryPhone.trim() || undefined,
+    });
+    toast.success('Client details updated');
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setBusinessName(org.businessName);
+    setPrimaryName(org.primaryContactName ?? '');
+    setPrimaryEmail(org.primaryContactEmail ?? '');
+    setPrimaryPhone(org.primaryContactPhone ?? '');
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="card mb-6 md:mb-8 space-y-4">
+        <p className="eyebrow">Edit client details</p>
+        <div>
+          <label className="label">Business name</label>
+          <input className="input" value={businessName} onChange={e => setBusinessName(e.target.value)} />
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="label">Primary contact name</label>
+            <input className="input" value={primaryName} onChange={e => setPrimaryName(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Primary contact email</label>
+            <input className="input" type="email" value={primaryEmail} onChange={e => setPrimaryEmail(e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <label className="label">Primary contact phone</label>
+          <input className="input" type="tel" value={primaryPhone} onChange={e => setPrimaryPhone(e.target.value)} />
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={cancel} className="btn-secondary">Cancel</button>
+          <button onClick={save} disabled={!businessName.trim()} className="btn-primary"><Save className="h-4 w-4" /> Save</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5 md:gap-6 mb-6 md:mb-8">
+      <div className="min-w-0">
+        <p className="eyebrow mb-3">Client</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="font-display font-black text-[clamp(1.75rem,6vw,3rem)] leading-[1.05] tracking-[-0.03em]">{org.businessName}</h1>
+          <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white border border-border-subtle hover:border-border-emphasis rounded-md px-2 py-1 transition-colors">
+            <Edit3 className="h-3 w-3" /> Edit
+          </button>
+        </div>
+        <p className="text-white/60 mt-2 text-sm md:text-base break-words">
+          {org.primaryContactName}
+          <span className="hidden md:inline"> · </span>
+          <span className="block md:inline">{org.primaryContactEmail}</span>
+          {org.primaryContactPhone && <><span className="hidden md:inline"> · </span><span className="block md:inline">{org.primaryContactPhone}</span></>}
+        </p>
+      </div>
+      <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
+        <div className="text-left md:text-right">
+          <p className="text-xs uppercase tracking-wider text-white/40">Progress</p>
+          <p className="font-display font-black text-3xl tabular-nums">{progress.overall}%</p>
+        </div>
+        {hasMembers && (
+          <button onClick={onImpersonate} className="btn-secondary !py-2 !px-3 md:!py-3 md:!px-6 text-xs md:text-sm">
+            <UserCircle className="h-4 w-4" /> <span className="hidden sm:inline">View as client</span><span className="sm:hidden">View</span>
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -183,7 +254,7 @@ function ServicesTab({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-white/60">
-        Toggle services on/off, and pick exactly which steps this client needs to complete. Unchecked steps are hidden from the client's dashboard — submitted data is preserved if you re-enable.
+        Business Profile is always on. Toggle the remaining services, and pick exactly which steps this client needs to complete. Unchecked steps are hidden from the client — submitted data is preserved if you re-enable.
       </p>
       {SERVICES.map(svc => {
         const entry = all.find(s => s.serviceKey === svc.key);
@@ -197,7 +268,8 @@ function ServicesTab({ orgId }: { orgId: string }) {
             serviceLabel={svc.label}
             serviceDescription={svc.description}
             modules={svc.modules}
-            enabled={on}
+            enabled={svc.mandatory || on}
+            mandatory={svc.mandatory}
             disabledKeys={disabledKeys}
           />
         );
@@ -207,14 +279,15 @@ function ServicesTab({ orgId }: { orgId: string }) {
 }
 
 function ServiceAccordion({
-  orgId, svcKey, serviceLabel, serviceDescription, modules, enabled, disabledKeys,
+  orgId, svcKey, serviceLabel, serviceDescription, modules, enabled, mandatory, disabledKeys,
 }: {
   orgId: string;
   svcKey: ServiceKey;
   serviceLabel: string;
   serviceDescription: string;
-  modules: Array<{ key: string; title: string; description: string; estimatedMinutes: number }>;
+  modules: Array<{ key: string; title: string; description?: string; estimatedMinutes?: number }>;
   enabled: boolean;
+  mandatory?: boolean;
   disabledKeys: Set<string>;
 }) {
   const [open, setOpen] = useState(enabled);
@@ -260,26 +333,31 @@ function ServiceAccordion({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <h3 className="font-display font-bold text-base truncate">{serviceLabel}</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-display font-bold text-base truncate">{serviceLabel}</h3>
+                {mandatory && <span className="text-[10px] uppercase tracking-wider text-orange font-semibold px-1.5 py-0.5 rounded bg-orange/10 shrink-0">Always on</span>}
+              </div>
               <p className="text-xs text-white/60 truncate">{serviceDescription}</p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               {enabled && (
-                <span className="text-xs text-white/50 tabular-nums">{activeCount} / {modules.length} steps</span>
+                <span className="text-xs text-white/50 tabular-nums">{activeCount} / {modules.length}</span>
               )}
-              <button
-                onClick={() => toggleService(!enabled)}
-                role="switch"
-                aria-checked={enabled}
-                className={cn(
-                  'relative h-7 w-12 rounded-full transition-colors shrink-0',
-                  enabled ? 'bg-orange' : 'bg-bg-tertiary border border-border-subtle'
-                )}>
-                <span className={cn(
-                  'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
-                  enabled ? 'translate-x-5' : 'translate-x-0.5'
-                )} />
-              </button>
+              {!mandatory && (
+                <button
+                  onClick={() => toggleService(!enabled)}
+                  role="switch"
+                  aria-checked={enabled}
+                  className={cn(
+                    'relative h-7 w-12 rounded-full transition-colors shrink-0',
+                    enabled ? 'bg-orange' : 'bg-bg-tertiary border border-border-subtle'
+                  )}>
+                  <span className={cn(
+                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
+                    enabled ? 'translate-x-5' : 'translate-x-0.5'
+                  )} />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -317,9 +395,9 @@ function ServiceAccordion({
                       <span className="text-xs text-white/40 tabular-nums w-6 shrink-0 mt-0.5">{String(i + 1).padStart(2, '0')}</span>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">{m.title}</p>
-                        <p className="text-xs text-white/50 truncate">{m.description}</p>
+                        {m.description && <p className="text-xs text-white/50 truncate">{m.description}</p>}
                       </div>
-                      <span className="text-[11px] text-white/30 whitespace-nowrap">~{m.estimatedMinutes}m</span>
+                      {m.estimatedMinutes && <span className="text-[11px] text-white/30 whitespace-nowrap">~{m.estimatedMinutes}m</span>}
                     </label>
                   </li>
                 );
@@ -395,28 +473,7 @@ function UsersTab({ orgId, members }: { orgId: string; members: ReturnType<typeo
         </thead>
         <tbody>
           {members.map(({ profile, member }) => (
-            <tr key={profile.id} className="border-b border-border-subtle last:border-0">
-              <td className="px-6 py-4 font-medium">{profile.fullName}</td>
-              <td className="px-6 py-4 text-sm text-white/60">{profile.email}</td>
-              <td className="px-6 py-4">
-                <select
-                  value={member.role}
-                  onChange={e => db.setMemberRole(orgId, profile.id, e.target.value as MemberRole)}
-                  className="bg-transparent border-0 text-xs uppercase tracking-wider text-orange focus:outline-none cursor-pointer"
-                >
-                  <option value="owner">Owner</option>
-                  <option value="member">Member</option>
-                </select>
-              </td>
-              <td className="px-6 py-4 text-right">
-                <button
-                  onClick={() => remove(profile.id, profile.fullName)}
-                  className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-error"
-                >
-                  <ShieldOff className="h-3.5 w-3.5" /> Revoke access
-                </button>
-              </td>
-            </tr>
+            <MemberRow key={profile.id} orgId={orgId} profile={profile} member={member} onRemove={remove} />
           ))}
           {members.length === 0 && (
             <tr><td colSpan={4} className="px-6 py-12 text-center text-white/50 text-sm">No members yet. Add the first one above.</td></tr>
@@ -425,6 +482,75 @@ function UsersTab({ orgId, members }: { orgId: string; members: ReturnType<typeo
       </table>
       </div>
     </div>
+  );
+}
+
+function MemberRow({ orgId, profile, member, onRemove }: {
+  orgId: string;
+  profile: { id: string; fullName: string; email: string };
+  member: { role: MemberRole };
+  onRemove: (userId: string, name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [fullName, setFullName] = useState(profile.fullName);
+  const [email, setEmail] = useState(profile.email);
+
+  const save = () => {
+    db.updateProfile(profile.id, { fullName: fullName.trim(), email: email.trim() });
+    toast.success('User updated');
+    setEditing(false);
+  };
+  const cancel = () => {
+    setFullName(profile.fullName);
+    setEmail(profile.email);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <tr className="border-b border-border-subtle last:border-0 bg-bg-tertiary/30">
+        <td className="px-6 py-3">
+          <input className="input !py-1.5 text-sm" value={fullName} onChange={e => setFullName(e.target.value)} />
+        </td>
+        <td className="px-6 py-3">
+          <input className="input !py-1.5 text-sm" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+        </td>
+        <td className="px-6 py-3 text-xs uppercase tracking-wider text-orange">{member.role}</td>
+        <td className="px-6 py-3 text-right">
+          <div className="flex items-center justify-end gap-2">
+            <button onClick={cancel} className="text-xs text-white/50 hover:text-white px-2">Cancel</button>
+            <button onClick={save} className="btn-primary !py-1.5 !px-3 text-xs"><Save className="h-3.5 w-3.5" /> Save</button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="border-b border-border-subtle last:border-0">
+      <td className="px-6 py-4 font-medium">{profile.fullName}</td>
+      <td className="px-6 py-4 text-sm text-white/60">{profile.email}</td>
+      <td className="px-6 py-4">
+        <select
+          value={member.role}
+          onChange={e => db.setMemberRole(orgId, profile.id, e.target.value as MemberRole)}
+          className="bg-transparent border-0 text-xs uppercase tracking-wider text-orange focus:outline-none cursor-pointer"
+        >
+          <option value="owner">Owner</option>
+          <option value="member">Member</option>
+        </select>
+      </td>
+      <td className="px-6 py-4 text-right">
+        <div className="inline-flex items-center gap-3">
+          <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white">
+            <Edit3 className="h-3.5 w-3.5" /> Edit
+          </button>
+          <button onClick={() => onRemove(profile.id, profile.fullName)} className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-error">
+            <ShieldOff className="h-3.5 w-3.5" /> Revoke
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
 

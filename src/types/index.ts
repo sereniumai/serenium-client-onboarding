@@ -1,4 +1,4 @@
-export type ServiceKey = 'facebook_ads' | 'ai_sms' | 'website' | 'seo';
+export type ServiceKey = 'business_profile' | 'facebook_ads' | 'ai_sms' | 'website';
 
 export type UserRole = 'client' | 'admin';
 export type MemberRole = 'owner' | 'member';

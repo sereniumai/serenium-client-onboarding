@@ -4,6 +4,7 @@ import { Command } from 'cmdk';
 import {
   Search, LayoutDashboard, Users, Plus, Video, Sparkles, FileBarChart2,
   Megaphone, MessageSquare, Globe, Settings2, CheckCircle2, ArrowRight,
+  Building2,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { db } from '../lib/mockDb';
@@ -12,7 +13,7 @@ import { SERVICES } from '../config/modules';
 import type { ServiceKey } from '../types';
 
 const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  facebook_ads: Megaphone, ai_sms: MessageSquare, website: Globe, seo: Search,
+  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, website: Globe,
 };
 
 export function CommandPalette() {
