@@ -145,7 +145,7 @@ export function ModulePage() {
 
         {/* MAIN */}
         <div className="min-w-0">
-          <div className="mx-auto max-w-3xl px-5 md:px-8 py-8 md:py-12">
+          <div className="mx-auto max-w-3xl px-4 md:px-8 py-6 md:py-12">
 
             <div className="flex items-center justify-between mb-6">
               <button onClick={() => setMobileNavOpen(true)} className="lg:hidden inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white">
@@ -276,7 +276,7 @@ export function ModulePage() {
             )}
 
             {/* ACTIONS */}
-            <div className="flex items-center justify-between gap-4 py-6 border-t border-border-subtle mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 py-6 border-t border-border-subtle mb-8">
               <div>
                 {!ready && !complete && (
                   <p className="text-sm text-white/50">Complete required items to mark this module done.</p>
@@ -289,11 +289,11 @@ export function ModulePage() {
                 )}
               </div>
               {complete ? (
-                <motion.button whileTap={{ scale: 0.98 }} onClick={markIncomplete} className="btn-secondary">
+                <motion.button whileTap={{ scale: 0.98 }} onClick={markIncomplete} className="btn-secondary w-full sm:w-auto">
                   Edit submission
                 </motion.button>
               ) : (
-                <motion.button whileTap={{ scale: 0.98 }} onClick={markComplete} disabled={!ready} className="btn-primary">
+                <motion.button whileTap={{ scale: 0.98 }} onClick={markComplete} disabled={!ready} className="btn-primary w-full sm:w-auto">
                   Submit this step
                   <ArrowRight className="h-4 w-4" />
                 </motion.button>

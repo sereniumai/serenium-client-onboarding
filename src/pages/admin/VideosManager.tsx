@@ -25,18 +25,18 @@ export function VideosManager() {
     <AppShell>
       <div className="relative">
         <HeroGlow />
-        <div className="relative mx-auto max-w-4xl px-6 pt-10 pb-24">
+        <div className="relative mx-auto max-w-4xl px-4 md:px-6 pt-6 md:pt-10 pb-16 md:pb-24">
           <Link to="/admin" className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white mb-6">
             <ChevronLeft className="h-4 w-4" /> Back to admin
           </Link>
 
-          <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6 md:mb-8">
             <div>
               <p className="eyebrow mb-3">Library</p>
-              <h1 className="font-display font-black text-4xl md:text-5xl tracking-[-0.03em]">Step videos</h1>
-              <p className="text-white/60 mt-2">Paste a Loom URL for each step. Clients see the embed at the top of the step page.</p>
+              <h1 className="font-display font-black text-[clamp(1.75rem,6vw,3rem)] leading-[1.05] tracking-[-0.03em]">Step videos</h1>
+              <p className="text-white/60 mt-2 text-sm md:text-base">Paste a Loom URL for each step. Clients see the embed at the top of the step page.</p>
             </div>
-            <div className="text-right">
+            <div className="text-left md:text-right">
               <p className="text-xs uppercase tracking-wider text-white/40">Wired</p>
               <p className="font-display font-black text-3xl tabular-nums">{wired}<span className="text-white/30 text-lg">/{total}</span></p>
             </div>
@@ -111,7 +111,7 @@ function VideoRow({ serviceKey, moduleKey, title, index }: { serviceKey: Service
         )}
       </div>
 
-      <div className="flex gap-2 ml-12">
+      <div className="flex gap-2 md:ml-12">
         <input
           value={url}
           onChange={e => setUrl(e.target.value)}
@@ -125,10 +125,10 @@ function VideoRow({ serviceKey, moduleKey, title, index }: { serviceKey: Service
           </button>
         )}
       </div>
-      {invalid && <p className="mt-1.5 ml-12 text-xs text-error">Not a valid Loom URL.</p>}
+      {invalid && <p className="mt-1.5 md:ml-12 text-xs text-error">Not a valid Loom URL.</p>}
 
       {showPreview && embed && (
-        <div className="mt-3 ml-12 aspect-video rounded-lg border border-border-subtle overflow-hidden">
+        <div className="mt-3 md:ml-12 aspect-video rounded-lg border border-border-subtle overflow-hidden">
           <iframe src={embed} allow="fullscreen" className="w-full h-full" title={`Preview: ${title}`} />
         </div>
       )}

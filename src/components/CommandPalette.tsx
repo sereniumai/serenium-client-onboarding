@@ -90,19 +90,19 @@ export function CommandPalette() {
 
   return (
     <>
-      {/* Hint button bottom-right */}
+      {/* Hint button bottom-right (desktop), round button (mobile) */}
       <button
         onClick={() => setOpen(true)}
         aria-label="Open command palette"
-        className="fixed bottom-5 right-5 z-40 hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-full bg-bg-secondary border border-border-emphasis hover:border-orange/50 text-white/60 hover:text-white transition-all shadow-card hover:shadow-orange-glow/20 text-xs"
+        className="fixed bottom-4 right-4 md:bottom-5 md:right-5 z-40 inline-flex items-center gap-2 px-3 py-2 md:py-2 rounded-full bg-bg-secondary border border-border-emphasis hover:border-orange/50 text-white/60 hover:text-white transition-all shadow-card hover:shadow-orange-glow/20 text-xs"
       >
-        <Search className="h-3.5 w-3.5" />
-        <span>Quick jump</span>
-        <kbd className="px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-subtle text-[10px] font-mono">⌘K</kbd>
+        <Search className="h-4 w-4 md:h-3.5 md:w-3.5" />
+        <span className="hidden md:inline">Quick jump</span>
+        <kbd className="hidden md:inline-block px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-subtle text-[10px] font-mono">⌘K</kbd>
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[1100] bg-bg/70 backdrop-blur-md flex items-start justify-center pt-[12vh] px-4 animate-in fade-in duration-100" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-[1100] bg-bg/70 backdrop-blur-md flex items-start justify-center pt-[8vh] md:pt-[12vh] px-3 md:px-4 animate-in fade-in duration-100" onClick={() => setOpen(false)}>
           <div onClick={e => e.stopPropagation()} className="w-full max-w-xl">
             <Command
               label="Command palette"

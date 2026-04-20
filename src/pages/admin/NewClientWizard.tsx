@@ -72,13 +72,13 @@ export function NewClientWizard() {
     <AppShell>
       <div className="relative">
         <HeroGlow />
-        <div className="relative mx-auto max-w-3xl px-6 pt-10 pb-24">
+        <div className="relative mx-auto max-w-3xl px-4 md:px-6 pt-6 md:pt-10 pb-16 md:pb-24">
           <Link to="/admin" className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white mb-6">
             <ChevronLeft className="h-4 w-4" /> Back to admin
           </Link>
 
           <p className="eyebrow mb-3">New client · step {step} of 3</p>
-          <h1 className="font-display font-black text-3xl md:text-4xl tracking-[-0.025em] mb-8">
+          <h1 className="font-display font-black text-[clamp(1.75rem,5vw,2.5rem)] leading-[1.05] tracking-[-0.025em] mb-6 md:mb-8">
             {step === 1 && <>Business <span className="text-orange">info</span></>}
             {step === 2 && <>Choose services and <span className="text-orange">steps</span></>}
             {step === 3 && <>Invite <span className="text-orange">users</span></>}

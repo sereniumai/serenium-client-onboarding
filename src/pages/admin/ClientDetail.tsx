@@ -61,25 +61,30 @@ export function ClientDetail() {
     <AppShell>
       <div className="relative">
         <HeroGlow />
-        <div className="relative mx-auto max-w-6xl px-6 pt-10 pb-24">
+        <div className="relative mx-auto max-w-6xl px-4 md:px-6 pt-6 md:pt-10 pb-16 md:pb-24">
           <Link to="/admin" className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white mb-6">
             <ChevronLeft className="h-4 w-4" /> All clients
           </Link>
 
-          <div className="flex flex-wrap items-start justify-between gap-6 mb-8">
-            <div>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5 md:gap-6 mb-6 md:mb-8">
+            <div className="min-w-0">
               <p className="eyebrow mb-3">Client</p>
-              <h1 className="font-display font-black text-4xl md:text-5xl tracking-[-0.03em]">{org.businessName}</h1>
-              <p className="text-white/60 mt-2">{org.primaryContactName} · {org.primaryContactEmail}{org.primaryContactPhone ? ` · ${org.primaryContactPhone}` : ''}</p>
+              <h1 className="font-display font-black text-[clamp(1.75rem,6vw,3rem)] leading-[1.05] tracking-[-0.03em]">{org.businessName}</h1>
+              <p className="text-white/60 mt-2 text-sm md:text-base break-words">
+                {org.primaryContactName}
+                <span className="hidden md:inline"> · </span>
+                <span className="block md:inline">{org.primaryContactEmail}</span>
+                {org.primaryContactPhone && <><span className="hidden md:inline"> · </span><span className="block md:inline">{org.primaryContactPhone}</span></>}
+              </p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
+            <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
+              <div className="text-left md:text-right">
                 <p className="text-xs uppercase tracking-wider text-white/40">Progress</p>
                 <p className="font-display font-black text-3xl tabular-nums">{progress.overall}%</p>
               </div>
               {members[0] && (
-                <button onClick={impersonate} className="btn-secondary">
-                  <UserCircle className="h-4 w-4" /> View as client
+                <button onClick={impersonate} className="btn-secondary !py-2 !px-3 md:!py-3 md:!px-6 text-xs md:text-sm">
+                  <UserCircle className="h-4 w-4" /> <span className="hidden sm:inline">View as client</span><span className="sm:hidden">View</span>
                 </button>
               )}
             </div>

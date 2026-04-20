@@ -32,9 +32,9 @@ export function LatestReportHero({ report, orgSlug }: { report: MonthlyReport; o
               </div>
             </div>
           )}
-          <div className="p-6 md:p-8 flex flex-col">
+          <div className="p-5 md:p-8 flex flex-col">
             <p className="eyebrow mb-3">Latest report · {month}</p>
-            <h2 className="font-display font-black text-2xl md:text-3xl leading-[1.05] tracking-[-0.025em] mb-3">{report.title}</h2>
+            <h2 className="font-display font-black text-xl md:text-3xl leading-[1.1] tracking-[-0.025em] mb-3">{report.title}</h2>
             {report.summary && (
               <p className="text-white/60 text-sm leading-relaxed line-clamp-4 mb-5">{report.summary}</p>
             )}

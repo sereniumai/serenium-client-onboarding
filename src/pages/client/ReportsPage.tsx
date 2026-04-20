@@ -35,21 +35,21 @@ export function ReportsPage() {
       <div className="relative">
         <HeroGlow />
 
-        <section className="relative mx-auto max-w-4xl px-6 pt-14 pb-10">
+        <section className="relative mx-auto max-w-4xl px-4 md:px-6 pt-8 md:pt-14 pb-8 md:pb-10">
           <Link to={`/onboarding/${org.slug}`} className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white mb-6">
             <ChevronLeft className="h-4 w-4" /> Dashboard
           </Link>
 
           <p className="eyebrow mb-4">Monthly reports · {org.businessName}</p>
-          <h1 className="font-display font-black text-4xl md:text-6xl leading-[1.02] tracking-[-0.03em] mb-4">
+          <h1 className="font-display font-black text-[clamp(2rem,6vw,3.75rem)] leading-[1.02] tracking-[-0.03em] mb-4">
             Your <span className="text-orange">reports</span>.
           </h1>
-          <p className="text-white/60 text-lg max-w-2xl">
+          <p className="text-white/60 text-base md:text-lg max-w-2xl">
             Every month we share what worked, what we learned, and what's next. All your walkthroughs and documents live here.
           </p>
         </section>
 
-        <section className="relative mx-auto max-w-4xl px-6 pb-24">
+        <section className="relative mx-auto max-w-4xl px-4 md:px-6 pb-16 md:pb-24">
           {reports.length === 0 ? (
             <EmptyState businessName={org.businessName} />
           ) : (
@@ -90,13 +90,13 @@ function ReportCard({ report, index }: { report: ReturnType<typeof db.listReport
       transition={{ delay: index * 0.06 }}
       className="relative"
     >
-      <div className="flex items-center gap-4 mb-5">
+      <div className="flex items-center gap-3 md:gap-4 mb-5">
         <div className="h-10 w-10 rounded-xl bg-orange text-white flex items-center justify-center font-display font-black text-xs tabular-nums shrink-0 shadow-orange-glow">
           {report.period.slice(-2)}
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-semibold">{monthLabel}</p>
-          <h2 className="font-display font-black text-2xl md:text-3xl tracking-[-0.025em]">{report.title}</h2>
+          <h2 className="font-display font-black text-xl md:text-3xl leading-[1.1] tracking-[-0.025em] break-words">{report.title}</h2>
         </div>
       </div>
 

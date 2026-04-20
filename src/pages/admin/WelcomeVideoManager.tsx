@@ -51,14 +51,14 @@ export function WelcomeVideoManager() {
     <AppShell>
       <div className="relative">
         <HeroGlow />
-        <div className="relative mx-auto max-w-3xl px-6 pt-10 pb-24">
+        <div className="relative mx-auto max-w-3xl px-4 md:px-6 pt-6 md:pt-10 pb-16 md:pb-24">
           <Link to="/admin" className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white mb-6">
             <ChevronLeft className="h-4 w-4" /> Back to admin
           </Link>
 
           <p className="eyebrow mb-3">Library</p>
-          <h1 className="font-display font-black text-4xl md:text-5xl tracking-[-0.03em] mb-3">Welcome video</h1>
-          <p className="text-white/60 mb-10">One video, played to every new client the first time they land on their dashboard. Upload an MP4 or MOV — we'll host it locally (Supabase Storage once wired up).</p>
+          <h1 className="font-display font-black text-[clamp(1.75rem,6vw,3rem)] leading-[1.05] tracking-[-0.03em] mb-3">Welcome video</h1>
+          <p className="text-white/60 mb-8 md:mb-10 text-sm md:text-base">One video, played to every new client the first time they land on their dashboard. Upload an MP4 or MOV — we'll host it locally (Supabase Storage once wired up).</p>
 
           {current ? (
             <div className="card">

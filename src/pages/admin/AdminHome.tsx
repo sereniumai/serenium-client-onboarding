@@ -36,12 +36,12 @@ export function AdminHome() {
     <AppShell>
       <div className="relative">
         <HeroGlow />
-        <div className="relative mx-auto max-w-7xl px-6 pt-16 pb-24">
-          <div className="flex flex-wrap items-end justify-between gap-4 mb-10">
+        <div className="relative mx-auto max-w-7xl px-4 md:px-6 pt-10 md:pt-16 pb-16 md:pb-24">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-8 md:mb-10">
             <div>
               <p className="eyebrow mb-3">Admin</p>
-              <h1 className="font-display font-black text-4xl md:text-5xl tracking-[-0.03em]">Client dashboard</h1>
-              <p className="text-white/60 mt-2">{orgs.length} active {orgs.length === 1 ? 'organization' : 'organizations'}</p>
+              <h1 className="font-display font-black text-[clamp(1.75rem,6vw,3rem)] leading-[1.05] tracking-[-0.03em]">Client dashboard</h1>
+              <p className="text-white/60 mt-2 text-sm md:text-base">{orgs.length} active {orgs.length === 1 ? 'organization' : 'organizations'}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link to="/admin/welcome-video" className="btn-secondary">
@@ -56,7 +56,7 @@ export function AdminHome() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4 mb-10">
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-8 md:mb-10">
             <StatCard active={filter === 'all'}        onClick={() => setFilter('all')}        icon={Users}          label="All clients"    value={counts.all} />
             <StatCard active={filter === 'onboarding'} onClick={() => setFilter('onboarding')} icon={Activity}       label="In onboarding"  value={counts.onboarding} />
             <StatCard active={filter === 'live'}       onClick={() => setFilter('live')}       icon={Rocket}         label="Live"           value={counts.live} />
@@ -122,20 +122,20 @@ function StatCard({ icon: Icon, label, value, active, onClick, tone = 'default' 
 }) {
   return (
     <button onClick={onClick} className={cn(
-      'card flex items-center gap-4 text-left transition-all',
+      'card !p-4 md:!p-6 flex items-center gap-3 md:gap-4 text-left transition-all',
       active && 'border-orange bg-orange/5',
       tone === 'warn' && value > 0 && !active && 'border-warning/30',
       !active && 'hover:border-border-emphasis',
     )}>
       <div className={cn(
-        'flex h-12 w-12 items-center justify-center rounded-xl shrink-0',
+        'flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl shrink-0',
         tone === 'warn' && value > 0 ? 'bg-warning/10 text-warning' : 'bg-orange/10 text-orange'
       )}>
-        <Icon className="h-6 w-6" />
+        <Icon className="h-5 w-5 md:h-6 md:w-6" />
       </div>
-      <div>
-        <p className="text-xs uppercase tracking-wider text-white/40">{label}</p>
-        <p className="font-display font-black text-3xl leading-none mt-1 tabular-nums">{value}</p>
+      <div className="min-w-0">
+        <p className="text-[10px] md:text-xs uppercase tracking-wider text-white/40 truncate">{label}</p>
+        <p className="font-display font-black text-2xl md:text-3xl leading-none mt-0.5 md:mt-1 tabular-nums">{value}</p>
       </div>
     </button>
   );

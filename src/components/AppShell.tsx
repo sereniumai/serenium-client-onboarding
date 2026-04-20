@@ -56,8 +56,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-bg/80 border-b border-border-subtle">
-        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-6">
-          <div className="flex items-center gap-8 min-w-0">
+        <div className="mx-auto max-w-7xl px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3 md:gap-6">
+          <div className="flex items-center gap-4 md:gap-8 min-w-0">
             <Link to={homePath} className="flex items-center gap-3 shrink-0">
               <Logo />
             </Link>
@@ -86,11 +86,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               </nav>
             )}
           </div>
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex items-center gap-2 md:gap-4 shrink-0">
             {user && (
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-white">{user.fullName}</p>
-                <p className="text-xs text-white/50">{user.email}</p>
+              <div className="text-right hidden md:block">
+                <p className="text-sm font-medium text-white leading-tight">{user.fullName}</p>
+                <p className="text-xs text-white/50 truncate max-w-[180px]">{user.email}</p>
               </div>
             )}
             <button

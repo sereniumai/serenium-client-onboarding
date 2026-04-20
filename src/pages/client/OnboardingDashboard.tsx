@@ -76,8 +76,8 @@ export function OnboardingDashboard() {
         <HeroGlow />
 
         {/* HERO */}
-        <section className="relative mx-auto max-w-6xl px-6 pt-14 pb-8">
-          <div className="grid lg:grid-cols-[1fr,auto] gap-10 lg:gap-16 items-start">
+        <section className="relative mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-14 pb-6 md:pb-8">
+          <div className="grid lg:grid-cols-[1fr,auto] gap-8 lg:gap-16 items-start">
             <div>
               <p className="eyebrow mb-4">Onboarding · {org.businessName}</p>
               <h1 className="font-display font-black text-[clamp(2rem,6vw,3.75rem)] leading-[1.02] tracking-[-0.03em] mb-4">
@@ -93,27 +93,28 @@ export function OnboardingDashboard() {
                 >
                   <Link
                     to={`/onboarding/${org.slug}/services/${nextAction.svcKey}/${nextAction.moduleKey}`}
-                    className="group relative inline-flex items-center gap-5 px-6 py-4 rounded-2xl bg-gradient-to-r from-orange via-orange-hover to-orange bg-[length:200%_auto] text-white shadow-orange-glow hover:shadow-[0_0_60px_rgba(255,107,31,0.5)] transition-all animate-breathe overflow-hidden"
+                    className="group relative flex items-center gap-4 sm:gap-5 px-4 sm:px-6 py-4 rounded-2xl bg-gradient-to-r from-orange via-orange-hover to-orange bg-[length:200%_auto] text-white shadow-orange-glow hover:shadow-[0_0_60px_rgba(255,107,31,0.5)] transition-all animate-breathe overflow-hidden max-w-full"
                   >
                     <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[1200ms] ease-in-out bg-gradient-to-r from-transparent via-white/20 to-transparent" aria-hidden />
-                    <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
                       <PlayCircle className="h-5 w-5" />
                     </div>
-                    <div className="text-left">
-                      <p className="text-xs uppercase tracking-wider text-white/80 font-semibold">{progress.overall === 0 ? 'Start here' : 'Pick up where you left off'}</p>
-                      <p className="font-semibold">{nextAction.title}</p>
+                    <div className="text-left min-w-0 flex-1">
+                      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-white/80 font-semibold">{progress.overall === 0 ? 'Start here' : 'Pick up where you left off'}</p>
+                      <p className="font-semibold text-sm sm:text-base truncate">{nextAction.title}</p>
                     </div>
-                    <div className="pl-2 flex items-center gap-2 text-sm font-medium">
+                    <div className="hidden sm:flex items-center gap-2 text-sm font-medium shrink-0">
                       ~{nextAction.minutes} min
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </div>
+                    <ArrowRight className="h-5 w-5 sm:hidden shrink-0 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </motion.div>
               )}
             </div>
 
-            <div className="shrink-0">
-              <div className="card p-8 text-center min-w-[260px]">
+            <div className="shrink-0 w-full lg:w-auto">
+              <div className="card p-6 md:p-8 text-center w-full lg:min-w-[260px]">
                 <CircleProgress value={progress.overall} size={140} strokeWidth={8}>
                   <div>
                     <p className="font-display font-black text-3xl tracking-tight">
@@ -147,7 +148,7 @@ export function OnboardingDashboard() {
         )}
 
         {/* ONBOARDING SECTIONS */}
-        <section className="relative mx-auto max-w-6xl px-6 pb-24 pt-8">
+        <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-16 md:pb-24 pt-6 md:pt-8">
           <div className="flex items-end justify-between mb-6">
             <div>
               <h2 className="font-display font-black text-2xl md:text-3xl tracking-[-0.02em]">
@@ -184,9 +185,9 @@ export function OnboardingDashboard() {
                   transition={{ delay: svcIdx * 0.06 }}
                   className="card overflow-hidden p-0"
                 >
-                  <div className="p-6 md:p-8 flex items-start gap-5 md:gap-6 border-b border-border-subtle">
-                    <div className="flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-orange/10 text-orange shrink-0">
-                      <Icon className="h-7 w-7" />
+                  <div className="p-5 md:p-8 flex items-start gap-4 md:gap-6 border-b border-border-subtle">
+                    <div className="flex h-12 w-12 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-orange/10 text-orange shrink-0">
+                      <Icon className="h-6 w-6 md:h-7 md:w-7" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-semibold mb-1">Service {String(svcIdx + 1).padStart(2, '0')}</p>
@@ -254,9 +255,9 @@ function ModuleRow({ index, orgSlug, serviceKey, moduleKey, title, description, 
 
   const content = (
     <div className={cn(
-      'group flex items-center gap-5 px-6 md:px-8 py-5 transition-colors',
+      'group flex items-center gap-3 md:gap-5 px-5 md:px-8 py-4 md:py-5 transition-colors',
       locked && 'opacity-50 cursor-not-allowed',
-      !locked && 'hover:bg-bg-tertiary/40',
+      !locked && 'hover:bg-bg-tertiary/40 active:bg-bg-tertiary/60',
     )}>
       <div className={cn(
         'h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold tabular-nums transition-colors',
@@ -279,10 +280,10 @@ function ModuleRow({ index, orgSlug, serviceKey, moduleKey, title, description, 
       </div>
       {!locked && (
         <div className={cn(
-          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0',
+          'inline-flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-lg text-[11px] md:text-xs font-semibold transition-colors shrink-0',
           complete ? 'text-white/50' : 'text-orange bg-orange/10 group-hover:bg-orange group-hover:text-white',
         )}>
-          {complete ? 'Review' : inProgress ? 'Continue' : 'Start'}
+          <span className="hidden sm:inline">{complete ? 'Review' : inProgress ? 'Continue' : 'Start'}</span>
           <ArrowRight className="h-3 w-3" />
         </div>
       )}
