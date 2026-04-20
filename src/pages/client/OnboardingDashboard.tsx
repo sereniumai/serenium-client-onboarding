@@ -1,0 +1,294 @@
+import { useParams, Navigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { CheckCircle2, Clock, Lock, Megaphone, MessageSquare, Globe, Search, PlayCircle, ArrowRight } from 'lucide-react';
+import { AppShell } from '../../components/AppShell';
+import { HeroGlow } from '../../components/HeroGlow';
+import { CircleProgress } from '../../components/CircleProgress';
+import { WelcomeVideoModal } from '../../components/WelcomeVideoModal';
+import { LatestReportHero } from '../../components/LatestReportHero';
+import { CompleteBanner } from '../../components/CompleteBanner';
+import { AnimatedNumber } from '../../components/AnimatedNumber';
+import { timeOfDayGreeting } from '../../lib/greeting';
+import { useAuth } from '../../auth/AuthContext';
+import { db } from '../../lib/mockDb';
+import { useDbVersion } from '../../hooks/useDb';
+import { getOrgProgress, getEnabledModulesForService } from '../../lib/progress';
+import { getService } from '../../config/modules';
+import type { ServiceKey, ModuleStatus } from '../../types';
+import { cn } from '../../lib/cn';
+
+const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
+  facebook_ads: Megaphone,
+  ai_sms:       MessageSquare,
+  website:      Globe,
+  seo:          Search,
+};
+
+function motivation(pct: number, hasReports: boolean) {
+  if (pct === 0) return "A few quick steps to give us what we need to launch your campaigns.";
+  if (pct < 30)  return "Good start. Keep moving through the sections below.";
+  if (pct < 60)  return "You're past the halfway mark. A few more to go.";
+  if (pct < 90)  return "Almost done — we've got most of what we need.";
+  if (pct < 100) return "One last step and we're ready to launch.";
+  return hasReports
+    ? "Your latest monthly report is ready below."
+    : "Your first monthly report lands at month end.";
+}
+
+export function OnboardingDashboard() {
+  const { orgSlug } = useParams();
+  const { user } = useAuth();
+  useDbVersion();
+
+  const org = orgSlug ? db.getOrganizationBySlug(orgSlug) : null;
+  if (!org) return <Navigate to="/login" replace />;
+
+  const progress = getOrgProgress(org.id);
+  const firstName = user?.fullName.split(' ')[0] ?? 'there';
+  const reports = db.listReportsForOrg(org.id);
+  const latestReport = reports[0];
+  const onboardingDone = progress.totalModules > 0 && progress.overall === 100;
+
+  // Find next action — first non-complete, available module
+  let nextAction: { svcKey: ServiceKey; moduleKey: string; title: string; minutes: number } | null = null;
+  outer: for (const svcKey of progress.enabledServices) {
+    const mods = getEnabledModulesForService(org.id, svcKey);
+    const summaries = progress.perService[svcKey];
+    for (let i = 0; i < mods.length; i++) {
+      const s = summaries[i];
+      if (s.status !== 'complete' && s.canStart) {
+        nextAction = { svcKey, moduleKey: mods[i].key, title: mods[i].title, minutes: mods[i].estimatedMinutes };
+        break outer;
+      }
+    }
+  }
+
+  const remainingMinutes = progress.enabledServices.reduce((sum, svcKey) => {
+    const mods = getEnabledModulesForService(org.id, svcKey);
+    const summaries = progress.perService[svcKey];
+    return sum + mods.reduce((s, m, i) => s + (summaries[i].status !== 'complete' ? m.estimatedMinutes : 0), 0);
+  }, 0);
+
+  return (
+    <AppShell>
+      <WelcomeVideoModal />
+      <div className="relative">
+        <HeroGlow />
+
+        {/* HERO */}
+        <section className="relative mx-auto max-w-6xl px-6 pt-14 pb-8">
+          <div className="grid lg:grid-cols-[1fr,auto] gap-10 lg:gap-16 items-start">
+            <div>
+              <p className="eyebrow mb-4">Onboarding · {org.businessName}</p>
+              <h1 className="font-display font-black text-[clamp(2rem,6vw,3.75rem)] leading-[1.02] tracking-[-0.03em] mb-4">
+                {timeOfDayGreeting()}, <span className="text-orange">{firstName}</span>.
+              </h1>
+              <p className="text-white/60 text-lg max-w-xl">{motivation(progress.overall, reports.length > 0)}</p>
+
+              {nextAction && !onboardingDone && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-8"
+                >
+                  <Link
+                    to={`/onboarding/${org.slug}/services/${nextAction.svcKey}/${nextAction.moduleKey}`}
+                    className="group relative inline-flex items-center gap-5 px-6 py-4 rounded-2xl bg-gradient-to-r from-orange via-orange-hover to-orange bg-[length:200%_auto] text-white shadow-orange-glow hover:shadow-[0_0_60px_rgba(255,107,31,0.5)] transition-all animate-breathe overflow-hidden"
+                  >
+                    <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[1200ms] ease-in-out bg-gradient-to-r from-transparent via-white/20 to-transparent" aria-hidden />
+                    <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center">
+                      <PlayCircle className="h-5 w-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs uppercase tracking-wider text-white/80 font-semibold">{progress.overall === 0 ? 'Start here' : 'Pick up where you left off'}</p>
+                      <p className="font-semibold">{nextAction.title}</p>
+                    </div>
+                    <div className="pl-2 flex items-center gap-2 text-sm font-medium">
+                      ~{nextAction.minutes} min
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </div>
+                  </Link>
+                </motion.div>
+              )}
+            </div>
+
+            <div className="shrink-0">
+              <div className="card p-8 text-center min-w-[260px]">
+                <CircleProgress value={progress.overall} size={140} strokeWidth={8}>
+                  <div>
+                    <p className="font-display font-black text-3xl tracking-tight">
+                      <AnimatedNumber value={progress.overall} /><span className="text-lg text-white/40">%</span>
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wider text-white/40 mt-0.5">Complete</p>
+                  </div>
+                </CircleProgress>
+                <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-border-subtle">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Steps</p>
+                    <p className="font-display font-black text-xl tabular-nums">{progress.completeModules}<span className="text-white/30 text-sm">/{progress.totalModules}</span></p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Time left</p>
+                    <p className="font-display font-black text-xl tabular-nums">{Math.ceil(remainingMinutes / 60)}<span className="text-white/30 text-sm">h</span></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        {/* POST-ONBOARDING — latest report + complete banner */}
+        {onboardingDone && (
+          <section className="relative mx-auto max-w-6xl px-6 pb-2">
+            <CompleteBanner hasReports={reports.length > 0} />
+            {latestReport && <LatestReportHero report={latestReport} orgSlug={org.slug} />}
+          </section>
+        )}
+
+        {/* ONBOARDING SECTIONS */}
+        <section className="relative mx-auto max-w-6xl px-6 pb-24 pt-8">
+          <div className="flex items-end justify-between mb-6">
+            <div>
+              <h2 className="font-display font-black text-2xl md:text-3xl tracking-[-0.02em]">
+                {onboardingDone ? 'Onboarding summary' : 'What we need from you'}
+              </h2>
+              <p className="text-sm text-white/60 mt-1">
+                {onboardingDone ? 'Everything you submitted. Open any step to review or update.' : 'Grouped by the services on your retainer. Go in any order.'}
+              </p>
+            </div>
+            <p className="text-sm text-white/40">{progress.enabledServices.length} {progress.enabledServices.length === 1 ? 'service' : 'services'}</p>
+          </div>
+
+          <div className="space-y-5">
+            {progress.enabledServices.length === 0 && (
+              <div className="card text-center py-16">
+                <p className="text-white/60">No services enabled yet. Your Serenium team will set these up shortly.</p>
+              </div>
+            )}
+
+            {progress.enabledServices.map((svcKey, svcIdx) => {
+              const svc = getService(svcKey)!;
+              const enabledMods = getEnabledModulesForService(org.id, svcKey);
+              const summaries = progress.perService[svcKey];
+              const Icon = SERVICE_ICON[svcKey];
+              const svcComplete = summaries.filter(s => s.status === 'complete').length;
+              const svcTotal = summaries.length;
+              const svcPct = svcTotal === 0 ? 0 : Math.round((svcComplete / svcTotal) * 100);
+
+              return (
+                <motion.div
+                  key={svcKey}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: svcIdx * 0.06 }}
+                  className="card overflow-hidden p-0"
+                >
+                  <div className="p-6 md:p-8 flex items-start gap-5 md:gap-6 border-b border-border-subtle">
+                    <div className="flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-orange/10 text-orange shrink-0">
+                      <Icon className="h-7 w-7" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-semibold mb-1">Service {String(svcIdx + 1).padStart(2, '0')}</p>
+                      <h3 className="font-display font-black text-2xl tracking-[-0.02em] mb-1">{svc.label}</h3>
+                      <p className="text-sm text-white/60">{svc.description}</p>
+                    </div>
+                    <div className="shrink-0">
+                      <CircleProgress value={svcPct} size={64}>
+                        <span className="text-sm font-semibold">{svcComplete}<span className="text-white/40 text-xs">/{svcTotal}</span></span>
+                      </CircleProgress>
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-border-subtle">
+                    {enabledMods.map((m, i) => {
+                      const summary = summaries[i];
+                      if (!summary) return null;
+                      const state = summary.status === 'complete' ? 'complete'
+                        : summary.status === 'in_progress' ? 'in_progress'
+                        : summary.canStart ? 'available'
+                        : 'locked';
+                      return (
+                        <ModuleRow
+                          key={m.key}
+                          index={i + 1}
+                          orgSlug={org.slug}
+                          serviceKey={svcKey}
+                          moduleKey={m.key}
+                          title={m.title}
+                          description={m.description}
+                          minutes={m.estimatedMinutes}
+                          state={state}
+                          status={summary.status}
+                        />
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </AppShell>
+  );
+}
+
+interface ModuleRowProps {
+  index: number;
+  orgSlug: string;
+  serviceKey: ServiceKey;
+  moduleKey: string;
+  title: string;
+  description: string;
+  minutes: number;
+  state: 'locked' | 'available' | 'in_progress' | 'complete';
+  status: ModuleStatus;
+}
+
+function ModuleRow({ index, orgSlug, serviceKey, moduleKey, title, description, minutes, state }: ModuleRowProps) {
+  const locked = state === 'locked';
+  const complete = state === 'complete';
+  const inProgress = state === 'in_progress';
+  const href = `/onboarding/${orgSlug}/services/${serviceKey}/${moduleKey}`;
+
+  const content = (
+    <div className={cn(
+      'group flex items-center gap-5 px-6 md:px-8 py-5 transition-colors',
+      locked && 'opacity-50 cursor-not-allowed',
+      !locked && 'hover:bg-bg-tertiary/40',
+    )}>
+      <div className={cn(
+        'h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold tabular-nums transition-colors',
+        complete ? 'bg-success text-white' :
+        inProgress ? 'bg-orange text-white' :
+        locked ? 'bg-bg-tertiary text-white/30' :
+        'bg-bg-tertiary text-white/60 group-hover:bg-orange/20 group-hover:text-orange',
+      )}>
+        {complete ? <CheckCircle2 className="h-4 w-4" />
+          : locked ? <Lock className="h-3.5 w-3.5" />
+          : inProgress ? <PlayCircle className="h-4 w-4" />
+          : String(index).padStart(2, '0')}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={cn('font-semibold truncate', complete && 'text-white/70')}>{title}</p>
+        <p className="text-xs text-white/50 truncate">{description}</p>
+      </div>
+      <div className="hidden sm:flex items-center gap-2 text-xs text-white/40 shrink-0">
+        <Clock className="h-3 w-3" /> ~{minutes} min
+      </div>
+      {!locked && (
+        <div className={cn(
+          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0',
+          complete ? 'text-white/50' : 'text-orange bg-orange/10 group-hover:bg-orange group-hover:text-white',
+        )}>
+          {complete ? 'Review' : inProgress ? 'Continue' : 'Start'}
+          <ArrowRight className="h-3 w-3" />
+        </div>
+      )}
+    </div>
+  );
+
+  if (locked) return content;
+  return <Link to={href}>{content}</Link>;
+}
