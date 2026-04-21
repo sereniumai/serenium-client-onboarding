@@ -62,11 +62,6 @@ export function OnboardingDashboard() {
     break;
   }
 
-  const remainingMinutes = progress.enabledServices.reduce((sum, svcKey) => {
-    const mods = getEnabledModulesForService(org.id, svcKey);
-    const summaries = progress.perService[svcKey];
-    return sum + mods.reduce((s, m, i) => s + (summaries[i]?.status !== 'complete' ? (m.estimatedMinutes ?? 0) : 0), 0);
-  }, 0);
 
   return (
     <AppShell>
@@ -119,15 +114,9 @@ export function OnboardingDashboard() {
                     <p className="text-[10px] uppercase tracking-wider text-white/40 mt-0.5">Complete</p>
                   </div>
                 </CircleProgress>
-                <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-border-subtle">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Steps</p>
-                    <p className="font-display font-black text-xl tabular-nums">{progress.completeModules}<span className="text-white/30 text-sm">/{progress.totalModules}</span></p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Time left</p>
-                    <p className="font-display font-black text-xl tabular-nums">{Math.ceil(remainingMinutes / 60)}<span className="text-white/30 text-sm">h</span></p>
-                  </div>
+                <div className="mt-6 pt-6 border-t border-border-subtle text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Steps</p>
+                  <p className="font-display font-black text-xl tabular-nums">{progress.completeModules}<span className="text-white/30 text-sm">/{progress.totalModules}</span></p>
                 </div>
               </div>
             </div>
