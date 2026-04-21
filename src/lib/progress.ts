@@ -34,20 +34,6 @@ export function getOrgProgress(organizationId: string) {
   let total = 0;
   let complete = 0;
 
-  // Compute Business Profile completeness first — other services require it IF BP is enabled.
-  const bpEntry = enabledSvcs.find(s => s.serviceKey === 'business_profile');
-  const bpIsOn = !!bpEntry;
-  let bpAllComplete = true;
-  if (bpEntry) {
-    const bpSvc = getService('business_profile');
-    const bpDisabled = new Set(bpEntry.disabledModuleKeys ?? []);
-    const bpEnabledMods = bpSvc?.modules.filter(m => !bpDisabled.has(m.key)) ?? [];
-    for (const m of bpEnabledMods) {
-      const mp = moduleProgress.find(p => p.serviceKey === 'business_profile' && p.moduleKey === m.key);
-      if (mp?.status !== 'complete') { bpAllComplete = false; break; }
-    }
-    if (bpEnabledMods.length === 0) bpAllComplete = true;
-  }
 
   for (const svcKey of enabled) {
     const svc = getService(svcKey);
@@ -55,8 +41,6 @@ export function getOrgProgress(organizationId: string) {
     const svcEntry = enabledSvcs.find(s => s.serviceKey === svcKey);
     const disabledModKeys = new Set(svcEntry?.disabledModuleKeys ?? []);
     const summaries: ModuleSummary[] = [];
-    let prevComplete = true;
-    const requiresBp = bpIsOn && svcKey !== 'business_profile';
 
     for (const m of svc.modules) {
       if (disabledModKeys.has(m.key)) continue;
@@ -76,8 +60,10 @@ export function getOrgProgress(organizationId: string) {
         submissions.find(s => s.fieldKey === `${svcKey}.${m.key}.${f.key}` && s.value != null && s.value !== '')
       ).length;
 
+      // Clients can open any step at any time. The only remaining lock is admin-flag
+      // gating (e.g. AI Receptionist call-forwarding waits for admin to flip the switch).
       const adminUnlocked = !moduleIsAdminLocked(organizationId, m);
-      const canStart = adminUnlocked && (!m.requiresPrevious || prevComplete) && (!requiresBp || bpAllComplete);
+      const canStart = adminUnlocked;
 
       summaries.push({
         moduleKey: m.key, status,
@@ -88,7 +74,6 @@ export function getOrgProgress(organizationId: string) {
 
       total += 1;
       if (status === 'complete') complete += 1;
-      prevComplete = status === 'complete';
     }
     perService[svcKey] = summaries;
   }
