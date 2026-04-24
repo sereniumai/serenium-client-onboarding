@@ -8,7 +8,7 @@ import { Toaster } from './components/Toaster';
 import { CommandPalette } from './components/CommandPalette';
 import { ImpersonationBanner } from './components/ImpersonationBanner';
 import { RouteLoader } from './components/RouteLoader';
-import { db } from './lib/mockDb';
+import { useOrgsForUser } from './hooks/useOrgs';
 
 // Auth pages, small, but loaded once and thrown away after sign-in.
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -36,11 +36,14 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ defa
 
 function RootRedirect() {
   const { user, loading } = useAuth();
+  const { data: orgs, isLoading: orgsLoading } = useOrgsForUser(
+    user && user.role === 'client' ? user.id : undefined,
+  );
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'admin') return <Navigate to="/admin" replace />;
-  const orgs = db.listOrganizationsForUser(user.id);
-  if (orgs[0]) return <Navigate to={`/onboarding/${orgs[0].slug}`} replace />;
+  if (orgsLoading) return null;
+  if (orgs && orgs[0]) return <Navigate to={`/onboarding/${orgs[0].slug}`} replace />;
   return <Navigate to="/login" replace />;
 }
 
