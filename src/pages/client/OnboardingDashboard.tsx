@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useParams, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, PlayCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle2, PlayCircle, ArrowRight, Lock } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { CircleProgress } from '../../components/CircleProgress';
@@ -267,52 +267,68 @@ export function OnboardingDashboard() {
                 </motion.div>
               );
             })}
-
-            {/* Services not currently part of this client's package, shown
-                disabled so they know what else Serenium can do. Business
-                Profile is always included for every client, so it never
-                appears here even if it's somehow disabled on their account. */}
-            {SELECTABLE_SERVICES
-              .filter(svc => svc.key !== 'business_profile' && !progress.enabledServices.includes(svc.key))
-              .map((svc, i) => {
-                const Icon = SERVICE_ICON[svc.key];
-                return (
-                  <motion.div
-                    key={svc.key}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: (progress.enabledServices.length + i) * 0.04 }}
-                  >
-                    <div
-                      className="card block relative border-dashed border-white/10 bg-bg-secondary/30 opacity-60 cursor-not-allowed"
-                      aria-disabled="true"
-                    >
-                      <span className="absolute top-3 right-3 text-[10px] uppercase tracking-wider font-semibold text-white/40 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
-                        Not in your plan
-                      </span>
-                      <div className="flex items-start gap-4 mb-4">
-                        <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-white/30">
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1 min-w-0 pr-20">
-                          <h4 className="font-display font-bold text-lg tracking-[-0.01em] truncate text-white/50">{svc.label}</h4>
-                          <p className="text-xs text-white/35 leading-relaxed mt-0.5">{svc.description}</p>
-                        </div>
-                      </div>
-                      <div className="pt-3 border-t border-white/5">
-                        <p className="text-xs text-white/40">
-                          Interested? <a href="mailto:contact@sereniumai.com?subject=Adding a service to my Serenium plan" className="text-orange hover:text-orange-hover pointer-events-auto">Email us</a> to add it.
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })
-            }
           </div>
+
+          <OtherSerenumServices
+            unavailableServiceKeys={SELECTABLE_SERVICES
+              .filter(svc => svc.key !== 'business_profile' && !progress.enabledServices.includes(svc.key))
+              .map(s => s.key)}
+          />
         </section>
       </div>
     </AppShell>
+  );
+}
+
+function OtherSerenumServices({ unavailableServiceKeys }: { unavailableServiceKeys: ServiceKey[] }) {
+  if (unavailableServiceKeys.length === 0) return null;
+  return (
+    <section className="mt-12 md:mt-16">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-5">
+        <div>
+          <p className="eyebrow mb-2">More from Serenium</p>
+          <h3 className="font-display font-black text-xl md:text-2xl tracking-[-0.02em]">
+            Other services we offer
+          </h3>
+          <p className="text-sm text-white/55 mt-1 max-w-xl">
+            Not part of your current plan — but each one slots into the same portal whenever you're ready.
+          </p>
+        </div>
+        <a
+          href="mailto:contact@sereniumai.com?subject=Adding%20a%20service%20to%20my%20Serenium%20plan"
+          className="btn-secondary !py-2 !px-4 text-xs shrink-0"
+        >
+          Ask us about adding one
+        </a>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {unavailableServiceKeys.map((key, i) => {
+          const svc = SELECTABLE_SERVICES.find(s => s.key === key);
+          if (!svc) return null;
+          const Icon = SERVICE_ICON[key];
+          return (
+            <motion.div
+              key={key}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+              aria-disabled="true"
+              className="relative rounded-xl border border-dashed border-white/10 bg-bg-secondary/20 px-4 py-3.5 flex items-start gap-3"
+              title="Not included in your current plan"
+            >
+              <div className="h-9 w-9 rounded-lg bg-white/5 text-white/45 flex items-center justify-center shrink-0">
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-white/75 truncate">{svc.label}</p>
+                <p className="text-[11px] text-white/50 leading-relaxed mt-0.5 line-clamp-2">{svc.description}</p>
+              </div>
+              <Lock className="h-3.5 w-3.5 text-white/35 shrink-0 mt-1" aria-hidden />
+            </motion.div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
