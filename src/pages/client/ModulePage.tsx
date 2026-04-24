@@ -13,42 +13,7 @@ import { sfx } from '../../lib/soundFx';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 
-function ConditionalLinkBlock({ orgId, svcKey, modKey, links }: { orgId: string; svcKey: string; modKey: string; links: Record<string, string> }) {
-  // Watch for a "registrar"-style select in this module, when picked, show the matching link.
-  // Find the select field in siblings whose value matches a link key.
-  // ConditionalLinkBlock temporarily shows no content during Supabase migration; re-enable in Phase 6.
-  const subs: Array<{ fieldKey: string; value: unknown }> = [];
-  void orgId; void svcKey; void modKey;
-  const match = subs.find(s => typeof s.value === 'string' && links[s.value as string]);
-  if (!match) return null;
-  const label = match.value as string;
-  const href = links[label];
-  const embed = videoEmbedUrl(href);
-  if (embed) {
-    return (
-      <div className="mt-4">
-        <p className="text-xs text-white/60 mb-2">How to do this in {label}:</p>
-        <div className="aspect-video rounded-xl border border-border-subtle overflow-hidden bg-black">
-          <iframe
-            src={embed}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-            className="w-full h-full"
-            title={`Walkthrough: ${label}`}
-          />
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="mt-4 p-3 rounded-lg border border-orange/30 bg-orange/5">
-      <p className="text-xs text-white/60 mb-1">How to do this in {label}:</p>
-      <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-orange hover:text-orange-hover">
-        → Official guide for {label}
-      </a>
-    </div>
-  );
-}
+import { ConditionalLinkBlock } from '../../components/ConditionalLinkBlock';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
@@ -303,7 +268,7 @@ export function ModulePage() {
                   </div>
                 )}
 
-                {mod.conditionalLinks && <ConditionalLinkBlock orgId={org.id} svcKey={svc.key} modKey={mod.key} links={mod.conditionalLinks} />}
+                {mod.conditionalLinks && <ConditionalLinkBlock submissions={snapshot.submissions} svcKey={svc.key} modKey={mod.key} links={mod.conditionalLinks} />}
               </div>
             )}
 

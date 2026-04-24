@@ -10,6 +10,7 @@ import { FieldRenderer } from '../../components/FieldRenderer';
 import { SaveIndicator } from '../../components/SaveIndicator';
 import { Markdown } from '../../components/Markdown';
 import { FinalCelebration } from '../../components/FinalCelebration';
+import { ConditionalLinkBlock } from '../../components/ConditionalLinkBlock';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
@@ -262,16 +263,28 @@ function ModuleSection({
           <div className="text-sm">
             <Markdown>{module.instructions}</Markdown>
             {module.links && Object.keys(module.links).length > 0 && (
-              <ul className="mt-3 space-y-1.5">
-                {Object.entries(module.links).map(([label, href]) => (
-                  <li key={label}>
-                    <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-orange hover:text-orange-hover">
+              <div className="mt-4 space-y-4">
+                {Object.entries(module.links).map(([label, href]) => {
+                  const videoEmbed = videoEmbedUrl(href);
+                  if (videoEmbed) {
+                    return (
+                      <div key={label}>
+                        <p className="text-xs text-white/60 mb-2">{label}</p>
+                        <div className="aspect-video rounded-xl border border-border-subtle overflow-hidden bg-black">
+                          <iframe src={videoEmbed} className="w-full h-full" title={label} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen />
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-orange hover:text-orange-hover">
                       → {label}
                     </a>
-                  </li>
-                ))}
-              </ul>
+                  );
+                })}
+              </div>
             )}
+            {module.conditionalLinks && <ConditionalLinkBlock submissions={snapshot.submissions} svcKey={serviceKey} modKey={module.key} links={module.conditionalLinks} />}
           </div>
         )}
 
