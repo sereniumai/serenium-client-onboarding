@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useParams, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, PlayCircle, ArrowRight, Lock } from 'lucide-react';
+import { CheckCircle2, PlayCircle, ArrowRight, Lock, Sparkles } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { CircleProgress } from '../../components/CircleProgress';
@@ -313,32 +313,37 @@ function OtherSerenumServices({ unavailableServiceKeys }: { unavailableServiceKe
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}
             >
-              <div
-                className="card relative"
-                aria-disabled="true"
-                title="Not included in your current plan"
+              <a
+                href={`mailto:contact@sereniumai.com?subject=${encodeURIComponent('Adding ' + svc.label + ' to my Serenium plan')}&body=${encodeURIComponent("Hi, I'd like to hear more about adding " + svc.label + " to my plan.")}`}
+                className="card relative group block transition-all duration-200 hover:border-orange/60 hover:-translate-y-0.5 hover:shadow-orange-glow"
+                title={'Ask about adding ' + svc.label}
               >
-                <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-orange bg-orange/10 border border-orange/30 rounded-full px-2 py-0.5">
-                  <Lock className="h-3 w-3" /> Not in plan
+                {/* Orange glow sweep on hover, masked to the card */}
+                <span
+                  className="pointer-events-none absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-orange/5 via-transparent to-transparent"
+                  aria-hidden
+                />
+                <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-orange bg-orange/10 border border-orange/30 rounded-full px-2 py-0.5 group-hover:bg-orange/20 group-hover:border-orange/50 transition-colors">
+                  <Lock className="h-3 w-3 group-hover:hidden" />
+                  <Sparkles className="h-3 w-3 hidden group-hover:inline-block animate-pulse" />
+                  <span className="group-hover:hidden">Not in plan</span>
+                  <span className="hidden group-hover:inline">Add this</span>
                 </span>
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-orange/10 text-orange">
+                <div className="flex items-start gap-4 mb-4 relative">
+                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-orange/10 text-orange group-hover:bg-orange group-hover:text-white transition-colors duration-200 group-hover:scale-105">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0 pr-20">
-                    <h4 className="font-display font-bold text-lg tracking-[-0.01em] truncate">{svc.label}</h4>
-                    <p className="text-xs text-white/55 leading-relaxed mt-0.5">{svc.description}</p>
+                    <h4 className="font-display font-bold text-lg tracking-[-0.01em] truncate group-hover:text-orange transition-colors">{svc.label}</h4>
+                    <p className="text-xs text-white/55 leading-relaxed mt-0.5 group-hover:text-white/75 transition-colors">{svc.description}</p>
                   </div>
                 </div>
-                <div className="pt-3 border-t border-border-subtle">
-                  <a
-                    href="mailto:contact@sereniumai.com?subject=Adding%20a%20service%20to%20my%20Serenium%20plan"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-orange hover:text-orange-hover"
-                  >
-                    Ask about adding this <ArrowRight className="h-3.5 w-3.5" />
-                  </a>
+                <div className="pt-3 border-t border-border-subtle relative">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange group-hover:gap-2 transition-all">
+                    Ask about adding this <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
                 </div>
-              </div>
+              </a>
             </motion.div>
           );
         })}
