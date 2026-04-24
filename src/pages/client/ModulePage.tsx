@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Clock, PlayCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ChevronLeft, Clock, CheckCircle2, ArrowRight } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { AppShell } from '../../components/AppShell';
 import { TaskCheckbox } from '../../components/TaskCheckbox';
@@ -208,38 +208,8 @@ export function ModulePage() {
                   </div>
                 );
               }
-              return (
-                <div className="w-full aspect-video rounded-2xl border border-border-subtle mb-10 relative overflow-hidden">
-                  <img
-                    src="/vidiq_thumbnail_19.png"
-                    alt="Video thumbnail"
-                    className="absolute inset-0 h-full w-full object-cover"
-                    draggable={false}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-bg/80 via-bg/30 to-transparent" />
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-20 w-20 rounded-full bg-orange/90 flex items-center justify-center shadow-orange-glow">
-                    <PlayCircle className="h-10 w-10 text-white" />
-                  </div>
-                  <div className="absolute bottom-4 left-5 right-5 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-orange font-semibold">Walkthrough</p>
-                      <p className="text-white font-semibold text-sm md:text-base">Video coming soon</p>
-                    </div>
-                    <span className="inline-flex items-center gap-1.5 text-xs text-white/80 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur">
-                      <Clock className="h-3 w-3" /> ~{mod.estimatedMinutes} min
-                    </span>
-                  </div>
-                </div>
-              );
+              return null;
             })()}
-
-            {/* LOCKED BANNER */}
-            {adminLockedReason && (
-              <div className="card mb-8 border-orange/30 bg-orange/5">
-                <p className="eyebrow mb-2">Not ready yet</p>
-                <p className="text-sm text-white/80">{adminLockedReason}</p>
-              </div>
-            )}
 
             {/* Retell forwarding number block returns in Phase 6 (retell_numbers port). */}
 
@@ -426,17 +396,7 @@ function ModuleCompletionPanel({ snapshot, svcKey, mod, adminLockedReason }: {
   const totalRequired = fieldStates.length + taskStates.length;
   const totalDone = fieldStates.filter(s => s.done).length + taskStates.filter(s => s.done).length;
 
-  if (adminLockedReason) {
-    return (
-      <div className="card border-orange/30 bg-orange/5 flex items-start gap-3">
-        <div className="h-8 w-8 rounded-lg bg-orange/15 text-orange flex items-center justify-center shrink-0">🔒</div>
-        <div className="flex-1">
-          <p className="font-semibold text-sm">Not ready yet</p>
-          <p className="text-xs text-white/65 mt-0.5">{adminLockedReason}</p>
-        </div>
-      </div>
-    );
-  }
+  if (adminLockedReason) return null;
 
   if (totalRequired === 0) {
     return (

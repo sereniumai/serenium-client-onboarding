@@ -80,7 +80,7 @@ export function submissionIsFilled(
 
 export function moduleIsHidden(snap: OrgSnapshot, svcKey: ServiceKey, mod: ModuleDef): boolean {
   if (!mod.conditional) return false;
-  return !evaluate(mod.conditional, snap.submissions, `${svcKey}.${mod.key}`);
+  return !evaluate(mod.conditional, snap.submissions, `${svcKey}.${mod.key}`, { services: snap.services });
 }
 
 export function moduleIsAdminLocked(snap: OrgSnapshot, mod: ModuleDef): boolean {

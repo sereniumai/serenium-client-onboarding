@@ -15,7 +15,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot } from '../../hooks/useOnboarding';
-import { getOrgProgress, estimatedMinutesRemaining, formatMinutes } from '../../lib/progress';
+import { getOrgProgress } from '../../lib/progress';
 import { getService } from '../../config/modules';
 import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey } from '../../types';
@@ -141,16 +141,14 @@ export function OnboardingDashboard() {
                     <p className="text-[10px] uppercase tracking-wider text-white/40 mt-0.5">Complete</p>
                   </div>
                 </CircleProgress>
-                <div className="mt-6 pt-6 border-t border-border-subtle text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">
-                    {onboardingDone ? 'Steps complete' : 'Time left'}
-                  </p>
-                  <p className="font-display font-black text-xl tabular-nums">
-                    {onboardingDone
-                      ? <>{progress.completeModules}<span className="text-white/30 text-sm">/{progress.totalModules}</span></>
-                      : formatMinutes(estimatedMinutesRemaining(snapshot))}
-                  </p>
-                </div>
+                {onboardingDone && (
+                  <div className="mt-6 pt-6 border-t border-border-subtle text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Steps complete</p>
+                    <p className="font-display font-black text-xl tabular-nums">
+                      {progress.completeModules}<span className="text-white/30 text-sm">/{progress.totalModules}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -552,15 +552,18 @@ const AI_SMS: ServiceDef = {
       key: 'casl',
       title: 'CASL compliance (existing site)',
       estimatedMinutes: 5,
-      instructions: `Canada's Anti-Spam Legislation requires explicit consent before AI-assisted SMS follow-up. If Serenium is building your new website, we handle this automatically, so this step only shows up when we're NOT building your site.
+      // Skip this module when Serenium is building the client's new site,
+      // CASL language ships baked into the new site automatically.
+      conditional: { serviceEnabled: 'website', expected: false },
+      instructions: `Canada's Anti-Spam Legislation requires explicit consent before AI-assisted SMS follow-up. You need two things on your existing site.
 
 **Add this checkbox to your existing lead forms:**
 
-> ☐ *By checking this box, I consent to receive SMS, email, and phone communications from [Company Name] regarding my roof inquiry, including via automated / AI-assisted tools. I can opt out anytime by replying STOP.*
+☐ *By checking this box, I consent to receive SMS, email, and phone communications from [Company Name] regarding my roof inquiry, including via automated / AI-assisted tools. I can opt out anytime by replying STOP.*
 
 **Add this language to your Terms / Privacy Policy:**
 
-> *"By submitting this form or engaging our services, you consent to communications from us and our authorized agents (including AI-assisted SMS, email, and phone) in accordance with Canada's Anti-Spam Legislation (CASL). You may withdraw consent at any time by replying STOP to any message."*`,
+*"By submitting this form or engaging our services, you consent to communications from us and our authorized agents (including AI-assisted SMS, email, and phone) in accordance with Canada's Anti-Spam Legislation (CASL). You may withdraw consent at any time by replying STOP to any message."*`,
       fields: [
         { key: 'sms_external_site_consent_checkbox_added', label: 'Added the consent checkbox to my existing lead forms', type: 'checkbox', required: true },
         { key: 'sms_external_site_terms_updated',         label: 'Updated my Terms / Privacy Policy to disclose AI-assisted follow-up', type: 'checkbox', required: true },
