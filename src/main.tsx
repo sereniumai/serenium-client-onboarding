@@ -18,6 +18,11 @@ if (sentryDsn && import.meta.env.PROD) {
     tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.globalHandlersIntegration({ onerror: true, onunhandledrejection: true }),
+      Sentry.replayIntegration(),
+    ],
     // Scrub common PII fields before sending events.
     beforeSend(event) {
       if (event.request?.cookies) delete event.request.cookies;
@@ -33,6 +38,11 @@ if (sentryDsn && import.meta.env.PROD) {
       'Importing a module script failed',
     ],
   });
+  // Expose for manual testing from the console: window.Sentry.captureMessage('...')
+  (window as unknown as { Sentry: typeof Sentry }).Sentry = Sentry;
+  console.log('[sentry] initialized');
+} else if (!sentryDsn && import.meta.env.PROD) {
+  console.warn('[sentry] DSN missing, error reporting disabled');
 }
 
 // After a new deploy, code-split chunks the browser remembers may no longer
