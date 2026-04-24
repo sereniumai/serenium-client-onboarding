@@ -13,6 +13,7 @@
 // ============================================================================
 
 import { SERVICES } from '../src/config/modules';
+import { captureEdgeError } from './_sentry';
 
 // Runs on Vercel's Edge runtime: native Fetch API and fast cold starts.
 export const config = { runtime: 'edge' };
@@ -360,6 +361,10 @@ export default async function handler(req: Request): Promise<Response> {
     if (!finalResp.ok) {
       const errText = await finalResp.text();
       console.error('[ask-assistant] Anthropic error', finalResp.status, errText);
+      captureEdgeError(new Error(`Anthropic ${finalResp.status}`), {
+        endpoint: 'ask-assistant',
+        extra: { status: finalResp.status, body: errText.slice(0, 500), mode },
+      });
       return json({ error: `Anthropic ${finalResp.status}: ${errText.slice(0, 300)}` }, 502);
     }
 
@@ -377,6 +382,7 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ reply: text || "Sorry, I didn't get a response. Try again?" });
   } catch (err) {
     console.error('[ask-assistant] fetch threw', err);
+    captureEdgeError(err, { endpoint: 'ask-assistant', extra: { mode } });
     return json({ error: 'Assistant is unreachable right now. Please try again.' }, 502);
   }
 }

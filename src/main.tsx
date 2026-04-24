@@ -1,11 +1,39 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import * as Sentry from '@sentry/react';
 import './index.css';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { initTheme } from './lib/theme';
 
 initTheme();
+
+// Error tracking. Only active in production, disabled in dev so local
+// crashes don't spam the prod project.
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+if (sentryDsn && import.meta.env.PROD) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: 'production',
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0,
+    replaysOnErrorSampleRate: 1.0,
+    // Scrub common PII fields before sending events.
+    beforeSend(event) {
+      if (event.request?.cookies) delete event.request.cookies;
+      if (event.user?.ip_address) delete event.user.ip_address;
+      return event;
+    },
+    ignoreErrors: [
+      // Browser extensions / random script errors
+      'ResizeObserver loop',
+      'Non-Error promise rejection captured',
+      // Known chunk-reload flow, we handle it ourselves
+      'Failed to fetch dynamically imported module',
+      'Importing a module script failed',
+    ],
+  });
+}
 
 // After a new deploy, code-split chunks the browser remembers may no longer
 // exist. Vite surfaces this as "Failed to fetch dynamically imported module".

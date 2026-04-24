@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import * as Sentry from '@sentry/react';
 
 interface Props {
   children: ReactNode;
@@ -27,6 +28,11 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     // eslint-disable-next-line no-console
     console.error('[ErrorBoundary]', error, info);
+    Sentry.withScope(scope => {
+      scope.setExtra('componentStack', info.componentStack);
+      scope.setTag('boundary', this.props.variant ?? 'page');
+      Sentry.captureException(error);
+    });
   }
 
   render() {
