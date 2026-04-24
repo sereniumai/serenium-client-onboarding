@@ -3,6 +3,7 @@ import { qk } from '../lib/queryClient';
 import * as orgs from '../lib/db/orgs';
 import * as members from '../lib/db/members';
 import * as services from '../lib/db/services';
+import * as wizard from '../lib/db/wizard';
 
 export function useAllOrgs() {
   return useQuery({
@@ -68,6 +69,14 @@ export function useUpdateOrg() {
       qc.invalidateQueries({ queryKey: qk.org(org.id) });
       qc.invalidateQueries({ queryKey: qk.org(org.slug) });
     },
+  });
+}
+
+export function useCreateClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: wizard.createClient,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.orgs() }); },
   });
 }
 

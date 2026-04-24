@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, Plus, Trash2, Check, ChevronDown } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
-import { db } from '../../lib/mockDb';
+import { useCreateClient } from '../../hooks/useOrgs';
 import { SERVICES, SELECTABLE_SERVICES, getService } from '../../config/modules';
 import { SERVICE_ICON } from '../../config/serviceIcons';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ type UserRow = { fullName: string; email: string; role: 'owner' | 'member' };
 
 export function NewClientWizard() {
   const navigate = useNavigate();
+  const createClient = useCreateClient();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const [businessName, setBusinessName] = useState('');
@@ -44,22 +45,26 @@ export function NewClientWizard() {
   const step1Valid = businessName.trim() && primaryName.trim() && primaryEmail.trim();
   const step2Valid = services.length > 0;
 
-  const submit = () => {
+  const submit = async () => {
     const validUsers = users.filter(u => u.email.trim());
     const final = validUsers.length > 0 ? validUsers : [{ fullName: primaryName, email: primaryEmail, role: 'owner' as const }];
-    const org = db.createOrganization({
-      businessName: businessName.trim(),
-      primaryContactName: primaryName.trim(),
-      primaryContactEmail: primaryEmail.trim(),
-      primaryContactPhone: primaryPhone.trim() || undefined,
-      services,
-      serviceModules: disabledModules,
-      users: final,
-    });
-    toast.success(`${org.businessName} created`, {
-      description: `${services.length} ${services.length === 1 ? 'service' : 'services'} · ${final.length} ${final.length === 1 ? 'user' : 'users'} invited`,
-    });
-    navigate(`/admin/clients/${org.slug}`);
+    try {
+      const org = await createClient.mutateAsync({
+        businessName: businessName.trim(),
+        primaryContactName: primaryName.trim(),
+        primaryContactEmail: primaryEmail.trim(),
+        primaryContactPhone: primaryPhone.trim() || undefined,
+        services,
+        serviceModules: disabledModules,
+        users: final,
+      });
+      toast.success(`${org.businessName} created`, {
+        description: `${services.length} ${services.length === 1 ? 'service' : 'services'} · ${final.length} ${final.length === 1 ? 'user' : 'users'} invited`,
+      });
+      navigate(`/admin/clients/${org.slug}`);
+    } catch (err) {
+      toast.error('Could not create client', { description: (err as Error).message });
+    }
   };
 
   return (
@@ -239,7 +244,9 @@ export function NewClientWizard() {
                 Continue
               </button>
             ) : (
-              <button onClick={submit} className="btn-primary">Create client</button>
+              <button onClick={submit} disabled={createClient.isPending} className="btn-primary">
+                {createClient.isPending ? 'Creating…' : 'Create client'}
+              </button>
             )}
           </div>
         </div>
