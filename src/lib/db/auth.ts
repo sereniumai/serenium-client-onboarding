@@ -18,9 +18,7 @@ export async function signIn(email: string, password: string): Promise<Profile> 
   const t0 = performance.now();
   console.log('[auth] signIn, starting');
 
-  // Step 1, only clear session state if one actually exists. Unconditional
-  // signOut fires a SIGNED_OUT event that clears queryClient for no reason on
-  // a clean first-time login.
+  // Clear any stale session on disk. Don't block on it.
   try {
     const { data: { session: existing } } = await supabase.auth.getSession();
     if (existing) {
@@ -29,26 +27,38 @@ export async function signIn(email: string, password: string): Promise<Profile> 
         new Promise(r => setTimeout(r, 500)),
       ]);
     }
-  } catch {
-    // Ignore, just being defensive.
-  }
+  } catch {}
   console.log(`[auth] cleanup done in ${Math.round(performance.now() - t0)}ms`);
 
-  // Step 2, actually sign in.
   const t1 = performance.now();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   console.log(`[auth] signInWithPassword resolved in ${Math.round(performance.now() - t1)}ms`);
   if (error) throw error;
   if (!data.user) throw new Error('Sign-in returned no user');
 
-  // Step 3, load profile with its own 8s budget.
+  // Try to load the full profile with a short 3s budget. If the DB is slow,
+  // fall back to a stub profile derived from the JWT metadata so the user
+  // gets navigated into the app. AuthContext's listener will finish hydrating
+  // the full profile in the background.
   const t2 = performance.now();
-  const profile = await Promise.race([
-    loadProfile(data.user.id),
-    new Promise<Profile>((_, reject) => setTimeout(() => reject(new Error('Profile load timed out. Try again.')), 8000)),
-  ]);
-  console.log(`[auth] loadProfile done in ${Math.round(performance.now() - t2)}ms`);
-  return profile;
+  try {
+    const profile = await Promise.race([
+      loadProfile(data.user.id),
+      new Promise<Profile>((_, reject) => setTimeout(() => reject(new Error('slow')), 3000)),
+    ]);
+    console.log(`[auth] loadProfile done in ${Math.round(performance.now() - t2)}ms`);
+    return profile;
+  } catch (err) {
+    console.warn('[auth] loadProfile slow or failed, using JWT stub', err);
+    const meta = data.user.user_metadata ?? {};
+    const stub: Profile = {
+      id: data.user.id,
+      email: data.user.email ?? email,
+      fullName: (meta.full_name as string) ?? data.user.email ?? '',
+      role: ((meta.role as 'admin' | 'client') ?? 'client'),
+    };
+    return stub;
+  }
 }
 
 export async function signUp(args: {

@@ -23,41 +23,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     let settled = false;
+    const markSettled = () => {
+      if (mounted && !settled) { settled = true; setLoading(false); }
+    };
 
-    // Hydrate a profile for the given session id, with one retry. Never
-    // clears the session; a DB hiccup must not log the user out.
+    // Retry loadProfile up to 3x with backoff. On every failure we keep
+    // whatever user was previously set, never clear to null. A DB hiccup on
+    // refresh must never cause an apparent logout.
     const hydrate = async (userId: string) => {
       const cached = userRef.current;
       if (cached && cached.id === userId) return cached;
-      try {
-        return await loadProfile(userId);
-      } catch (err) {
-        console.warn('[auth] profile load failed, retrying in 800ms', err);
-        await new Promise(r => setTimeout(r, 800));
-        return loadProfile(userId);
+      const delays = [0, 500, 1500];
+      let lastErr: unknown;
+      for (const d of delays) {
+        if (d) await new Promise(r => setTimeout(r, d));
+        try {
+          const p = await loadProfile(userId);
+          console.log('[auth] profile loaded for', userId);
+          return p;
+        } catch (err) {
+          lastErr = err;
+          console.warn(`[auth] loadProfile attempt (delay=${d}) failed`, err);
+        }
       }
+      throw lastErr;
     };
 
-    // Safety net in case the Supabase listener never fires (extremely rare).
-    const safetyTimer = window.setTimeout(() => {
-      if (mounted && !settled) { settled = true; setLoading(false); }
-    }, 8000);
+    // Safety net in case the Supabase listener never fires.
+    const safetyTimer = window.setTimeout(markSettled, 10000);
 
-    // Single source of truth. INITIAL_SESSION fires on every mount, SIGNED_IN
-    // on fresh login, TOKEN_REFRESHED on background refresh, SIGNED_OUT only
-    // on explicit logout. We intentionally do NOT clear the user on a missing
-    // session during a non-SIGNED_OUT event, that's a transient hydration gap.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
+      console.log('[auth] event=', event, 'hasSession=', !!session);
 
       if (event === 'SIGNED_OUT') {
         setUser(null);
         queryClient.clear();
-        if (!settled) { settled = true; setLoading(false); }
+        markSettled();
         return;
       }
 
       if (session?.user) {
+        // First, set a stub user from the JWT so routing works immediately
+        // even if the profile DB call is slow or blocked. We'll upgrade to
+        // the full profile once hydrate resolves.
+        if (!userRef.current || userRef.current.id !== session.user.id) {
+          const meta = session.user.user_metadata ?? {};
+          const stub: Profile = {
+            id: session.user.id,
+            email: session.user.email ?? '',
+            fullName: (meta.full_name as string) ?? session.user.email ?? '',
+            role: ((meta.role as 'admin' | 'client') ?? 'client'),
+          };
+          if (mounted) setUser(stub);
+        }
+
         try {
           const profile = await hydrate(session.user.id);
           if (mounted) setUser(profile);
@@ -76,14 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         } catch (err) {
-          console.error('[auth] profile hydrate failed, keeping session intact', err);
+          console.error('[auth] profile hydrate failed after retries, keeping session', err);
+          // Do NOT clear user here. If userRef has a prior value, it persists.
         }
       } else if (event === 'INITIAL_SESSION') {
-        // No session on first load, user isn't signed in. Fine.
+        // Truly no session on first mount, user isn't signed in.
         if (mounted) setUser(null);
       }
 
-      if (!settled) { settled = true; setLoading(false); }
+      markSettled();
     });
 
     return () => {
