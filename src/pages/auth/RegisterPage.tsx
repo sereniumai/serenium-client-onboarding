@@ -171,6 +171,12 @@ export function RegisterPage() {
         {errorMsg && (
           <div className="rounded-lg border border-error/40 bg-error/10 p-3 text-sm text-error">{errorMsg}</div>
         )}
+        <p className="text-xs text-white/45 leading-relaxed">
+          By creating an account you agree to Serenium's{' '}
+          <Link to="/terms" className="text-orange hover:text-orange-hover">Terms of Service</Link>{' '}
+          and{' '}
+          <Link to="/privacy" className="text-orange hover:text-orange-hover">Privacy Policy</Link>.
+        </p>
         <button type="submit" disabled={stage === 'submitting'} className="btn-primary w-full">
           {stage === 'submitting' ? 'Creating account…' : 'Create account & sign in'}
         </button>

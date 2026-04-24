@@ -23,6 +23,22 @@ const SAMPLE_VARS: Record<string, string> = {
   '{{portalUrl}}':    'https://clients.sereniumai.com',
 };
 
+// Soft per-admin rate limit, caps runaway loops from the admin UI. Upgrade
+// to KV-backed when Vercel KV is wired up (Tier 1 checklist).
+const RATE_MAX = 10;
+const RATE_WINDOW_MS = 60 * 1000;
+const rateBuckets = new Map<string, number[]>();
+function checkRate(key: string): { ok: true } | { ok: false; retryAfter: number } {
+  const now = Date.now();
+  const hits = (rateBuckets.get(key) ?? []).filter(t => now - t < RATE_WINDOW_MS);
+  if (hits.length >= RATE_MAX) {
+    return { ok: false, retryAfter: Math.ceil((RATE_WINDOW_MS - (now - hits[0])) / 1000) };
+  }
+  hits.push(now);
+  rateBuckets.set(key, hits);
+  return { ok: true };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return json({ error: 'POST required' }, 405);
 
@@ -47,6 +63,14 @@ export default async function handler(req: Request): Promise<Response> {
   const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
   if (!profile || (profile as { role: string }).role !== 'admin') return json({ error: 'Admins only' }, 403);
 
+  const rate = checkRate(user.id);
+  if (!rate.ok) {
+    return new Response(
+      JSON.stringify({ error: `Too many test emails. Wait ${rate.retryAfter}s.` }),
+      { status: 429, headers: { 'content-type': 'application/json', 'retry-after': String(rate.retryAfter) } },
+    );
+  }
+
   let b: Body;
   try { b = (await req.json()) as Body; } catch { return json({ error: 'Invalid JSON' }, 400); }
   if (!b.to || !b.subject || !b.body) return json({ error: 'Missing fields' }, 400);
@@ -65,7 +89,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!resp.ok) {
     const txt = await resp.text();
     console.error('[send-test-email] Resend error', resp.status, txt);
-    return json({ error: `Resend ${resp.status}: ${txt.slice(0, 200)}` }, 502);
+    return json({ error: 'Email send failed. Try again in a moment.' }, 502);
   }
 
   return json({ ok: true });

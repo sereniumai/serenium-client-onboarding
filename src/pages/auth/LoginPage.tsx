@@ -60,7 +60,16 @@ export function LoginPage() {
       eyebrow="Client Portal"
       title={<>Welcome <span className="text-orange">back</span>.</>}
       subtitle="Sign in to pick up where you left off."
-      footer={<>Need help? <a href="mailto:contact@sereniumai.com" className="text-orange hover:text-orange-hover">contact@sereniumai.com</a></>}
+      footer={
+        <div className="space-y-1">
+          <div>Need help? <a href="mailto:contact@sereniumai.com" className="text-orange hover:text-orange-hover">contact@sereniumai.com</a></div>
+          <div className="text-xs text-white/35">
+            <Link to="/privacy" className="hover:text-white/60">Privacy</Link>
+            <span className="mx-2">·</span>
+            <Link to="/terms" className="hover:text-white/60">Terms</Link>
+          </div>
+        </div>
+      }
     >
       {invitedNotice && (
         <div className="mb-4 rounded-lg border border-orange/30 bg-orange/10 p-3 text-sm text-orange">

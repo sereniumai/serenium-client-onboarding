@@ -104,7 +104,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!resp.ok) {
     const txt = await resp.text();
     console.error('[send-invitation] Resend error', resp.status, txt);
-    return json({ error: 'Email send failed', detail: txt }, 502);
+    return json({ error: 'Email send failed. Try again in a moment.' }, 502);
   }
 
   return json({ ok: true });

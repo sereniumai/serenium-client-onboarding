@@ -41,41 +41,34 @@ export interface FireArgs {
 }
 
 export async function fireTeamNotifications(args: FireArgs): Promise<void> {
-  const events: Array<{ eventKey: string; subject: string; message: string }> = [];
+  const eventKeys: string[] = [];
 
-  // 1. Immediate module-completion events.
+  // 1. Immediate module-completion events. Content is rendered server-side
+  // from an allowlist, the client only triggers the event by key.
   if (args.justCompleted) {
     const key = `${args.justCompleted.serviceKey}.${args.justCompleted.moduleKey}`;
-    const evt = IMMEDIATE_MODULE_EVENTS[key];
-    if (evt) events.push({ eventKey: `module_completed:${key}`, subject: evt.subject, message: evt.message });
+    if (IMMEDIATE_MODULE_EVENTS[key]) eventKeys.push(`module_completed:${key}`);
   }
 
   // 2. Whole-service completion, fires once per service.
   for (const svc of SERVICES) {
     const wasComplete = isServiceComplete(args.previousProgress, svc.key, svc.modules.map(m => m.key));
     const isComplete  = isServiceComplete(args.nextProgress,     svc.key, svc.modules.map(m => m.key));
-    if (!wasComplete && isComplete) {
-      events.push({
-        eventKey: `service_completed:${svc.key}`,
-        subject: `${svc.label} onboarding complete`,
-        message: `Everything we need for ${svc.label} is in. The build / delivery workflow can start now.`,
-      });
-    }
+    if (!wasComplete && isComplete) eventKeys.push(`service_completed:${svc.key}`);
   }
 
-  // Fire each event. Dedupe is enforced by the edge function.
-  for (const e of events) {
-    fireOne(args.organizationId, e).catch(err => console.warn('[team-notif] send failed', err));
+  for (const eventKey of eventKeys) {
+    fireOne(args.organizationId, eventKey).catch(err => console.warn('[team-notif] send failed', err));
   }
 }
 
-async function fireOne(orgId: string, event: { eventKey: string; subject: string; message: string }) {
+async function fireOne(orgId: string, eventKey: string) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
   await fetch('/api/send-team-notification', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${session.access_token}` },
-    body: JSON.stringify({ organizationId: orgId, ...event }),
+    body: JSON.stringify({ organizationId: orgId, eventKey }),
   });
 }
 
@@ -96,11 +89,6 @@ export async function fireFirstLoginNotification(orgId: string): Promise<void> {
   await fetch('/api/send-team-notification', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${session.access_token}` },
-    body: JSON.stringify({
-      organizationId: orgId,
-      eventKey: 'signup:first_login',
-      subject: 'Client has logged in for the first time',
-      message: "The invite landed and the client is in. Onboarding has officially begun.",
-    }),
+    body: JSON.stringify({ organizationId: orgId, eventKey: 'signup:first_login' }),
   }).catch(() => {});
 }

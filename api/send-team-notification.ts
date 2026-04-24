@@ -29,8 +29,56 @@ const TEAM_RECIPIENTS = (process.env.RESEND_TEAM_NOTIFICATION_EMAILS || 'contact
 interface Body {
   organizationId: string;
   eventKey: string;
-  subject: string;
-  message: string;
+}
+
+// Allowlist of event keys + their server-rendered subject/message. Clients
+// can only TRIGGER one of these events, never control the content of the
+// email itself. Prevents a compromised client session from spamming the
+// team inbox with arbitrary text.
+const EVENT_TEMPLATES: Record<string, { subject: string; message: string }> = {
+  'signup:first_login': {
+    subject: 'Client has logged in for the first time',
+    message: 'The invite landed and the client is in. Onboarding has officially begun.',
+  },
+  'module_completed:website.registrar_delegation': {
+    subject: 'Registrar access granted',
+    message: 'The client has added contact@sereniumai.com as a delegate on their domain registrar. Confirm access + take next steps on DNS now.',
+  },
+  'module_completed:website.cms_access': {
+    subject: 'CMS access granted',
+    message: 'The client has added us as a WordPress admin. Log in, confirm access, and begin the site audit.',
+  },
+  'module_completed:website.analytics_and_search_console': {
+    subject: 'Analytics + Search Console access granted',
+    message: 'Admin access to Google Analytics + Search Console is in. Verify, configure conversion goals, and submit the sitemap if appropriate.',
+  },
+  'module_completed:ai_receptionist.phone_number_setup': {
+    subject: 'Call forwarding configured, live phone now routes to the AI',
+    message: 'Client has completed the phone forwarding steps. Test the AI immediately, their customers may already be reaching it.',
+  },
+  'module_completed:facebook_ads.grant_access': {
+    subject: 'Meta Business Manager access granted',
+    message: 'Partner access is in for the Meta Business Manager, Page, Instagram, Pixel, and Ad Account. Verify and begin campaign setup.',
+  },
+};
+
+function templateForEvent(eventKey: string) {
+  if (EVENT_TEMPLATES[eventKey]) return EVENT_TEMPLATES[eventKey];
+  if (eventKey.startsWith('service_completed:')) {
+    const svc = eventKey.slice('service_completed:'.length).replace(/_/g, ' ');
+    return {
+      subject: `Service complete · ${svc}`,
+      message: `A client has finished the ${svc} section. Review their answers in the admin portal.`,
+    };
+  }
+  if (eventKey.startsWith('module_completed:')) {
+    const mod = eventKey.slice('module_completed:'.length).replace(/_/g, ' ');
+    return {
+      subject: `Access granted · ${mod}`,
+      message: `A client has completed the ${mod} step, likely granting Serenium access to a third-party tool. Test the connection.`,
+    };
+  }
+  return null;
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -42,9 +90,6 @@ export default async function handler(req: Request): Promise<Response> {
   const anonKey     = process.env.VITE_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
   if (!supabaseUrl || !serviceKey || !resendKey || !anonKey) return json({ error: 'Email service not configured' }, 503);
 
-  // Caller can be any authenticated user, the trigger fires from client-side
-  // on service/module completion events. Membership in the org is enforced
-  // implicitly by the RLS-gated reads we do.
   const authHeader = req.headers.get('authorization') ?? '';
   const jwt = authHeader.replace(/^Bearer\s+/i, '').trim();
   if (!jwt) return json({ error: 'Unauthorized' }, 401);
@@ -58,9 +103,26 @@ export default async function handler(req: Request): Promise<Response> {
 
   let b: Body;
   try { b = (await req.json()) as Body; } catch { return json({ error: 'Invalid JSON' }, 400); }
-  if (!b.organizationId || !b.eventKey || !b.subject || !b.message) return json({ error: 'Missing fields' }, 400);
+  if (!b.organizationId || !b.eventKey) return json({ error: 'Missing fields' }, 400);
+
+  const tpl = templateForEvent(b.eventKey);
+  if (!tpl) return json({ error: 'Unknown event' }, 400);
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+
+  // Authorize: caller must be a member of the org OR an admin. Prevents a
+  // client in Org A from triggering notifications for Org B.
+  const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  const isAdmin = profile && (profile as { role: string }).role === 'admin';
+  if (!isAdmin) {
+    const { data: membership } = await admin
+      .from('organization_members')
+      .select('user_id')
+      .eq('organization_id', b.organizationId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!membership) return json({ error: 'Forbidden' }, 403);
+  }
 
   // De-dupe, check if this (org, event) was already sent.
   const { data: existing } = await admin
@@ -83,8 +145,8 @@ export default async function handler(req: Request): Promise<Response> {
   const adminUrl = `https://clients.sereniumai.com/admin/clients/${o.slug}`;
 
   const html = renderTeamEmail({
-    subject: b.subject,
-    message: b.message,
+    subject: tpl.subject,
+    message: tpl.message,
     businessName: o.business_name,
     primaryContact: o.primary_contact_email,
     adminUrl,
@@ -96,7 +158,7 @@ export default async function handler(req: Request): Promise<Response> {
     body: JSON.stringify({
       from: FROM_ADDRESS,
       to: TEAM_RECIPIENTS,
-      subject: `[Serenium] ${b.subject} · ${o.business_name}`,
+      subject: `[Serenium] ${tpl.subject} · ${o.business_name}`,
       html,
     }),
   });
