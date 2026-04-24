@@ -122,6 +122,28 @@ export function ClientDetail() {
 function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof useOrgBySlug>['data']>; onDelete: () => void }) {
   const updateOrg = useUpdateOrg();
   const deleteOrg = useDeleteOrg();
+  const { snapshot } = useOrgSnapshot(org.id);
+  const progress = snapshot ? import('../../lib/progress').then(m => m.getOrgProgress(snapshot)) : null;
+  void progress;
+  // We compute ready-for-live inline below via a small hook pattern to keep JSX clean.
+  const snap = snapshot;
+  const readyForLive = (() => {
+    if (!snap) return false;
+    // inlined getOrgProgress logic: ready if every module is complete
+    const enabledServiceKeys = snap.services.map(s => s.serviceKey);
+    if (enabledServiceKeys.length === 0) return false;
+    const total = snap.moduleProgress.length;
+    const done = snap.moduleProgress.filter(p => p.status === 'complete').length;
+    return total > 0 && total === done;
+  })();
+  const markLive = async () => {
+    try {
+      await updateOrg.mutateAsync({ id: org.id, patch: { status: 'live' } });
+      toast.success(`${org.businessName} is now live. Reports dashboard is unlocked for them.`);
+    } catch (err) {
+      toast.error('Could not set live', { description: (err as Error).message });
+    }
+  };
   const [businessName, setBusinessName] = useState(org.businessName);
   const [primaryName, setPrimaryName] = useState(org.primaryContactName ?? '');
   const [primaryEmail, setPrimaryEmail] = useState(org.primaryContactEmail ?? '');
@@ -166,6 +188,23 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
 
   return (
     <div className="space-y-6">
+      {readyForLive && org.status === 'onboarding' && (
+        <div className="card border-success/40 bg-success/5">
+          <div className="flex items-start gap-4">
+            <div className="h-10 w-10 rounded-xl bg-success/20 text-success flex items-center justify-center shrink-0">
+              <MessageCircleIcon className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold">All onboarding modules are complete</p>
+              <p className="text-xs text-white/60 mt-0.5">The client is waiting on the "we're reviewing" page. Once you've checked their submissions, mark them live to unlock the reports dashboard.</p>
+            </div>
+            <button onClick={markLive} disabled={updateOrg.isPending} className="btn-primary shrink-0">
+              {updateOrg.isPending ? 'Marking…' : 'Mark as live →'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card space-y-4">
         <p className="eyebrow">Business details</p>
         <LabeledInput label="Business name" value={businessName} onChange={setBusinessName} />
