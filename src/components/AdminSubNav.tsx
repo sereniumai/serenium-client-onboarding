@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, UserPlus, Video, Sparkles, Mail, MessageCircle, Bell } from 'lucide-react';
 import { cn } from '../lib/cn';
@@ -15,9 +15,9 @@ const ITEMS = [
 
 export function AdminSubNav() {
   const location = useLocation();
-  const [unread, setUnread] = useState(false);
-
-  useEffect(() => { setUnread(hasUnreadChangelog()); }, [location.pathname]);
+  // Read the unread flag on every route change — hasUnreadChangelog is a
+  // plain localStorage read, no need for state+effect round trip.
+  const unread = useMemo(() => hasUnreadChangelog(), [location.pathname]);
 
   return (
     <div className="bg-bg/60 border-b border-border-subtle">
