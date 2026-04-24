@@ -12,7 +12,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useOrgsForUser } from '../hooks/useOrgs';
 import { useOrgSnapshot } from '../hooks/useOnboarding';
 import { getOrgProgress } from '../lib/progress';
-import { hasUnreadChangelog } from '../pages/admin/ChangelogPage';
+import { hasUnreadChangelog } from '../lib/changelog';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -103,8 +103,8 @@ function buildSections({
       {
         title: 'Content',
         items: [
-          { to: '/admin/videos', label: 'Step videos', icon: Video },
           { to: '/admin/welcome-video', label: 'Welcome video', icon: Sparkles },
+          { to: '/admin/videos', label: 'Step videos', icon: Video },
         ],
       },
       {

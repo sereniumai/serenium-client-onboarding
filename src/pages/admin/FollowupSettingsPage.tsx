@@ -146,14 +146,14 @@ function Editor({ settings, onChange, onSave, saving, dirty }: {
       {/* Auto-send cadence timeline */}
       {hasCadence && (
         <div className="card">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-6">
             <p className="eyebrow">Auto-send cadence</p>
             <span className="text-xs text-white/40">{autoTemplates.length} active</span>
           </div>
-          <div className="relative pt-2 pb-8">
-            <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-orange/50 via-orange/30 to-transparent" />
-            <div className="relative flex items-center justify-between">
-              <CadenceDot label="Last active" day={0} />
+          <div className="relative pb-20">
+            <div className="absolute left-4 right-4 top-2 h-px bg-gradient-to-r from-orange/50 via-orange/30 to-transparent" />
+            <div className="relative flex items-start justify-between px-4">
+              <CadenceDot label="Last active" day={0} muted />
               {autoTemplates
                 .slice()
                 .sort((a, b) => (a.autoSendAfterDays ?? 0) - (b.autoSendAfterDays ?? 0))
@@ -165,6 +165,9 @@ function Editor({ settings, onChange, onSave, saving, dirty }: {
           <p className="text-[11px] text-white/40">Days since a client's last meaningful activity in the portal.</p>
         </div>
       )}
+
+      {/* Test email sender */}
+      <TestEmailCard templates={settings.templates} />
 
       {/* Templates */}
       <div>
@@ -225,18 +228,71 @@ function Editor({ settings, onChange, onSave, saving, dirty }: {
   );
 }
 
-function CadenceDot({ label, day }: { label: string; day: number }) {
+function TestEmailCard({ templates }: { templates: FollowupTemplate[] }) {
+  const [to, setTo] = useState('');
+  const [templateKey, setTemplateKey] = useState(templates[0]?.key ?? '');
+  const [sending, setSending] = useState(false);
+
+  const t = templates.find(x => x.key === templateKey);
+
+  const send = async () => {
+    if (!to.includes('@') || !t) { toast.error('Pick a template and enter a valid email'); return; }
+    setSending(true);
+    try {
+      const { supabase } = await import('../../lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not signed in');
+      const res = await fetch('/api/send-test-email', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ to, subject: t.subject, body: t.body }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error ?? `HTTP ${res.status}`);
+      toast.success(`Test email sent to ${to}`);
+    } catch (err) {
+      toast.error('Send failed', { description: (err as Error).message });
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center gap-2 relative">
+    <div className="card">
+      <p className="eyebrow mb-3">Send test email</p>
+      <p className="text-xs text-white/55 mb-4">Preview any template by sending it to yourself or a teammate. Placeholders render with sample values.</p>
+      <div className="grid md:grid-cols-[1fr,1fr,auto] gap-2">
+        <input
+          type="email"
+          value={to}
+          onChange={e => setTo(e.target.value)}
+          placeholder="you@sereniumai.com"
+          className="input"
+        />
+        <select value={templateKey} onChange={e => setTemplateKey(e.target.value)} className="input">
+          {templates.length === 0 && <option value="">No templates</option>}
+          {templates.map(x => <option key={x.key} value={x.key}>{x.label}</option>)}
+        </select>
+        <button onClick={send} disabled={sending || !to.trim() || !templateKey} className="btn-primary shrink-0">
+          <Mail className="h-4 w-4" /> {sending ? 'Sending…' : 'Send test'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CadenceDot({ label, day, muted }: { label: string; day: number; muted?: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-2 relative w-[100px]">
       <div className={cn(
         'h-3 w-3 rounded-full z-10',
-        day === 0 ? 'bg-white/60' : 'bg-orange shadow-[0_0_12px_rgba(255,107,31,0.6)]',
+        muted ? 'bg-white/60' : 'bg-orange shadow-[0_0_12px_rgba(255,107,31,0.6)]',
       )} />
-      <div className="absolute top-6 text-center whitespace-nowrap">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-orange tabular-nums">
+      <div className="pt-2 text-center">
+        <p className={cn('text-[10px] font-semibold uppercase tracking-wider tabular-nums', muted ? 'text-white/50' : 'text-orange')}>
           {day === 0 ? 'Day 0' : `Day ${day}`}
         </p>
-        <p className="text-[10px] text-white/50 mt-0.5">{label}</p>
+        <p className="text-[10px] text-white/50 mt-1 leading-tight break-words">{label}</p>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, UserPlus, Video, Sparkles, Mail, MessageCircle, Bell } from 'lucide-react';
 import { cn } from '../lib/cn';
-import { hasUnreadChangelog } from '../pages/admin/ChangelogPage';
+import { hasUnreadChangelog } from '../lib/changelog';
 
 const ITEMS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },

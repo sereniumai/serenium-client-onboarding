@@ -87,9 +87,15 @@ export function ServicePage() {
                 <span className="inline-flex items-center gap-1.5 text-xs text-white/70 px-2.5 py-1.5 rounded-full border border-border-subtle tabular-nums">
                   <CheckCircle2 className="h-3 w-3" /> {done} / {total} complete
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-xs text-white/60 px-2.5 py-1.5 rounded-full border border-border-subtle">
-                  Autosaves as you type
-                </span>
+              </div>
+
+              {/* Single autosave banner at the top of the service, instead of per-module text */}
+              <div className="mt-6 rounded-xl border border-orange/30 bg-orange/5 p-4 flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-orange shrink-0 mt-0.5" />
+                <div className="text-sm text-white/85">
+                  <p className="font-semibold mb-0.5">Autosaves as you type</p>
+                  <p className="text-xs text-white/65">Each section marks itself complete automatically when every required field is filled. You can also tap Complete at the bottom of any section to confirm.</p>
+                </div>
               </div>
             </div>
 
@@ -326,15 +332,19 @@ function ModuleSection({
           {complete ? (
             <div className="w-full flex items-center gap-3 rounded-lg border border-success/30 bg-success/5 px-4 py-2.5">
               <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-              <span className="text-sm text-white/80 flex-1">Module complete. Autosaved.</span>
+              <span className="text-sm text-white/80 flex-1">Section complete. Autosaved.</span>
               <button onClick={markIncomplete} className="text-xs text-white/60 hover:text-white underline underline-offset-2 shrink-0">
                 Edit again
               </button>
             </div>
           ) : (
-            <p className="text-xs text-white/45 ml-auto">
-              {readyFor ? 'Saving…' : 'Fill the required fields above, we\'ll mark this complete automatically.'}
-            </p>
+            <button
+              onClick={() => onSetModuleStatus('complete')}
+              disabled={!readyFor || adminLocked}
+              className="btn-primary !py-2 !px-4 text-xs"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Mark complete
+            </button>
           )}
         </div>
       </div>

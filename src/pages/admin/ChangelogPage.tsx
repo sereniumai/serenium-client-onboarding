@@ -1,21 +1,7 @@
 import { useEffect } from 'react';
 import { AppShell } from '../../components/AppShell';
-import { CHANGELOG, LATEST_CHANGELOG_DATE } from '../../config/changelog';
-
-const LAST_SEEN_KEY = 'serenium.changelog.lastSeen';
-
-export function markChangelogSeen() {
-  try { localStorage.setItem(LAST_SEEN_KEY, LATEST_CHANGELOG_DATE); } catch {}
-}
-
-export function hasUnreadChangelog(): boolean {
-  try {
-    const seen = localStorage.getItem(LAST_SEEN_KEY);
-    return seen !== LATEST_CHANGELOG_DATE;
-  } catch {
-    return false;
-  }
-}
+import { CHANGELOG } from '../../config/changelog';
+import { markChangelogSeen } from '../../lib/changelog';
 
 export function ChangelogPage() {
   useEffect(() => { markChangelogSeen(); }, []);

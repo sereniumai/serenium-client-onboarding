@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Plus, Activity, Rocket, AlertTriangle, Search, ArrowUp, ArrowDown, ArrowUpDown, Loader2 } from 'lucide-react';
+import { Users, Plus, Activity, Rocket, Search, ArrowUp, ArrowDown, ArrowUpDown, Loader2 } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { useAllOrgs } from '../../hooks/useOrgs';
@@ -63,10 +63,12 @@ export function AdminHome() {
         <div className="relative mx-auto max-w-7xl px-4 md:px-6 pt-10 md:pt-16 pb-16 md:pb-24">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-8 md:mb-10">
             <div>
-              <p className="eyebrow mb-3">Admin</p>
-              <h1 className="font-display font-black text-[clamp(1.75rem,6vw,3rem)] leading-[1.05] tracking-[-0.03em]">Client dashboard</h1>
+              <p className="eyebrow mb-3">Serenium admin</p>
+              <h1 className="font-display font-black text-[clamp(1.75rem,6vw,3rem)] leading-[1.05] tracking-[-0.03em]">Clients</h1>
               <p className="text-white/60 mt-2 text-sm md:text-base">
-                {isLoading ? 'Loading…' : `${orgs.length} ${orgs.length === 1 ? 'organization' : 'organizations'}`}
+                {isLoading ? 'Loading…'
+                  : orgs.length === 0 ? 'No clients yet. Spin up your first one.'
+                  : `${orgs.length} total, ${counts.onboarding} still onboarding, ${counts.live} live.`}
               </p>
             </div>
             <Link to="/admin/clients/new" className="btn-primary self-start md:self-auto">
@@ -81,22 +83,10 @@ export function AdminHome() {
             </div>
           )}
 
-          <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-8 md:mb-10">
-            <StatCard active={filter === 'all'}        onClick={() => setFilter('all')}        icon={Users}          label="All clients"    value={counts.all} />
-            <StatCard active={filter === 'onboarding'} onClick={() => setFilter('onboarding')} icon={Activity}       label="In onboarding"  value={counts.onboarding} />
-            <StatCard active={filter === 'live'}       onClick={() => setFilter('live')}       icon={Rocket}         label="Live"           value={counts.live} />
-            <div className="card !p-5 md:!p-6 opacity-50">
-              <div className="flex items-center justify-between">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-white/40">
-                  <AlertTriangle className="h-[18px] w-[18px]" strokeWidth={2.2} />
-                </div>
-              </div>
-              <div>
-                <p className="font-display font-black text-3xl md:text-4xl leading-none tabular-nums">—</p>
-                <p className="text-xs text-white/50 mt-1.5">Health scoring</p>
-                <p className="text-[10px] text-white/30 mt-0.5">(re-enabling in next phase)</p>
-              </div>
-            </div>
+          <div className="grid gap-3 grid-cols-3 mb-8 md:mb-10">
+            <StatCard active={filter === 'all'}        onClick={() => setFilter('all')}        icon={Users}    label="All clients"   value={counts.all} />
+            <StatCard active={filter === 'onboarding'} onClick={() => setFilter('onboarding')} icon={Activity} label="In onboarding" value={counts.onboarding} />
+            <StatCard active={filter === 'live'}       onClick={() => setFilter('live')}       icon={Rocket}   label="Live"          value={counts.live} />
           </div>
 
           <div className="card p-0 overflow-hidden">
