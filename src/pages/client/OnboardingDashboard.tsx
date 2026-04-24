@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useParams, Navigate, Link, useLocation } from 'react-router-dom';
+import { useParams, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle2, PlayCircle, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
@@ -37,8 +37,16 @@ export function OnboardingDashboard() {
   const { orgSlug } = useParams();
   const { user } = useAuth();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { data: org, isLoading: orgLoading } = useOrgBySlug(orgSlug);
   const { snapshot, isLoading: snapLoading } = useOrgSnapshot(org?.id);
+
+  // Admin landing on a client page without an explicit impersonate=1 flag
+  // almost always means they typed / bookmarked the URL. Bounce them to
+  // the admin view of that client instead of the client-facing dashboard.
+  if (user?.role === 'admin' && searchParams.get('impersonate') !== '1' && orgSlug) {
+    return <Navigate to={`/admin/clients/${orgSlug}`} replace />;
+  }
 
   // Scroll to a phase anchor when the sidebar link uses #phase-<key>, or
   // smoothly scroll back to the top when the hash clears (e.g. user clicks Overview).
