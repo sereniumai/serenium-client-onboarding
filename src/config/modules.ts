@@ -408,7 +408,7 @@ const GOOGLE_ADS: ServiceDef = {
       key: 'customer_id',
       title: 'Customer ID',
       estimatedMinutes: 2,
-      conditional: { field: 'google_ads_account_exists', op: 'eq', value: 'Yes' },
+      conditional: { path: 'google_ads.account_state.google_ads_account_exists', op: 'eq', value: 'Yes' },
       instructions: `We need your **10-digit Google Ads Customer ID** to send an MCC link request. Log into Google Ads, the number appears in the top-right of every screen, formatted like **123-456-7890**.`,
       fields: [
         { key: 'google_ads_customer_id', label: 'Customer ID', type: 'text', required: true, placeholder: '123-456-7890', validate: validateGoogleAdsId },
@@ -418,7 +418,7 @@ const GOOGLE_ADS: ServiceDef = {
       key: 'mcc_link',
       title: 'Accept MCC link request',
       estimatedMinutes: 2,
-      conditional: { field: 'google_ads_account_exists', op: 'eq', value: 'Yes' },
+      conditional: { path: 'google_ads.account_state.google_ads_account_exists', op: 'eq', value: 'Yes' },
       instructions: `Serenium sends a Manager Account (MCC) link request once we have your Customer ID. Accept it in **Google Ads → Tools & settings → Access and security → Managers**.`,
       fields: [
         { key: 'google_mcc_link_accepted', label: 'I accepted the MCC link request from Serenium', type: 'checkbox', required: true },
@@ -453,7 +453,10 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
       key: 'ownership',
       title: 'Confirm ownership',
       estimatedMinutes: 1,
-      conditional: { any: [{ field: 'gbp_profile_exists', op: 'eq', value: 'Yes verified' }, { field: 'gbp_profile_exists', op: 'eq', value: 'Yes unverified' }] },
+      conditional: { any: [
+        { path: 'google_business_profile.profile_state.gbp_profile_exists', op: 'eq', value: 'Yes verified' },
+        { path: 'google_business_profile.profile_state.gbp_profile_exists', op: 'eq', value: 'Yes unverified' },
+      ] },
       fields: [
         { key: 'gbp_ownership_confirmed', label: "I confirm I'm the verified owner of this Google Business Profile, not a third party, and not a stolen or old listing", type: 'checkbox', required: true },
       ],
@@ -462,7 +465,7 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
       key: 'manager_access',
       title: 'Grant Manager access',
       estimatedMinutes: 3,
-      conditional: { field: 'gbp_profile_exists', op: 'eq', value: 'Yes verified' },
+      conditional: { path: 'google_business_profile.profile_state.gbp_profile_exists', op: 'eq', value: 'Yes verified' },
       instructions: `In your Google Business Profile dashboard → **Users** → **Add users** → add \`contact@sereniumai.com\` as a **Manager**.`,
       fields: [
         { key: 'gbp_manager_access_granted', label: 'Added contact@sereniumai.com as a Manager', type: 'checkbox', required: true },
