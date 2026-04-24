@@ -40,12 +40,17 @@ export function OnboardingDashboard() {
   const { data: org, isLoading: orgLoading } = useOrgBySlug(orgSlug);
   const { snapshot, isLoading: snapLoading } = useOrgSnapshot(org?.id);
 
-  // Scroll to a phase anchor when the sidebar link uses #phase-<key>
+  // Scroll to a phase anchor when the sidebar link uses #phase-<key>, or
+  // smoothly scroll back to the top when the hash clears (e.g. user clicks Overview).
   useEffect(() => {
-    if (!location.hash || !snapshot) return;
-    const id = location.hash.slice(1);
-    const el = document.getElementById(id);
-    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    if (!snapshot) return;
+    if (location.hash) {
+      const id = location.hash.slice(1);
+      const el = document.getElementById(id);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    } else {
+      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 40);
+    }
   }, [location.hash, snapshot]);
 
   if (orgLoading || snapLoading) {

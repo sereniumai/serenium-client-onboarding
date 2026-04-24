@@ -151,8 +151,26 @@ export function Sidebar({ sections, children, footerExtra }: {
 }
 
 function SidebarItem({ item, onNavigate }: { item: SidebarNavItem; onNavigate: () => void }) {
+  const location = useLocation();
   const Icon = item.icon;
-  const classes = (isActive: boolean) => cn(
+
+  // Custom hash-aware active check. NavLink's default ignores hash so
+  // Overview (/path) and Phase anchors (/path#phase-x) all look active.
+  const isActive = (() => {
+    if (!item.to) return false;
+    const [itemPath, itemHash = ''] = item.to.split('#');
+    const hash = location.hash.replace('#', '');
+    if (item.end) {
+      // End link, strict path match AND no hash in the URL.
+      return location.pathname === itemPath && hash === itemHash;
+    }
+    if (itemHash) {
+      return location.pathname === itemPath && hash === itemHash;
+    }
+    return location.pathname === itemPath || location.pathname.startsWith(itemPath + '/');
+  })();
+
+  const classes = cn(
     'relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
     isActive
       ? 'bg-orange/10 text-orange'
@@ -177,7 +195,7 @@ function SidebarItem({ item, onNavigate }: { item: SidebarNavItem; onNavigate: (
 
   if (item.onClick) {
     return (
-      <button onClick={() => { item.onClick!(); onNavigate(); }} className={cn(classes(false), 'w-full text-left')}>
+      <button onClick={() => { item.onClick!(); onNavigate(); }} className={cn(classes, 'w-full text-left')}>
         {inner}
       </button>
     );
@@ -186,9 +204,8 @@ function SidebarItem({ item, onNavigate }: { item: SidebarNavItem; onNavigate: (
   return (
     <NavLink
       to={item.to!}
-      end={item.end}
       onClick={onNavigate}
-      className={({ isActive }) => classes(isActive)}
+      className={classes}
     >
       {inner}
     </NavLink>
