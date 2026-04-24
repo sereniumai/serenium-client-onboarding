@@ -127,11 +127,11 @@ const BUSINESS_PROFILE: ServiceDef = {
       estimatedMinutes: 3,
       fields: [{
         key: 'logo_files',
-        label: 'Logo files',
-        type: 'file_multiple',
-        accept: 'image/*',
+        label: 'Logo files — Google Drive or Dropbox link',
+        type: 'url',
         required: true,
-        helpText: 'High-res PNG transparent + SVG if available. Used across your website, ads, and all marketing assets.',
+        placeholder: 'https://drive.google.com/…',
+        helpText: 'Paste a link to a folder containing your logos. Include high-res PNG transparent + SVG if available. Make sure the link is set to "anyone with the link can view."',
       }],
     },
     {
@@ -856,7 +856,7 @@ const WEBSITE: ServiceDef = {
         { key: 'website_font_preference', label: 'Font preference (Google Font name or reference site)', type: 'text' },
         { key: 'website_liked_sites', label: '3 websites you like (URL + why)', type: 'repeatable', required: true, minItems: 3, helpText: 'Minimum 3.' },
         { key: 'brand_guidelines_available', label: 'Do you have existing brand guidelines?', type: 'select', options: ['Yes', 'No'] },
-        { key: 'brand_guidelines_upload', label: 'Upload brand guidelines (PDF)', type: 'file', accept: 'application/pdf', conditional: { field: 'brand_guidelines_available', op: 'eq', value: 'Yes' } },
+        { key: 'brand_guidelines_upload', label: 'Link to your brand guidelines (PDF on Drive / Dropbox)', type: 'url', placeholder: 'https://drive.google.com/…', helpText: 'Make sure the link is viewable by anyone with it.', conditional: { field: 'brand_guidelines_available', op: 'eq', value: 'Yes' } },
       ],
     },
     {
@@ -866,11 +866,11 @@ const WEBSITE: ServiceDef = {
       fields: [
         {
           key: 'website_logo',
-          label: 'Logo',
-          type: 'logo_picker',
+          label: 'Logo — Google Drive or Dropbox link',
+          type: 'url',
           required: true,
-          logoReuseFieldKey: 'business_profile.logo_files.logo_files',
-          helpText: 'Pick one: reuse what you uploaded in Business Profile, upload something fresh, or share a Drive / Dropbox link.',
+          placeholder: 'https://drive.google.com/…',
+          helpText: 'Same folder from Business Profile is fine, or a fresh link. Anyone-with-the-link access.',
         },
         { key: 'business_story', label: 'Business story (About page)', type: 'textarea', helpText: 'Origin, owner\'s story, values. Can be a voice-note reference too.' },
         {
