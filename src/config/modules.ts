@@ -165,16 +165,14 @@ const BUSINESS_PROFILE: ServiceDef = {
       fields: [{ key: 'awards', label: 'Awards, Best of lists, recognition', type: 'repeatable' }],
     },
     {
-      key: 'warranty',
-      title: 'Warranty details',
-      estimatedMinutes: 2,
-      fields: [{ key: 'warranty', label: 'Warranty terms (workmanship + materials)', type: 'textarea' }],
-    },
-    {
-      key: 'insurance',
-      title: 'Insurance details',
-      estimatedMinutes: 2,
-      fields: [{ key: 'insurance', label: 'Liability, WCB, bonding, what you carry', type: 'textarea' }],
+      key: 'warranty_and_insurance',
+      title: 'Warranty and insurance',
+      estimatedMinutes: 3,
+      instructions: 'Two short paragraphs. Used as trust signals on your website, in ads, and by the AI when prospects ask.',
+      fields: [
+        { key: 'warranty', label: 'Warranty terms (workmanship and materials)', type: 'textarea' },
+        { key: 'insurance', label: 'Insurance you carry (liability, WCB, bonding)', type: 'textarea' },
+      ],
     },
     {
       key: 'financing',
@@ -248,18 +246,6 @@ const BUSINESS_PROFILE: ServiceDef = {
       fields: [{ key: 'legal_business_name', label: 'Legal entity name', type: 'text', required: true, helpText: 'Used on contracts, website footer, GBP verification, privacy policy.' }],
     },
     {
-      key: 'customer_types',
-      title: 'Customer types served',
-      estimatedMinutes: 2,
-      fields: [{
-        key: 'customer_types_served',
-        label: 'Who you serve',
-        type: 'multiselect',
-        options: ['Residential', 'Commercial', 'Industrial', 'Multi-family', 'Insurance claims', 'Other'],
-        helpText: 'Drives website targeting, ad audience definition, and AI qualification filtering.',
-      }],
-    },
-    {
       key: 'social_profiles',
       title: 'Social profiles',
       estimatedMinutes: 4,
@@ -279,17 +265,6 @@ const BUSINESS_PROFILE: ServiceDef = {
       title: 'Year founded',
       estimatedMinutes: 1,
       fields: [{ key: 'year_founded', label: 'Year the business was founded', type: 'number', placeholder: 'e.g. 2012', helpText: 'Stable value for "Est. 2012" branding, years_in_business drifts, year_founded doesn\'t.' }],
-    },
-    {
-      key: 'review_platforms',
-      title: 'Active review platforms',
-      estimatedMinutes: 2,
-      fields: [{
-        key: 'review_platforms_active',
-        label: 'Where do customers leave reviews?',
-        type: 'multiselect',
-        options: ['Google', 'Facebook', 'HomeStars', 'BBB', 'Other'],
-      }],
     },
     {
       key: 'tagline',
