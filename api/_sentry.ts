@@ -35,6 +35,9 @@ export function captureEdgeError(err: unknown, context: {
   organizationId?: string | null;
   extra?: Record<string, unknown>;
 }): void {
+  // Only report in production. Preview + dev environments would pollute
+  // the issue feed and eat the Sentry quota.
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production') return;
   const dsn = getDsn();
   if (!dsn) return;
 
