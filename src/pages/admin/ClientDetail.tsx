@@ -264,12 +264,19 @@ function ServicesTab({ orgId }: { orgId: string }) {
       if (enabled) await enableService(orgId, key);
       else await disableService(orgId, key);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.orgServices(orgId) }); },
+    // Force an immediate refetch (not just invalidate) — with our 30s staleTime
+    // an invalidate alone won't redraw child views that are actively mounted
+    // with fresh cache, like the client dashboard if the admin flipped a
+    // service via impersonation. refetchQueries bypasses staleTime.
+    onSuccess: () => {
+      qc.refetchQueries({ queryKey: qk.orgServices(orgId) });
+      qc.invalidateQueries({ queryKey: qk.activity(orgId) });
+    },
   });
 
   const reorder = useMutation({
     mutationFn: (keys: ServiceKey[]) => reorderServices(orgId, keys),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.orgServices(orgId) }); },
+    onSuccess: () => { qc.refetchQueries({ queryKey: qk.orgServices(orgId) }); },
     onError: (err: Error) => toast.error('Reorder failed', { description: err.message }),
   });
 
