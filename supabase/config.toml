@@ -1,0 +1,42 @@
+# Serenium Supabase CLI config.
+# Run `supabase init` / `supabase link` / `supabase db push` from the project root.
+# Docs: https://supabase.com/docs/guides/cli/config
+
+project_id = "serenium-onboarding"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "https://clients.sereniumai.com"
+additional_redirect_urls = [
+  "http://localhost:5173",
+  "http://localhost:5173/**",
+  "https://clients.sereniumai.com/**"
+]
+jwt_expiry = 3600
+enable_signup = true
+enable_confirmations = false  # invite-only flow — we'd rather not require email confirmation on top of the invite
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"

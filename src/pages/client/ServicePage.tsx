@@ -14,7 +14,7 @@ import { FinalCelebration } from '../../components/FinalCelebration';
 import { useAuth } from '../../auth/AuthContext';
 import { db } from '../../lib/mockDb';
 import { getService, type ModuleDef } from '../../config/modules';
-import { loomEmbedUrl } from '../../lib/loom';
+import { videoEmbedUrl } from '../../lib/videoEmbed';
 import { getOrgProgress, getEnabledModulesForService, moduleIsAdminLocked } from '../../lib/progress';
 import { useDbVersion } from '../../hooks/useDb';
 import { sfx } from '../../lib/soundFx';
@@ -183,9 +183,9 @@ function ModuleSection({
   const complete = mp?.status === 'complete';
   const adminLocked = moduleIsAdminLocked(orgId, module);
   const retellNumber = db.getRetellNumber(orgId);
-  const loom = module.videoUrl ? loomEmbedUrl(module.videoUrl) : null;
+  const configVideo = module.videoUrl ? videoEmbedUrl(module.videoUrl) : null;
   const storedVideo = db.getVideoUrl(serviceKey, module.key);
-  const embed = loom || (storedVideo ? loomEmbedUrl(storedVideo) : null);
+  const embed = configVideo || (storedVideo ? videoEmbedUrl(storedVideo) : null);
   const hasVideo = !!embed || !!module.videoPlaceholder;
 
   const svcEntry = db.listServicesForOrganization(orgId).find(s => s.serviceKey === serviceKey);

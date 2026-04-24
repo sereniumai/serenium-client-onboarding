@@ -1,23 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, Plus, Trash2, Megaphone, MessageSquare, Globe, Building2, Headphones, Check, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Plus, Trash2, Check, ChevronDown } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { db } from '../../lib/mockDb';
 import { SERVICES, SELECTABLE_SERVICES, getService } from '../../config/modules';
+import { SERVICE_ICON } from '../../config/serviceIcons';
 import { toast } from 'sonner';
 import type { ServiceKey } from '../../types';
 import { cn } from '../../lib/cn';
 
 type UserRow = { fullName: string; email: string; role: 'owner' | 'member' };
-
-const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  business_profile: Building2,
-  facebook_ads: Megaphone,
-  ai_sms: MessageSquare,
-  ai_receptionist: Headphones,
-  website: Globe,
-};
 
 export function NewClientWizard() {
   const navigate = useNavigate();

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  ChevronLeft, Users, CheckCircle2, Clock, Megaphone, MessageSquare, Globe, Building2, Headphones, PhoneForwarded,
+  ChevronLeft, Users, CheckCircle2, Clock, PhoneForwarded,
   FileText, Image as ImageIcon, Film, Download, UserCircle, Trash2, Plus,
-  StickyNote, ShieldOff, Save, Edit3, ChevronDown,
+  StickyNote, ShieldOff, Save, Edit3, ChevronDown, Mail, Sparkles,
 } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
@@ -17,14 +17,15 @@ import { getService, SERVICES, getModule, type ServiceDef } from '../../config/m
 import type { ServiceKey, AdminNote, MemberRole } from '../../types';
 import { cn } from '../../lib/cn';
 import { ReportsAdmin } from './ReportsAdmin';
+import { EmptyState } from '../../components/EmptyState';
+import { Markdown } from '../../components/Markdown';
+import { WeeklyAvailabilityDisplay, type WeekSchedule } from '../../components/WeeklyAvailabilityDisplay';
+import { FollowupModal } from '../../components/FollowupModal';
+import { SERVICE_ICON } from '../../config/serviceIcons';
 import { ActivityFeed } from '../../components/ActivityFeed';
 import { toast } from 'sonner';
 
-const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, ai_receptionist: Headphones, website: Globe,
-};
-
-type Tab = 'overview' | 'reports' | 'services' | 'users' | 'submissions' | 'files' | 'notes';
+type Tab = 'overview' | 'reports' | 'services' | 'users' | 'submissions' | 'files' | 'notes' | 'ai_chat';
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'reports', label: 'Monthly reports' },
@@ -33,12 +34,14 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'submissions', label: 'Submissions' },
   { key: 'files', label: 'Files' },
   { key: 'notes', label: 'Notes' },
+  { key: 'ai_chat', label: 'AI chat' },
 ];
 
 export function ClientDetail() {
   const { orgSlug } = useParams();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('overview');
+  const [followupOpen, setFollowupOpen] = useState(false);
   useDbVersion();
 
   const org = orgSlug ? db.getOrganizationBySlug(orgSlug) : null;
@@ -66,7 +69,8 @@ export function ClientDetail() {
             <ChevronLeft className="h-4 w-4" /> All clients
           </Link>
 
-          <OrgHeader org={org} progress={progress} hasMembers={members.length > 0} onImpersonate={impersonate} />
+          <OrgHeader org={org} progress={progress} hasMembers={members.length > 0} onImpersonate={impersonate} onFollowup={() => setFollowupOpen(true)} />
+          {followupOpen && <FollowupModal orgId={org.id} orgName={org.businessName} contactName={org.primaryContactName} contactEmail={org.primaryContactEmail} onClose={() => setFollowupOpen(false)} />}
 
           <div className="flex gap-1 border-b border-border-subtle mb-8 overflow-x-auto">
             {TABS.map(t => (
@@ -88,6 +92,7 @@ export function ClientDetail() {
           {tab === 'users' && <UsersTab orgId={org.id} members={members} />}
           {tab === 'submissions' && <SubmissionsTab orgId={org.id} />}
           {tab === 'files' && <FilesTab orgId={org.id} orgName={org.businessName} />}
+          {tab === 'ai_chat' && <AiChatTab orgId={org.id} />}
           {tab === 'notes' && <NotesTab orgId={org.id} />}
         </div>
       </div>
@@ -95,17 +100,19 @@ export function ClientDetail() {
   );
 }
 
-function OrgHeader({ org, progress, hasMembers, onImpersonate }: {
-  org: { id: string; businessName: string; primaryContactName?: string; primaryContactEmail?: string; primaryContactPhone?: string };
+function OrgHeader({ org, progress, hasMembers, onImpersonate, onFollowup }: {
+  org: { id: string; businessName: string; primaryContactName?: string; primaryContactEmail?: string; primaryContactPhone?: string; plan?: 'starter' | 'pro' | 'custom' };
   progress: ReturnType<typeof getOrgProgress>;
   hasMembers: boolean;
   onImpersonate: () => void;
+  onFollowup: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [businessName, setBusinessName] = useState(org.businessName);
   const [primaryName, setPrimaryName] = useState(org.primaryContactName ?? '');
   const [primaryEmail, setPrimaryEmail] = useState(org.primaryContactEmail ?? '');
   const [primaryPhone, setPrimaryPhone] = useState(org.primaryContactPhone ?? '');
+  const [plan, setPlan] = useState<'starter' | 'pro' | 'custom' | ''>(org.plan ?? '');
 
   const save = () => {
     db.updateOrganization(org.id, {
@@ -113,6 +120,7 @@ function OrgHeader({ org, progress, hasMembers, onImpersonate }: {
       primaryContactName: primaryName.trim() || undefined,
       primaryContactEmail: primaryEmail.trim() || undefined,
       primaryContactPhone: primaryPhone.trim() || undefined,
+      plan: plan || undefined,
     });
     toast.success('Client details updated');
     setEditing(false);
@@ -123,6 +131,7 @@ function OrgHeader({ org, progress, hasMembers, onImpersonate }: {
     setPrimaryName(org.primaryContactName ?? '');
     setPrimaryEmail(org.primaryContactEmail ?? '');
     setPrimaryPhone(org.primaryContactPhone ?? '');
+    setPlan(org.plan ?? '');
     setEditing(false);
   };
 
@@ -144,9 +153,20 @@ function OrgHeader({ org, progress, hasMembers, onImpersonate }: {
             <input className="input" type="email" value={primaryEmail} onChange={e => setPrimaryEmail(e.target.value)} />
           </div>
         </div>
-        <div>
-          <label className="label">Primary contact phone</label>
-          <input className="input" type="tel" value={primaryPhone} onChange={e => setPrimaryPhone(e.target.value)} />
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="label">Primary contact phone</label>
+            <input className="input" type="tel" value={primaryPhone} onChange={e => setPrimaryPhone(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Plan</label>
+            <select className="input" value={plan} onChange={e => setPlan(e.target.value as typeof plan)}>
+              <option value="">— unset —</option>
+              <option value="starter">Starter</option>
+              <option value="pro">Pro</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <button onClick={cancel} className="btn-secondary">Cancel</button>
@@ -178,6 +198,9 @@ function OrgHeader({ org, progress, hasMembers, onImpersonate }: {
           <p className="text-xs uppercase tracking-wider text-white/40">Progress</p>
           <p className="font-display font-black text-3xl tabular-nums">{progress.overall}%</p>
         </div>
+        <button onClick={onFollowup} className="btn-secondary !py-2 !px-3 md:!py-3 md:!px-6 text-xs md:text-sm" title="Send a follow-up email to this client">
+          <Mail className="h-4 w-4" /> <span className="hidden sm:inline">Send follow-up</span><span className="sm:hidden">Chase</span>
+        </button>
         {hasMembers && (
           <button onClick={onImpersonate} className="btn-secondary !py-2 !px-3 md:!py-3 md:!px-6 text-xs md:text-sm">
             <UserCircle className="h-4 w-4" /> <span className="hidden sm:inline">View as client</span><span className="sm:hidden">View</span>
@@ -361,6 +384,7 @@ function ServiceAccordion({
       </div>
 
       {enabled && svcKey === 'ai_receptionist' && <AiReceptionistAdminControls orgId={orgId} />}
+      {enabled && svcKey === 'ai_sms' && <AiSmsAdminControls orgId={orgId} />}
 
       {enabled && (
         <div className="border-t border-border-subtle">
@@ -620,6 +644,46 @@ function AiReceptionistAdminControls({ orgId }: { orgId: string }) {
   );
 }
 
+function AiSmsAdminControls({ orgId }: { orgId: string }) {
+  const flag = db.getAdminFlag(orgId, 'ghl_calendar_ready_for_client');
+
+  const toggleFlag = () => {
+    db.setAdminFlag(orgId, 'ghl_calendar_ready_for_client', !flag);
+    toast.success(!flag ? 'GHL calendar step unlocked for this client' : 'GHL calendar step re-locked');
+  };
+
+  return (
+    <div className="border-t border-border-subtle p-5 bg-bg-tertiary/20">
+      <div className="flex items-start gap-3">
+        <div className="h-9 w-9 rounded-lg bg-orange/10 text-orange flex items-center justify-center shrink-0">
+          <Mail className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-sm">GHL subaccount is provisioned</p>
+              <p className="text-xs text-white/50">Flipping this on unlocks the Calendar connection step for the client (AI SMS → GHL setup).</p>
+            </div>
+            <button
+              onClick={toggleFlag}
+              role="switch"
+              aria-checked={flag}
+              className={cn(
+                'relative h-7 w-12 rounded-full transition-colors shrink-0',
+                flag ? 'bg-orange' : 'bg-bg-tertiary border border-border-subtle',
+              )}>
+              <span className={cn(
+                'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
+                flag ? 'translate-x-5' : 'translate-x-0.5',
+              )} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MemberRow({ orgId, profile, member, onRemove }: {
   orgId: string;
   profile: { id: string; fullName: string; email: string };
@@ -689,51 +753,81 @@ function MemberRow({ orgId, profile, member, onRemove }: {
   );
 }
 
+type SubRow = { fieldKey: string; value: unknown; updatedAt: string; fieldLabel: string; field?: import('../../config/modules').Field };
+
 function SubmissionsTab({ orgId }: { orgId: string }) {
   const all = db.listSubmissionsForOrg(orgId);
   const enabled = db.listServicesForOrganization(orgId);
 
+  const grouped = useMemo(() => {
+    const g: Record<string, Record<string, SubRow[]>> = {};
+    for (const sub of all) {
+      const [svcKey, modKey, ...rest] = sub.fieldKey.split('.');
+      if (!svcKey || !modKey) continue;
+      const fieldKey = rest.join('.');
+      const mod = getModule(svcKey as ServiceKey, modKey);
+      const field = mod?.fields?.find(f => f.key === fieldKey);
+      g[svcKey] ||= {};
+      g[svcKey][modKey] ||= [];
+      g[svcKey][modKey].push({
+        fieldKey,
+        value: sub.value,
+        updatedAt: sub.updatedAt,
+        fieldLabel: field?.label ?? fieldKey,
+        field,
+      });
+    }
+    return g;
+  }, [all]);
+
   if (all.length === 0) {
     return (
-      <div className="card text-center py-16">
-        <div className="h-14 w-14 rounded-2xl bg-orange/10 flex items-center justify-center mx-auto mb-4">
-          <Edit3 className="h-7 w-7 text-orange" />
-        </div>
-        <h3 className="font-display font-bold text-xl mb-2">No submissions yet</h3>
-        <p className="text-white/50 text-sm max-w-md mx-auto">As the client fills out fields in their onboarding, each answer will show up here grouped by service and step.</p>
-      </div>
+      <EmptyState
+        icon={Edit3}
+        title="No submissions yet"
+        description="As the client fills out fields in their onboarding, each answer will show up here grouped by service and step."
+      />
     );
-  }
-
-  const grouped: Record<string, Record<string, Array<{ fieldKey: string; value: unknown; updatedAt: string; fieldLabel: string }>>> = {};
-  for (const sub of all) {
-    const [svcKey, modKey, ...rest] = sub.fieldKey.split('.');
-    if (!svcKey || !modKey) continue;
-    const fieldKey = rest.join('.');
-    const mod = getModule(svcKey as ServiceKey, modKey);
-    const field = mod?.fields?.find(f => f.key === fieldKey);
-    grouped[svcKey] ||= {};
-    grouped[svcKey][modKey] ||= [];
-    grouped[svcKey][modKey].push({ fieldKey, value: sub.value, updatedAt: sub.updatedAt, fieldLabel: field?.label ?? fieldKey });
   }
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify(grouped, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `submissions-${orgId.slice(0, 8)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerDownload(blob, `submissions-${orgId.slice(0, 8)}.json`);
+  };
+
+  const exportCsv = () => {
+    const rows: string[][] = [['Service', 'Module', 'Field', 'Value', 'Updated']];
+    for (const svcKey of Object.keys(grouped)) {
+      const svc = getService(svcKey as ServiceKey);
+      for (const modKey of Object.keys(grouped[svcKey])) {
+        const mod = getModule(svcKey as ServiceKey, modKey);
+        for (const s of grouped[svcKey][modKey]) {
+          rows.push([
+            svc?.label ?? svcKey,
+            mod?.title ?? modKey,
+            s.fieldLabel,
+            stringifyForCsv(s.value),
+            s.updatedAt,
+          ]);
+        }
+      }
+    }
+    const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n');
+    triggerDownload(new Blob([csv], { type: 'text/csv' }), `submissions-${orgId.slice(0, 8)}.csv`);
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <p className="text-sm text-white/60">{all.length} fields submitted · grouped by service and step</p>
-        <button onClick={exportJson} className="btn-secondary !py-2 !px-4 text-sm">
-          <Download className="h-4 w-4" /> Export JSON
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportCsv} className="btn-secondary !py-2 !px-4 text-sm">
+            <Download className="h-4 w-4" /> CSV
+          </button>
+          <button onClick={exportJson} className="btn-secondary !py-2 !px-4 text-sm">
+            <Download className="h-4 w-4" /> JSON
+          </button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -758,11 +852,16 @@ function SubmissionsTab({ orgId }: { orgId: string }) {
                   return (
                     <div key={m.key} className="p-6">
                       <p className="font-semibold text-sm mb-3">{m.title}</p>
-                      <dl className="space-y-3">
+                      <dl className="space-y-4">
                         {modSubs.map(s => (
-                          <div key={s.fieldKey} className="grid grid-cols-1 md:grid-cols-[180px,1fr] gap-1 md:gap-4 text-sm">
-                            <dt className="text-white/50">{s.fieldLabel}</dt>
-                            <dd className="text-white/90 break-words">{formatValue(s.value)}</dd>
+                          <div key={s.fieldKey} className="grid grid-cols-1 md:grid-cols-[200px,1fr] gap-1 md:gap-4 text-sm">
+                            <dt className="text-white/50">
+                              <div>{s.fieldLabel}</div>
+                              <div className="text-[10px] uppercase tracking-wider text-white/30 mt-0.5">
+                                {formatDistanceToNow(new Date(s.updatedAt), { addSuffix: true })}
+                              </div>
+                            </dt>
+                            <dd className="text-white/90 break-words"><SubmissionValue value={s.value} field={s.field} orgId={orgId} fieldKey={`${serviceKey}.${m.key}.${s.fieldKey}`} /></dd>
                           </div>
                         ))}
                       </dl>
@@ -981,11 +1080,214 @@ function NotesTab({ orgId }: { orgId: string }) {
   );
 }
 
-function formatValue(v: unknown): string {
-  if (v == null || v === '') return '—';
-  if (Array.isArray(v)) return v.filter(Boolean).join(', ') || '—';
-  if (typeof v === 'object') return JSON.stringify(v);
-  return String(v);
+function SubmissionValue({ value, field, orgId, fieldKey }: {
+  value: unknown;
+  field?: import('../../config/modules').Field;
+  orgId: string;
+  fieldKey: string;
+}) {
+  const type = field?.type;
+  if (value == null || value === '' || (Array.isArray(value) && value.length === 0)) {
+    return <span className="text-white/30">—</span>;
+  }
+
+  if (type === 'color' && typeof value === 'string') {
+    return (
+      <div className="inline-flex items-center gap-2">
+        <div className="h-6 w-6 rounded border border-border-subtle shadow-sm" style={{ backgroundColor: value }} />
+        <code className="text-xs font-mono text-white/70">{value}</code>
+      </div>
+    );
+  }
+
+  if (type === 'checkbox') {
+    return value === true
+      ? <span className="inline-flex items-center gap-1.5 text-success"><CheckCircle2 className="h-4 w-4" /> Yes</span>
+      : <span className="inline-flex items-center gap-1.5 text-white/40">— No</span>;
+  }
+
+  if (type === 'email' && typeof value === 'string') {
+    return <a href={`mailto:${value}`} className="text-orange hover:text-orange-hover">{value}</a>;
+  }
+
+  if (type === 'phone' && typeof value === 'string') {
+    return <a href={`tel:${value}`} className="text-orange hover:text-orange-hover">{value}</a>;
+  }
+
+  if (type === 'url' && typeof value === 'string') {
+    return <a href={value} target="_blank" rel="noopener noreferrer" className="text-orange hover:text-orange-hover break-all">{value}</a>;
+  }
+
+  if (type === 'select' && typeof value === 'string') {
+    return <span className="inline-flex px-2 py-0.5 rounded-md bg-white/5 border border-border-subtle text-white/90 text-xs">{value}</span>;
+  }
+
+  if (type === 'multiselect' && Array.isArray(value)) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {value.map((v, i) => (
+          <span key={i} className="inline-flex px-2 py-0.5 rounded-md bg-orange/10 text-orange border border-orange/20 text-xs">{String(v)}</span>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === 'repeatable' && Array.isArray(value)) {
+    const items = value.filter(v => v != null && v !== '');
+    if (items.length === 0) return <span className="text-white/30">—</span>;
+    return (
+      <ul className="list-disc pl-5 space-y-1 marker:text-orange/60">
+        {items.map((v, i) => <li key={i} className="text-white/90">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</li>)}
+      </ul>
+    );
+  }
+
+  if (type === 'textarea' && typeof value === 'string') {
+    return <p className="whitespace-pre-wrap leading-relaxed">{value}</p>;
+  }
+
+  if (type === 'weekly_availability' && value && typeof value === 'object') {
+    return <WeeklyAvailabilityDisplay schedule={value as WeekSchedule} />;
+  }
+
+  if (type === 'slider' && typeof value === 'number') {
+    const suffix = field?.slider?.suffix ?? '';
+    return <span className="font-mono tabular-nums">{value}{suffix}</span>;
+  }
+
+  if (type === 'structured' && value && typeof value === 'object' && !Array.isArray(value)) {
+    const data = value as Record<string, unknown>;
+    const schema = field?.schema ?? [];
+    const entries = schema.length
+      ? schema.map(s => [s.label, data[s.key]] as const).filter(([, v]) => v != null && v !== '')
+      : Object.entries(data).filter(([, v]) => v != null && v !== '');
+    if (entries.length === 0) return <span className="text-white/30">—</span>;
+    return (
+      <dl className="space-y-1">
+        {entries.map(([label, val]) => (
+          <div key={String(label)} className="flex gap-2 text-sm">
+            <dt className="text-white/40 shrink-0">{String(label)}:</dt>
+            <dd className="text-white/90">{String(val)}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  if (type === 'logo_picker' && value && typeof value === 'object') {
+    const data = value as { mode?: string; url?: string };
+    const reuseKey = field?.logoReuseFieldKey ?? 'business_profile.logo_files.logo_files';
+    const uploads = data.mode === 'upload'
+      ? db.listUploads(orgId, fieldKey)
+      : data.mode === 'reuse' ? db.listUploads(orgId, reuseKey) : [];
+    if (data.mode === 'url' && data.url) {
+      return <a href={data.url} target="_blank" rel="noopener noreferrer" className="text-orange hover:text-orange-hover break-all">{data.url}</a>;
+    }
+    return (
+      <div>
+        <p className="text-xs text-white/50 mb-2">
+          {data.mode === 'reuse' ? 'Reused from Business Profile' : data.mode === 'upload' ? 'Uploaded here' : '—'}
+        </p>
+        {uploads.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {uploads.map(u => (
+              <a key={u.id} href={u.fileUrl} target="_blank" rel="noopener noreferrer" className="h-16 w-16 rounded-md border border-border-subtle bg-bg overflow-hidden flex items-center justify-center hover:border-orange/40">
+                {u.mimeType.startsWith('image/')
+                  ? <img src={u.fileUrl} alt={u.fileName} className="max-h-full max-w-full object-contain" />
+                  : <span className="text-[9px] text-white/60 p-1 text-center break-words">{u.fileName}</span>}
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-warning">No file attached yet.</p>
+        )}
+      </div>
+    );
+  }
+
+  if (Array.isArray(value)) return <span>{value.filter(Boolean).join(', ') || '—'}</span>;
+  if (typeof value === 'object') return <pre className="text-xs text-white/60 bg-bg-tertiary/40 rounded p-2 overflow-x-auto">{JSON.stringify(value, null, 2)}</pre>;
+  return <span>{String(value)}</span>;
+}
+
+
+function AiChatTab({ orgId }: { orgId: string }) {
+  const messages = db.listAiChatForOrg(orgId);
+  const questions = messages.filter(m => m.role === 'user').length;
+
+  if (messages.length === 0) {
+    return (
+      <EmptyState
+        icon={Sparkles}
+        title="No AI conversations yet"
+        description="When this client asks the onboarding assistant for help, every exchange will show up here — useful for spotting confusion and improving the tool."
+      />
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-sm text-white/60">{questions} question{questions === 1 ? '' : 's'} · {messages.length} total messages</p>
+        <Link to="/admin/ai-conversations" className="text-sm text-orange hover:text-orange-hover">View all clients →</Link>
+      </div>
+      <div className="card p-5 space-y-3">
+        {messages.map(m => {
+          const isUser = m.role === 'user';
+          const ctx = m.context ? (() => {
+            const [svc, mod] = m.context.split('.');
+            const service = getService(svc as ServiceKey);
+            if (!service) return m.context;
+            if (!mod) return service.label;
+            const md = getModule(svc as ServiceKey, mod);
+            return `${service.label} → ${md?.title ?? mod}`;
+          })() : null;
+          return (
+            <div key={m.id} className={cn('flex gap-2.5', isUser ? 'justify-end' : 'justify-start')}>
+              {!isUser && <div className="h-7 w-7 rounded-lg bg-orange/15 text-orange flex items-center justify-center shrink-0 self-start mt-0.5"><Sparkles className="h-3.5 w-3.5" /></div>}
+              <div className={cn('max-w-[80%]', isUser && 'text-right')}>
+                <div className={cn(
+                  'rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed inline-block text-left',
+                  isUser ? 'bg-orange text-white rounded-br-md' : 'bg-bg-tertiary/70 border border-border-subtle rounded-bl-md'
+                )}>
+                  {isUser ? <span className="whitespace-pre-wrap">{m.content}</span> : <Markdown>{m.content}</Markdown>}
+                </div>
+                <div className={cn('mt-1 text-[10px] text-white/40 flex gap-2', isUser && 'justify-end')}>
+                  <span>{formatDistanceToNow(new Date(m.createdAt), { addSuffix: true })}</span>
+                  {ctx && <><span className="text-white/20">·</span><span>on {ctx}</span></>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(v: string): string {
+  if (v == null) return '';
+  const needsQuoting = /[",\n\r]/.test(v);
+  const escaped = v.replace(/"/g, '""');
+  return needsQuoting ? `"${escaped}"` : escaped;
+}
+
+function stringifyForCsv(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.filter(v => v != null && v !== '').map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join(' | ');
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
 }
 
 function formatBytes(bytes: number): string {

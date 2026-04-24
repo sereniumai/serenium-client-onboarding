@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { LogOut, FileBarChart2, LayoutDashboard, Volume2, VolumeX } from 'lucide-react';
 import { soundsEnabled, setSoundsEnabled } from '../lib/soundFx';
 import { Logo } from './Logo';
+import { AiHelperChat } from './AiHelperChat';
+import { AdminSubNav } from './AdminSubNav';
+import { ErrorBoundary } from './ErrorBoundary';
 import { useAuth } from '../auth/AuthContext';
 import { db } from '../lib/mockDb';
 import { useDbVersion } from '../hooks/useDb';
@@ -130,9 +133,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </header>
 
+      {user?.role === 'admin' && location.pathname.startsWith('/admin') && <AdminSubNav />}
+
       <main className="flex-1">
-        {children}
+        <ErrorBoundary variant="inline" resetKey={location.pathname}>
+          {children}
+        </ErrorBoundary>
       </main>
+      <AiHelperChat />
     </div>
   );
 }

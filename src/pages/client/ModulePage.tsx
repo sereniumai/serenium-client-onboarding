@@ -10,7 +10,7 @@ import { Markdown } from '../../components/Markdown';
 import { CurriculumSidebar } from '../../components/CurriculumSidebar';
 import { CompletionOverlay } from '../../components/CompletionOverlay';
 import { FinalCelebration } from '../../components/FinalCelebration';
-import { getOrgProgress } from '../../lib/progress';
+import { getOrgProgress, findNextActionableModule } from '../../lib/progress';
 import { sfx } from '../../lib/soundFx';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
@@ -23,6 +23,23 @@ function ConditionalLinkBlock({ orgId, svcKey, modKey, links }: { orgId: string;
   if (!match) return null;
   const label = match.value as string;
   const href = links[label];
+  const embed = videoEmbedUrl(href);
+  if (embed) {
+    return (
+      <div className="mt-4">
+        <p className="text-xs text-white/60 mb-2">How to do this in {label}:</p>
+        <div className="aspect-video rounded-xl border border-border-subtle overflow-hidden bg-black">
+          <iframe
+            src={embed}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+            className="w-full h-full"
+            title={`Walkthrough: ${label}`}
+          />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="mt-4 p-3 rounded-lg border border-orange/30 bg-orange/5">
       <p className="text-xs text-white/60 mb-1">How to do this in {label}:</p>
@@ -36,7 +53,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { db } from '../../lib/mockDb';
 import { getService, getModule } from '../../config/modules';
 import { evaluate } from '../../lib/condition';
-import { loomEmbedUrl } from '../../lib/loom';
+import { videoEmbedUrl } from '../../lib/videoEmbed';
 import { moduleIsReady } from '../../lib/progress';
 import { useDbVersion } from '../../hooks/useDb';
 import type { ServiceKey } from '../../types';
@@ -71,7 +88,12 @@ export function ModulePage() {
   const complete = mp?.status === 'complete';
 
   const svcIndex = svc.modules.findIndex(m => m.key === mod.key);
-  const next = svc.modules[svcIndex + 1];
+
+  // "Up next" — smartest available actionable module across all services, skipping
+  // completed/hidden/disabled/admin-locked. Returns null when everything is done.
+  const nextActionable = findNextActionableModule(org.id, { serviceKey: svc.key, moduleKey: mod.key });
+  const next = nextActionable?.module ?? null;
+  const nextSvcKey = nextActionable?.serviceKey ?? svc.key;
 
   const toggleTask = (taskKey: string, checked: boolean) => {
     db.setTaskCompletion({ organizationId: org.id, taskKey: `${svc.key}.${mod.key}.${taskKey}`, completed: checked, userId: user?.id });
@@ -120,7 +142,7 @@ export function ModulePage() {
 
   const goNext = () => {
     setShowComplete(false);
-    if (next) navigate(`/onboarding/${org.slug}/services/${svc.key}/${next.key}`);
+    if (next) navigate(`/onboarding/${org.slug}/services/${nextSvcKey}/${next.key}`);
     else navigate(`/onboarding/${org.slug}`);
   };
 
@@ -209,8 +231,8 @@ export function ModulePage() {
 
             {/* VIDEO */}
             {(() => {
-              const stored = db.getVideoUrl(svc.key, mod.key);
-              const embed = stored ? loomEmbedUrl(stored) : null;
+              const stored = db.getVideoUrl(svc.key, mod.key) || mod.videoUrl || '';
+              const embed = stored ? videoEmbedUrl(stored) : null;
               if (embed) {
                 return (
                   <div className="aspect-video rounded-2xl border border-border-subtle mb-10 overflow-hidden bg-black">
@@ -278,15 +300,32 @@ export function ModulePage() {
                 )}
 
                 {mod.links && Object.keys(mod.links).length > 0 && (
-                  <ul className="mt-4 space-y-1.5">
-                    {Object.entries(mod.links).map(([label, href]) => (
-                      <li key={label}>
-                        <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-orange hover:text-orange-hover">
+                  <div className="mt-4 space-y-3">
+                    {Object.entries(mod.links).map(([label, href]) => {
+                      const embed = videoEmbedUrl(href);
+                      if (embed) {
+                        return (
+                          <div key={label}>
+                            <p className="text-xs text-white/60 mb-2">{label}</p>
+                            <div className="aspect-video rounded-xl border border-border-subtle overflow-hidden bg-black">
+                              <iframe
+                                src={embed}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                                allowFullScreen
+                                className="w-full h-full"
+                                title={label}
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-orange hover:text-orange-hover">
                           → {label}
                         </a>
-                      </li>
-                    ))}
-                  </ul>
+                      );
+                    })}
+                  </div>
                 )}
 
                 {mod.conditionalLinks && <ConditionalLinkBlock orgId={org.id} svcKey={svc.key} modKey={mod.key} links={mod.conditionalLinks} />}
@@ -365,8 +404,10 @@ export function ModulePage() {
             </div>
 
             {next && (
-              <Link to={`/onboarding/${org.slug}/services/${svc.key}/${next.key}`} className="block card hover:border-orange/40 transition-colors group">
-                <p className="eyebrow mb-2">Up next · Step {String(svcIndex + 2).padStart(2, '0')}</p>
+              <Link to={`/onboarding/${org.slug}/services/${nextSvcKey}/${next.key}`} className="block card hover:border-orange/40 transition-colors group">
+                <p className="eyebrow mb-2">
+                  Up next{nextSvcKey !== svc.key && <> · <span className="text-white/40">{getService(nextSvcKey)?.label}</span></>}
+                </p>
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-display font-bold text-xl truncate">{next.title}</p>
@@ -384,9 +425,11 @@ export function ModulePage() {
         show={showComplete}
         title={next ? 'Submitted' : `${svc.label} — done`}
         subtitle={next
-          ? `Got it. Up next: ${next.title}.`
-          : "That's everything we need for this service. Head back to finish the rest."}
-        primaryLabel={next ? 'Next step' : 'Back to dashboard'}
+          ? nextSvcKey === svc.key
+            ? `Got it. Up next: ${next.title}.`
+            : `Got it. Up next: ${next.title} — in ${getService(nextSvcKey)?.label ?? 'the next section'}.`
+          : "That's everything we need. Nice work — head back to the dashboard to see what's left or review your progress."}
+        primaryLabel={next ? 'Next step →' : 'Back to dashboard'}
         onPrimary={goNext}
         secondaryLabel="Stay on this page"
         onSecondary={() => setShowComplete(false)}

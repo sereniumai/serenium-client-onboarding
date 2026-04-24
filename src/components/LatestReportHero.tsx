@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Play } from 'lucide-react';
 import type { MonthlyReport } from '../types';
 import { format, parse } from 'date-fns';
-import { loomEmbedUrl } from '../lib/loom';
+import { videoEmbedUrl } from '../lib/videoEmbed';
 
 export function LatestReportHero({ report, orgSlug }: { report: MonthlyReport; orgSlug: string }) {
-  const embed = report.loomUrl ? loomEmbedUrl(report.loomUrl) : null;
+  const embed = report.loomUrl ? videoEmbedUrl(report.loomUrl) : null;
   const month = safeFormatPeriod(report.period);
 
   return (

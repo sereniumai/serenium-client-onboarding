@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { CheckCircle2, RotateCcw, Upload as UploadIcon, FileBarChart2, Edit3, Trash2, Power, PowerOff, UserPlus } from 'lucide-react';
+import { CheckCircle2, RotateCcw, Upload as UploadIcon, FileBarChart2, Edit3, Trash2, Power, PowerOff, UserPlus, Mail } from 'lucide-react';
 import { db } from '../lib/mockDb';
 import { useDbVersion } from '../hooks/useDb';
 import { getService, getModule } from '../config/modules';
@@ -17,18 +17,21 @@ const ACTION_META: Record<ActivityAction, { icon: typeof CheckCircle2; color: st
   service_enabled:  { icon: Power,          color: 'text-success bg-success/10' },
   service_disabled: { icon: PowerOff,       color: 'text-white/50 bg-bg-tertiary' },
   member_joined:    { icon: UserPlus,       color: 'text-orange bg-orange/10' },
+  followup_sent:    { icon: Mail,           color: 'text-orange bg-orange/10' },
 };
 
 export function ActivityFeed({ organizationId, limit = 25 }: { organizationId: string; limit?: number }) {
   useDbVersion();
-  const entries = db.listActivityForOrg(organizationId, limit);
+  const [pageSize, setPageSize] = useState(limit);
+  const all = db.listActivityForOrg(organizationId, 2000);
+  const entries = all.slice(0, pageSize);
   const profilesById = useMemo(() => {
     const map: Record<string, string> = {};
     for (const m of db.listMembersForOrg(organizationId)) map[m.profile.id] = m.profile.fullName;
     return map;
   }, [organizationId]);
 
-  if (entries.length === 0) {
+  if (all.length === 0) {
     return (
       <div className="card text-center py-10 text-sm text-white/50">
         No activity yet. Events will appear here as the client progresses through onboarding.
@@ -36,15 +39,27 @@ export function ActivityFeed({ organizationId, limit = 25 }: { organizationId: s
     );
   }
 
+  const hasMore = entries.length < all.length;
+
   return (
     <div className="card p-0 overflow-hidden">
       <div className="px-5 py-3 border-b border-border-subtle flex items-center justify-between">
         <h3 className="font-semibold text-sm">Recent activity</h3>
-        <span className="text-xs text-white/40">{entries.length} events</span>
+        <span className="text-xs text-white/40">{entries.length}{hasMore ? ` of ${all.length}` : ''} events</span>
       </div>
       <ul className="divide-y divide-border-subtle">
         {entries.map(e => <ActivityRow key={e.id} entry={e} byName={e.userId ? profilesById[e.userId] : undefined} />)}
       </ul>
+      {hasMore && (
+        <div className="px-5 py-3 border-t border-border-subtle">
+          <button
+            onClick={() => setPageSize(n => n + limit)}
+            className="w-full text-center text-xs text-white/60 hover:text-white transition-colors py-1"
+          >
+            Load {Math.min(limit, all.length - entries.length)} more
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -71,24 +86,47 @@ function ActivityRow({ entry, byName }: { entry: ActivityLogEntry; byName?: stri
   );
 }
 
+function resolveStep(serviceKey?: string, moduleKey?: string) {
+  const svc = serviceKey ? getService(serviceKey as ServiceKey) : null;
+  const mod = svc && moduleKey ? getModule(svc.key, moduleKey) : null;
+  return { svcLabel: svc?.label ?? serviceKey, modTitle: mod?.title ?? moduleKey };
+}
+
+function parseFieldKey(fieldKey?: string): { svcLabel?: string; modTitle?: string; fieldLabel?: string } {
+  if (!fieldKey) return {};
+  const [svcKey, modKey, fldKey] = fieldKey.split('.');
+  const svc = getService(svcKey as ServiceKey);
+  const mod = svc && modKey ? getModule(svc.key, modKey) : null;
+  const field = mod?.fields?.find(f => f.key === fldKey);
+  return { svcLabel: svc?.label, modTitle: mod?.title, fieldLabel: field?.label ?? fldKey };
+}
+
 function describe(entry: ActivityLogEntry): { title: string; detail?: string } {
   const m = entry.metadata as Record<string, string>;
   switch (entry.action) {
-    case 'step_completed':
+    case 'step_completed': {
+      const { svcLabel, modTitle } = resolveStep(m.serviceKey, m.moduleKey);
+      return { title: `Completed ${modTitle}`, detail: svcLabel };
+    }
     case 'step_reopened': {
-      const svc = getService(m.serviceKey as ServiceKey)?.label ?? m.serviceKey;
-      const mod = getModule(m.serviceKey as ServiceKey, m.moduleKey)?.title ?? m.moduleKey;
-      return { title: entry.action === 'step_completed' ? 'Step submitted' : 'Step reopened', detail: `${svc} · ${mod}` };
+      const { svcLabel, modTitle } = resolveStep(m.serviceKey, m.moduleKey);
+      return { title: `Reopened ${modTitle}`, detail: svcLabel };
     }
     case 'file_uploaded': {
-      return { title: 'File uploaded', detail: m.fileName };
+      const { svcLabel, modTitle } = parseFieldKey(m.category);
+      const context = svcLabel && modTitle ? `${svcLabel} · ${modTitle}` : m.fileName;
+      return { title: `Uploaded ${m.fileName}`, detail: context };
     }
-    case 'report_published': return { title: 'Monthly report published', detail: `${m.period} · ${m.title}` };
-    case 'report_updated':   return { title: 'Monthly report updated',   detail: `${m.period} · ${m.title}` };
-    case 'report_deleted':   return { title: 'Monthly report deleted',   detail: `${m.period} · ${m.title}` };
-    case 'service_enabled':  return { title: 'Service enabled',  detail: getService(m.serviceKey as ServiceKey)?.label ?? m.serviceKey };
-    case 'service_disabled': return { title: 'Service disabled', detail: getService(m.serviceKey as ServiceKey)?.label ?? m.serviceKey };
-    case 'field_submitted':  return { title: 'Field updated', detail: m.fieldKey };
+    case 'report_published': return { title: `Published ${m.period} report`, detail: m.title };
+    case 'report_updated':   return { title: `Updated ${m.period} report`, detail: m.title };
+    case 'report_deleted':   return { title: `Deleted ${m.period} report`, detail: m.title };
+    case 'service_enabled':  return { title: `Enabled ${getService(m.serviceKey as ServiceKey)?.label ?? m.serviceKey}` };
+    case 'service_disabled': return { title: `Disabled ${getService(m.serviceKey as ServiceKey)?.label ?? m.serviceKey}` };
+    case 'field_submitted': {
+      const { svcLabel, modTitle, fieldLabel } = parseFieldKey(m.fieldKey);
+      return { title: `Updated ${fieldLabel ?? m.fieldKey}`, detail: svcLabel && modTitle ? `${svcLabel} · ${modTitle}` : undefined };
+    }
     case 'member_joined':    return { title: 'Member joined' };
+    case 'followup_sent':    return { title: `Sent follow-up · ${m.mode ?? 'manual'}`, detail: m.subject };
   }
 }

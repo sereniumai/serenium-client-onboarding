@@ -8,7 +8,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { db } from '../../lib/mockDb';
 import { useDbVersion } from '../../hooks/useDb';
 import { getOrgProgress } from '../../lib/progress';
-import { loomEmbedUrl } from '../../lib/loom';
+import { videoEmbedUrl } from '../../lib/videoEmbed';
 import type { ReportFile } from '../../types';
 import { format, parse } from 'date-fns';
 
@@ -80,7 +80,7 @@ function EmptyState({ businessName }: { businessName: string }) {
 }
 
 function ReportCard({ report, index }: { report: ReturnType<typeof db.listReportsForOrg>[number]; index: number }) {
-  const embed = report.loomUrl ? loomEmbedUrl(report.loomUrl) : null;
+  const embed = report.loomUrl ? videoEmbedUrl(report.loomUrl) : null;
   const monthLabel = safeFormatPeriod(report.period);
 
   return (

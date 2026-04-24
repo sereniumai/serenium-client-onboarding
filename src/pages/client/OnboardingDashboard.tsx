@@ -1,6 +1,6 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Clock, Lock, Megaphone, MessageSquare, Globe, Building2, Headphones, PlayCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Clock, Lock, PlayCircle, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { CircleProgress } from '../../components/CircleProgress';
@@ -14,16 +14,9 @@ import { db } from '../../lib/mockDb';
 import { useDbVersion } from '../../hooks/useDb';
 import { getOrgProgress, getEnabledModulesForService } from '../../lib/progress';
 import { getService } from '../../config/modules';
+import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey, ModuleStatus } from '../../types';
 import { cn } from '../../lib/cn';
-
-const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  business_profile: Building2,
-  facebook_ads:     Megaphone,
-  ai_sms:           MessageSquare,
-  ai_receptionist:  Headphones,
-  website:          Globe,
-};
 
 function motivation(pct: number, hasReports: boolean) {
   if (pct === 0) return "A few quick steps to give us what we need to launch your campaigns.";

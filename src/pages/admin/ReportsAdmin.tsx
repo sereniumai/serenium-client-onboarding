@@ -3,10 +3,11 @@ import { useDropzone } from 'react-dropzone';
 import { Plus, Trash2, FileText, Image as ImageIcon, Film, Upload as UploadIcon, Video, ChevronDown, X, Save, Sparkles } from 'lucide-react';
 import { db } from '../../lib/mockDb';
 import { useDbVersion } from '../../hooks/useDb';
-import { loomEmbedUrl } from '../../lib/loom';
+import { videoEmbedUrl } from '../../lib/videoEmbed';
 import { toast } from 'sonner';
 import type { MonthlyReport, ReportFile } from '../../types';
 import { cn } from '../../lib/cn';
+import { EmptyState } from '../../components/EmptyState';
 import { format, parse } from 'date-fns';
 
 interface Props {
@@ -39,13 +40,11 @@ export function ReportsAdmin({ orgId }: Props) {
       </div>
 
       {reports.length === 0 ? (
-        <div className="card text-center py-16">
-          <div className="h-14 w-14 rounded-2xl bg-orange/10 flex items-center justify-center mx-auto mb-4">
-            <Sparkles className="h-7 w-7 text-orange" />
-          </div>
-          <h3 className="font-display font-bold text-xl mb-2">No reports yet</h3>
-          <p className="text-white/50 text-sm max-w-md mx-auto">Publish the first monthly report for this client. They'll see it in their portal with your Loom walkthrough, highlights, and any documents you attach.</p>
-        </div>
+        <EmptyState
+          icon={Sparkles}
+          title="No reports yet"
+          description="Publish the first monthly report for this client. They'll see it in their portal with your walkthrough video, highlights, and any documents you attach."
+        />
       ) : (
         <div className="space-y-3">
           {reports.map(r => <ReportListItem key={r.id} orgId={orgId} report={r} />)}
@@ -105,7 +104,7 @@ function ReportEditor({ orgId, initial, onDone }: { orgId: string; initial: Edit
   const [files, setFiles] = useState<ReportFile[]>(initial.files ?? []);
   const [saving, setSaving] = useState(false);
 
-  const embed = loomUrl ? loomEmbedUrl(loomUrl) : null;
+  const embed = loomUrl ? videoEmbedUrl(loomUrl) : null;
   const loomInvalid = loomUrl.trim() && !embed;
 
   const onDrop = async (dropped: File[]) => {
@@ -169,10 +168,10 @@ function ReportEditor({ orgId, initial, onDone }: { orgId: string; initial: Edit
       </div>
 
       <div>
-        <label className="label" htmlFor="loom">Loom URL</label>
+        <label className="label" htmlFor="loom">Walkthrough video (Loom or YouTube)</label>
         <input id="loom" value={loomUrl} onChange={e => setLoomUrl(e.target.value)} className={cn('input', loomInvalid && 'border-error')}
-               placeholder="https://www.loom.com/share/..." />
-        {loomInvalid && <p className="mt-1.5 text-xs text-error">Not a valid Loom URL.</p>}
+               placeholder="https://www.loom.com/share/... or https://youtube.com/watch?v=..." />
+        {loomInvalid && <p className="mt-1.5 text-xs text-error">Not a recognised Loom or YouTube URL.</p>}
         {embed && (
           <div className="mt-3 aspect-video rounded-lg border border-border-subtle overflow-hidden bg-black">
             <iframe src={embed} allow="fullscreen" className="w-full h-full" title="Loom preview" />

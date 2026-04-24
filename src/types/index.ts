@@ -1,4 +1,4 @@
-export type ServiceKey = 'business_profile' | 'facebook_ads' | 'ai_sms' | 'ai_receptionist' | 'website';
+export type ServiceKey = 'business_profile' | 'facebook_ads' | 'google_ads' | 'google_business_profile' | 'ai_sms' | 'ai_receptionist' | 'website';
 
 export type UserRole = 'client' | 'admin';
 export type MemberRole = 'owner' | 'member';
@@ -13,6 +13,8 @@ export interface Profile {
   avatarUrl?: string;
 }
 
+export type OrgPlan = 'starter' | 'pro' | 'custom';
+
 export interface Organization {
   id: string;
   slug: string;
@@ -22,6 +24,8 @@ export interface Organization {
   primaryContactEmail?: string;
   primaryContactPhone?: string;
   status: OrgStatus;
+  plan?: OrgPlan;               // optional — displayed in admin for filtering/billing context
+  tags?: string[];              // free-form admin labels ("VIP", "Q1-cohort", etc.)
   goLiveDate?: string;
   createdAt: string;
 }
@@ -127,7 +131,8 @@ export type ActivityAction =
   | 'report_deleted'
   | 'service_enabled'
   | 'service_disabled'
-  | 'member_joined';
+  | 'member_joined'
+  | 'followup_sent';
 
 export interface ActivityLogEntry {
   id: string;
@@ -149,4 +154,42 @@ export interface MonthlyReport {
   files: ReportFile[];
   createdAt: string;
   createdBy?: string;
+}
+
+// --- Follow-up (chase) emails ---
+export interface FollowupTemplate {
+  key: string;
+  label: string;
+  subject: string;
+  body: string;                   // supports {{firstName}}, {{businessName}}, {{portalUrl}}
+  autoSendAfterDays: number | null;
+  autoSendEnabled: boolean;
+}
+
+export interface FollowupSettings {
+  enabled: boolean;
+  notifyAdmins: string[];
+  templates: FollowupTemplate[];
+}
+
+export interface FollowupSent {
+  id: string;
+  organizationId: string;
+  templateKey: string;
+  subject: string;
+  body: string;
+  sentAt: string;
+  sentBy: string | null;
+  mode: 'manual' | 'auto';
+}
+
+// --- AI helper chat ---
+export interface AiChatMessage {
+  id: string;
+  userId: string;
+  organizationId: string | null;
+  role: 'user' | 'assistant';
+  content: string;
+  context: string | null;         // e.g. "website.domain_access" when sent from a specific step
+  createdAt: string;
 }

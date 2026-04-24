@@ -3,7 +3,11 @@ import type {
   ServiceKey, OrgStatus, ModuleProgress, TaskCompletion, Submission,
   Upload, Invitation, ModuleStatus, MonthlyReport, ReportFile,
   ActivityLogEntry, AdminNote, MemberRole,
+  FollowupSettings, FollowupSent, AiChatMessage,
 } from '../types';
+
+// Re-export for convenience so consumers only need one import path.
+export type { FollowupSettings, FollowupTemplate, FollowupSent, AiChatMessage } from '../types';
 import { SERVICES } from '../config/modules';
 
 const KEY = 'serenium.mockdb.v6';
@@ -29,8 +33,66 @@ interface DBShape {
   adminFlags: Record<string, Record<string, boolean>>;
   /** Admin-entered Retell forwarding numbers per org */
   retellNumbers: Record<string, string>;
+  /** Follow-up / chase email settings (global) */
+  followupSettings: FollowupSettings;
+  /** Log of follow-up emails sent (manual or auto) keyed per org */
+  followupsSent: FollowupSent[];
+  /** AI helper conversations (admin-visible for training/QA) */
+  aiChatMessages: AiChatMessage[];
   sessions: { userId: string } | null;
 }
+
+const DEFAULT_FOLLOWUP_SETTINGS: FollowupSettings = {
+  enabled: true,
+  notifyAdmins: [],
+  templates: [
+    {
+      key: 'gentle',
+      label: 'Gentle nudge',
+      subject: 'Just checking in on your onboarding',
+      body: `Hi {{firstName}},
+
+Just checking in — wanted to make sure you haven't hit any roadblocks in your Serenium onboarding. If there's anything unclear or you need a hand, just hit reply.
+
+You can pick up where you left off here: {{portalUrl}}
+
+Cheers,
+Serenium team`,
+      autoSendAfterDays: 3,
+      autoSendEnabled: true,
+    },
+    {
+      key: 'stronger',
+      label: 'Stronger follow-up',
+      subject: "Let's get your onboarding across the line",
+      body: `Hi {{firstName}},
+
+It's been a little while since we've seen progress on {{businessName}}'s onboarding. The sooner we have what we need, the sooner we can start driving leads for you.
+
+Pick up where you left off: {{portalUrl}}
+
+If you're stuck on a specific step, reply here and we'll help directly.
+
+Serenium team`,
+      autoSendAfterDays: 7,
+      autoSendEnabled: true,
+    },
+    {
+      key: 'final',
+      label: 'Final reminder',
+      subject: 'Last nudge on your Serenium setup',
+      body: `Hi {{firstName}},
+
+We don't want to keep pinging you, but we haven't seen movement on {{businessName}}'s onboarding in a couple of weeks. If now isn't the right time, let us know and we'll pause things.
+
+Otherwise, you can finish up here: {{portalUrl}}
+
+Serenium team`,
+      autoSendAfterDays: 14,
+      autoSendEnabled: false,
+    },
+  ],
+};
 
 const seed = (): DBShape => {
   const now = new Date().toISOString();
@@ -69,6 +131,9 @@ const seed = (): DBShape => {
     adminNotes: [],
     adminFlags: {},
     retellNumbers: {},
+    followupSettings: DEFAULT_FOLLOWUP_SETTINGS,
+    followupsSent: [],
+    aiChatMessages: [],
     sessions: null,
   };
 };
@@ -94,6 +159,9 @@ const load = (): DBShape => {
       adminNotes: parsed.adminNotes ?? [],
       adminFlags: parsed.adminFlags ?? {},
       retellNumbers: parsed.retellNumbers ?? {},
+      followupSettings: parsed.followupSettings ?? DEFAULT_FOLLOWUP_SETTINGS,
+      followupsSent: parsed.followupsSent ?? [],
+      aiChatMessages: parsed.aiChatMessages ?? [],
     };
     return full;
   } catch { return seed(); }
@@ -150,7 +218,7 @@ export const db = {
     return load().organizations.find(o => o.id === id) ?? null;
   },
 
-  updateOrganization(id: string, patch: Partial<Pick<Organization, 'businessName' | 'primaryContactName' | 'primaryContactEmail' | 'primaryContactPhone' | 'status' | 'logoUrl'>>) {
+  updateOrganization(id: string, patch: Partial<Pick<Organization, 'businessName' | 'primaryContactName' | 'primaryContactEmail' | 'primaryContactPhone' | 'status' | 'logoUrl' | 'plan' | 'tags' | 'goLiveDate'>>) {
     const d = load();
     const o = d.organizations.find(x => x.id === id);
     if (!o) return;
@@ -357,15 +425,41 @@ export const db = {
     const d = load();
     const now = new Date().toISOString();
     const existing = d.submissions.find(s => s.organizationId === input.organizationId && s.fieldKey === input.fieldKey);
+
+    // Log to activity, but debounce — a client typing rapidly should not create one
+    // entry per keystroke. Log on first write, or when the last log for this field
+    // was more than 60s ago.
+    const isEmpty = input.value == null || input.value === '' || (Array.isArray(input.value) && input.value.length === 0);
+    const lastLog = d.activity
+      .filter(a => a.action === 'field_submitted' && a.organizationId === input.organizationId && (a.metadata as { fieldKey?: string }).fieldKey === input.fieldKey)
+      .slice(-1)[0];
+    const shouldLog = !isEmpty && (!lastLog || Date.now() - new Date(lastLog.createdAt).getTime() > 60_000);
+
     if (existing) {
       existing.value = input.value;
       existing.updatedAt = now;
       existing.updatedBy = input.updatedBy;
+      if (shouldLog) {
+        logActivityInto(d, {
+          organizationId: input.organizationId,
+          userId: input.updatedBy,
+          action: 'field_submitted',
+          metadata: { fieldKey: input.fieldKey },
+        });
+      }
       save(d);
       return existing;
     }
     const newSub: Submission = { ...input, updatedAt: now };
     d.submissions.push(newSub);
+    if (shouldLog) {
+      logActivityInto(d, {
+        organizationId: input.organizationId,
+        userId: input.updatedBy,
+        action: 'field_submitted',
+        metadata: { fieldKey: input.fieldKey },
+      });
+    }
     save(d);
     return newSub;
   },
@@ -599,6 +693,71 @@ export const db = {
     const d = load();
     if (num && num.trim()) d.retellNumbers[organizationId] = num.trim();
     else delete d.retellNumbers[organizationId];
+    save(d);
+  },
+
+  // --- Follow-up (chase) emails ---
+  getFollowupSettings(): FollowupSettings {
+    return load().followupSettings;
+  },
+
+  saveFollowupSettings(settings: FollowupSettings) {
+    const d = load();
+    d.followupSettings = settings;
+    save(d);
+  },
+
+  listFollowupsForOrg(organizationId: string): FollowupSent[] {
+    return load().followupsSent
+      .filter(f => f.organizationId === organizationId)
+      .sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1));
+  },
+
+  recordFollowupSent(entry: Omit<FollowupSent, 'id' | 'sentAt'>): FollowupSent {
+    const d = load();
+    const rec: FollowupSent = { ...entry, id: uid(), sentAt: new Date().toISOString() };
+    d.followupsSent.push(rec);
+    logActivityInto(d, {
+      organizationId: entry.organizationId,
+      userId: entry.sentBy ?? undefined,
+      action: 'followup_sent',
+      metadata: { templateKey: entry.templateKey, mode: entry.mode, subject: entry.subject },
+    });
+    save(d);
+    return rec;
+  },
+
+  // --- AI chat storage ---
+  listAiChatForUser(userId: string): AiChatMessage[] {
+    return load().aiChatMessages
+      .filter(m => m.userId === userId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  },
+
+  listAiChatForOrg(organizationId: string): AiChatMessage[] {
+    return load().aiChatMessages
+      .filter(m => m.organizationId === organizationId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  },
+
+  listAllAiChats(): AiChatMessage[] {
+    return load().aiChatMessages
+      .slice()
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  },
+
+  addAiChatMessage(entry: Omit<AiChatMessage, 'id' | 'createdAt'>): AiChatMessage {
+    const d = load();
+    const rec: AiChatMessage = { ...entry, id: uid(), createdAt: new Date().toISOString() };
+    d.aiChatMessages.push(rec);
+    if (d.aiChatMessages.length > 5000) d.aiChatMessages = d.aiChatMessages.slice(-4000);
+    save(d);
+    return rec;
+  },
+
+  clearAiChatForUser(userId: string) {
+    const d = load();
+    d.aiChatMessages = d.aiChatMessages.filter(m => m.userId !== userId);
     save(d);
   },
 

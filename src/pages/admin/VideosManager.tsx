@@ -1,18 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, Megaphone, MessageSquare, Globe, Building2, Headphones, CheckCircle2, Video, X } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Video, X } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { db } from '../../lib/mockDb';
 import { SERVICES } from '../../config/modules';
-import { loomEmbedUrl } from '../../lib/loom';
+import { SERVICE_ICON } from '../../config/serviceIcons';
+import { videoEmbedUrl } from '../../lib/videoEmbed';
 import { useDbVersion } from '../../hooks/useDb';
 import type { ServiceKey } from '../../types';
 import { cn } from '../../lib/cn';
-
-const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, ai_receptionist: Headphones, website: Globe,
-};
 
 export function VideosManager() {
   useDbVersion();
@@ -34,7 +31,7 @@ export function VideosManager() {
             <div>
               <p className="eyebrow mb-3">Library</p>
               <h1 className="font-display font-black text-[clamp(1.75rem,6vw,3rem)] leading-[1.05] tracking-[-0.03em]">Step videos</h1>
-              <p className="text-white/60 mt-2 text-sm md:text-base">Paste a Loom URL for each step. Clients see the embed at the top of the step page.</p>
+              <p className="text-white/60 mt-2 text-sm md:text-base">Paste a Loom or YouTube URL for each step. Clients see the embed at the top of the step page.</p>
             </div>
             <div className="text-left md:text-right">
               <p className="text-xs uppercase tracking-wider text-white/40">Wired</p>
@@ -72,7 +69,7 @@ function VideoRow({ serviceKey, moduleKey, title, index }: { serviceKey: Service
   const stored = db.getVideoUrl(serviceKey, moduleKey) ?? '';
   const [url, setUrl] = useState(stored);
   const [showPreview, setShowPreview] = useState(false);
-  const embed = loomEmbedUrl(url);
+  const embed = videoEmbedUrl(url);
   const invalid = url.trim() && !embed;
 
   useEffect(() => {

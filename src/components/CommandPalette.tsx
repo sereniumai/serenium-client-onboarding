@@ -3,18 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
 import {
   Search, LayoutDashboard, Users, Plus, Video, Sparkles, FileBarChart2,
-  Megaphone, MessageSquare, Globe, Settings2, CheckCircle2, ArrowRight,
-  Building2, Headphones,
+  Settings2, CheckCircle2, ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { db } from '../lib/mockDb';
 import { useDbVersion } from '../hooks/useDb';
 import { SERVICES } from '../config/modules';
-import type { ServiceKey } from '../types';
-
-const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, ai_receptionist: Headphones, website: Globe,
-};
+import { SERVICE_ICON } from '../config/serviceIcons';
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);

@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Lock, PlayCircle, Circle, ChevronDown, Megaphone, MessageSquare, Globe, Building2, Headphones } from 'lucide-react';
+import { CheckCircle2, Lock, PlayCircle, Circle, ChevronDown } from 'lucide-react';
 import { getService } from '../config/modules';
+import { SERVICE_ICON } from '../config/serviceIcons';
 import { getOrgProgress, getEnabledModulesForService } from '../lib/progress';
 import type { ServiceKey } from '../types';
 import { cn } from '../lib/cn';
-
-const SERVICE_ICON: Record<ServiceKey, typeof Megaphone> = {
-  business_profile: Building2, facebook_ads: Megaphone, ai_sms: MessageSquare, ai_receptionist: Headphones, website: Globe,
-};
 
 export function CurriculumSidebar({ organizationId, orgSlug }: { organizationId: string; orgSlug: string }) {
   const { serviceKey: activeSvc, moduleKey: activeMod } = useParams();
