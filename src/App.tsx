@@ -40,10 +40,18 @@ function RootRedirect() {
   const { data: orgs, isLoading: orgsLoading } = useOrgsForUser(
     user && user.role === 'client' ? user.id : undefined,
   );
-  if (loading) return null;
+  if (loading || (user?.role === 'client' && orgsLoading)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <div className="flex flex-col items-center gap-3 text-white/50">
+          <div className="h-8 w-8 rounded-full border-2 border-orange border-t-transparent animate-spin" />
+          <p className="text-xs uppercase tracking-wider">Getting you in…</p>
+        </div>
+      </div>
+    );
+  }
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'admin') return <Navigate to="/admin" replace />;
-  if (orgsLoading) return null;
   if (orgs && orgs[0]) return <Navigate to={`/onboarding/${orgs[0].slug}`} replace />;
   return <Navigate to="/login" replace />;
 }

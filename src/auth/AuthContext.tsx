@@ -21,17 +21,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // Hard safety net, if session restore hangs for some reason, unblock the UI
+    // after 8 seconds so the user can retry instead of staring at a blank screen.
+    const safetyTimer = window.setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 8000);
+
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted) return;
         if (session) {
-          const profile = await loadProfile(session.user.id);
-          if (mounted) setUser(profile);
+          try {
+            const profile = await loadProfile(session.user.id);
+            if (mounted) setUser(profile);
+          } catch (profileErr) {
+            // Profile row missing or RLS blocked, sign out to force a clean re-auth.
+            console.error('[auth] profile load failed, signing out', profileErr);
+            await supabase.auth.signOut().catch(() => {});
+          }
         }
       } catch (err) {
         console.error('[auth] session restore failed', err);
       } finally {
+        window.clearTimeout(safetyTimer);
         if (mounted) setLoading(false);
       }
     })();
