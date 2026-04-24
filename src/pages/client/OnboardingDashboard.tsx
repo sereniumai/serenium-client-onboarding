@@ -256,9 +256,11 @@ export function OnboardingDashboard() {
             })}
 
             {/* Services not currently part of this client's package, shown
-                disabled so they know what else Serenium can do. */}
+                disabled so they know what else Serenium can do. Business
+                Profile is always included for every client, so it never
+                appears here even if it's somehow disabled on their account. */}
             {SELECTABLE_SERVICES
-              .filter(svc => !progress.enabledServices.includes(svc.key))
+              .filter(svc => svc.key !== 'business_profile' && !progress.enabledServices.includes(svc.key))
               .map((svc, i) => {
                 const Icon = SERVICE_ICON[svc.key];
                 return (
