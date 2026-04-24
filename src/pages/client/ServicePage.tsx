@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { ChevronLeft, CheckCircle2, Clock, PlayCircle, Lock } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Clock, PlayCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
@@ -222,17 +222,6 @@ function ModuleSection({
       </div>
 
       <div className="px-5 md:px-7 py-6 space-y-6">
-        {/* Admin-locked banner */}
-        {adminLocked && (
-          <div className="rounded-lg border border-orange/30 bg-orange/5 p-4 flex items-start gap-3">
-            <Lock className="h-4 w-4 text-orange shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-sm mb-0.5">Not ready yet</p>
-              <p className="text-xs text-white/70">{module.lockedMessage ?? "This step is locked until we finish setup on our end."}</p>
-            </div>
-          </div>
-        )}
-
         {/* Retell forwarding number card, only for the call forwarding step */}
         {false && module.lockedUntilAdminFlag === 'ai_receptionist_ready_for_connection' && (
           <div className="rounded-lg border border-orange/50 p-4">

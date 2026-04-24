@@ -627,12 +627,10 @@ const AI_SMS: ServiceDef = {
     },
     {
       key: 'ghl_calendar_setup',
-      title: 'GHL Calendar setup',
+      title: 'Connect your Google Calendar',
       estimatedMinutes: 10,
-      lockedUntilAdminFlag: 'ghl_calendar_ready_for_client',
-      lockedMessage: "Serenium is setting this up, we'll unlock it for you soon.",
       videoUrl: 'https://www.youtube.com/watch?v=KcdUwD3I5ms',
-      instructions: `Once Serenium has provisioned your GHL subaccount, connect your Google Calendar and set availability here.`,
+      instructions: `Connect your Google Calendar so the AI can book estimates straight in, and set your weekly availability.`,
       fields: [
         { key: 'calendar_connected', label: "I've connected my Google Calendar to my GHL account", type: 'checkbox', required: true },
         {
