@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Film, Save, Trash2 } from 'lucide-react';
+import { Film, Save, Trash2, Eye, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { LoadingState } from '../../components/LoadingState';
 import { getWelcomeVideo, setWelcomeVideoUrl, clearWelcomeVideo } from '../../lib/db/welcomeVideo';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
+import { useModal } from '../../hooks/useModal';
 
 const QK = ['welcome_video'] as const;
 
@@ -31,6 +32,8 @@ export function WelcomeVideoManager() {
   const embed = trimmed ? videoEmbedUrl(trimmed) : null;
   const dirty = trimmed !== (video?.videoUrl ?? '');
   const canSave = dirty && trimmed.length > 0;
+
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
     <AppShell>
@@ -90,6 +93,14 @@ export function WelcomeVideoManager() {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
+                  {embed && (
+                    <button
+                      onClick={() => setPreviewOpen(true)}
+                      className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
+                    >
+                      <Eye className="h-4 w-4" /> Preview as client
+                    </button>
+                  )}
                   {video?.videoUrl && (
                     <button onClick={() => clear.mutate()} disabled={clear.isPending} className="inline-flex items-center gap-2 text-sm text-error hover:underline disabled:opacity-50">
                       <Trash2 className="h-4 w-4" /> {clear.isPending ? 'Removing…' : 'Remove'}
@@ -106,8 +117,47 @@ export function WelcomeVideoManager() {
               </div>
             </div>
           )}
+
+          {previewOpen && embed && (
+            <ClientPreviewModal embed={embed} onClose={() => setPreviewOpen(false)} />
+          )}
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function ClientPreviewModal({ embed, onClose }: { embed: string; onClose: () => void }) {
+  const ref = useModal(true, onClose);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Welcome video preview"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div ref={ref} className="relative w-full max-w-3xl" onClick={e => e.stopPropagation()}>
+        <button
+          onClick={onClose}
+          className="absolute -top-10 right-0 text-white/60 hover:text-white inline-flex items-center gap-1.5 text-sm"
+          aria-label="Close preview"
+        >
+          <X className="h-4 w-4" /> Close
+        </button>
+        <div className="rounded-2xl overflow-hidden border border-border-subtle bg-black shadow-2xl">
+          <iframe
+            src={embed}
+            className="w-full aspect-video"
+            title="Welcome"
+            allow="fullscreen; clipboard-write; autoplay"
+            allowFullScreen
+          />
+        </div>
+        <p className="text-center text-xs text-white/55 mt-3">
+          This is how clients see it on first login. In the real view, there's a "You'll only see this once" line beneath.
+        </p>
+      </div>
+    </div>
   );
 }
