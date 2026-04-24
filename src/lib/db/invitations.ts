@@ -45,14 +45,39 @@ export async function revokeInvitation(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function getInvitationByToken(token: string): Promise<Invitation | null> {
-  const { data, error } = await supabase
-    .from('invitations')
-    .select('*')
-    .eq('token', token)
-    .maybeSingle();
+export interface InvitationLookup {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  email: string;
+  fullName: string | null;
+  role: MemberRole;
+  expiresAt: string;
+  acceptedAt: string | null;
+}
+
+export async function getInvitationByToken(token: string): Promise<InvitationLookup | null> {
+  const { data, error } = await supabase.rpc('get_invitation_by_token', { invite_token: token });
   if (error) throw error;
-  return data ? toInvitation(data) : null;
+  const row = (data as Array<Record<string, unknown>> | null)?.[0];
+  if (!row) return null;
+  return {
+    id: row.id as string,
+    organizationId: row.organization_id as string,
+    organizationName: row.organization_name as string,
+    email: row.email as string,
+    fullName: (row.full_name as string | null) ?? null,
+    role: row.role as MemberRole,
+    expiresAt: row.expires_at as string,
+    acceptedAt: (row.accepted_at as string | null) ?? null,
+  };
+}
+
+export async function acceptInvitation(token: string): Promise<{ organizationId: string; role: MemberRole }> {
+  const { data, error } = await supabase.rpc('accept_invitation', { invite_token: token });
+  if (error) throw error;
+  const payload = data as { organization_id: string; role: MemberRole };
+  return { organizationId: payload.organization_id, role: payload.role };
 }
 
 export function buildInviteUrl(token: string): string {
