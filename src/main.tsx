@@ -5,20 +5,19 @@ import './index.css';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { initTheme } from './lib/theme';
+import { env } from './lib/env';
 
 initTheme();
 
-// Error tracking. Only active in production, disabled in dev so local
-// crashes don't spam the prod project.
-const sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
-const vercelEnv = (import.meta.env.VITE_VERCEL_ENV as string | undefined) ?? 'development';
+const sentryDsn = env.sentryDsn;
+const vercelEnv = env.vercelEnv;
 // Only send to Sentry from real production deploys. Preview + dev are noisy
 // and would pollute the production issue feed.
 if (sentryDsn && vercelEnv === 'production') {
   Sentry.init({
     dsn: sentryDsn,
     environment: vercelEnv,
-    release: (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA as string | undefined)?.slice(0, 7) ?? 'local',
+    release: env.vercelGitCommitSha?.slice(0, 7) ?? 'local',
     tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,
