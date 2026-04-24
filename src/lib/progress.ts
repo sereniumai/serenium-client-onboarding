@@ -126,6 +126,9 @@ export function getOrgProgress(snap: OrgSnapshot) {
       const fieldTotal = requiredFields.length;
       const fieldDone = requiredFields.filter(f => {
         const fieldKey = `${svcKey}.${m.key}.${f.key}`;
+        if (f.type === 'file' || f.type === 'file_multiple') {
+          return snap.uploads.some(u => u.category === fieldKey);
+        }
         const sub = snap.submissions.find(s => s.fieldKey === fieldKey);
         return sub ? submissionIsFilled(f, sub.value, { uploads: snap.uploads, fieldKey }) : false;
       }).length;
@@ -180,6 +183,11 @@ export function moduleIsReady(snap: OrgSnapshot, svcKey: ServiceKey, moduleKey: 
   const requiredFields = m.fields?.filter(f => f.required && !disabledFieldSet.has(`${m.key}.${f.key}`)) ?? [];
   const fieldsDone = requiredFields.every(f => {
     const fieldKey = `${svcKey}.${m.key}.${f.key}`;
+    // File fields don't write to `submissions` — they write to `uploads`.
+    // A required file field is "filled" when at least one upload exists.
+    if (f.type === 'file' || f.type === 'file_multiple') {
+      return snap.uploads.some(u => u.category === fieldKey);
+    }
     const sub = snap.submissions.find(s => s.fieldKey === fieldKey);
     return sub ? submissionIsFilled(f, sub.value, { uploads: snap.uploads, fieldKey }) : false;
   });
