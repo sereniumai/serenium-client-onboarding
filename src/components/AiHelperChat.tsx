@@ -55,7 +55,8 @@ export function AiHelperChat() {
     setThinking(true);
 
     try {
-      const reply = await askAssistant(content);
+      const historyForApi = messages.map(m => ({ role: m.role, content: m.content }));
+      const reply = await askAssistant(content, historyForApi, currentContext);
       appendMessage(user.id, currentOrgId, 'assistant', reply, currentContext);
     } catch {
       appendMessage(user.id, currentOrgId, 'assistant', "Sorry — I hit a snag. Try again, or email contact@sereniumai.com for anything urgent.", currentContext);

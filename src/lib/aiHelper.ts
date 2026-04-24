@@ -110,13 +110,35 @@ function localAnswer(query: string): string {
 // ---------- public API ----------
 
 /**
- * Ask the onboarding assistant a question. For now this runs locally using the
- * module config as a knowledge base. When Supabase + Anthropic API is wired,
- * replace the body with a fetch to the edge function.
+ * Ask the onboarding assistant a question.
+ *
+ * Flow:
+ *   1. Try the Vercel serverless function /api/ask-assistant (Claude-backed).
+ *   2. If that 503s (no API key yet) or network-errors, fall back to the local
+ *      keyword-based responder so the chat keeps working in dev / pre-launch.
  */
-export async function askAssistant(question: string): Promise<string> {
-  // Simulate some latency so the typing indicator feels natural.
-  await new Promise(r => setTimeout(r, 500 + Math.random() * 600));
+export async function askAssistant(
+  question: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
+  context: string | null = null,
+): Promise<string> {
+  try {
+    const resp = await fetch('/api/ask-assistant', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ question, history, context }),
+    });
+
+    if (resp.ok) {
+      const data = (await resp.json()) as { answer?: string };
+      if (data.answer) return data.answer;
+    }
+    // Service unavailable / misconfigured → fall back.
+    if (resp.status === 503) return localAnswer(question);
+  } catch {
+    // Network failure → fall back.
+  }
+
   return localAnswer(question);
 }
 
