@@ -15,6 +15,7 @@ if (sentryDsn && import.meta.env.PROD) {
   Sentry.init({
     dsn: sentryDsn,
     environment: 'production',
+    release: (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA as string | undefined)?.slice(0, 7) ?? 'local',
     tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,

@@ -14,11 +14,34 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const userRef = useRef<Profile | null>(null);
   useEffect(() => { userRef.current = user; }, [user]);
+
+  // Idle logout. Resets on any user interaction. Fires signOut after an hour
+  // of no activity so abandoned sessions can't be hijacked from a stolen laptop.
+  useEffect(() => {
+    if (!user) return;
+    let timer: number | undefined;
+    const reset = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        console.log('[auth] idle timeout, signing out');
+        supabase.auth.signOut().catch(() => {});
+      }, IDLE_TIMEOUT_MS);
+    };
+    const events: Array<keyof WindowEventMap> = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach(ev => window.addEventListener(ev, reset, { passive: true }));
+    reset();
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach(ev => window.removeEventListener(ev, reset));
+    };
+  }, [user]);
 
   useEffect(() => {
     let mounted = true;

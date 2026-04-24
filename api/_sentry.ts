@@ -48,6 +48,7 @@ export function captureEdgeError(err: unknown, context: {
     timestamp,
     platform: 'javascript',
     environment: process.env.VERCEL_ENV || 'production',
+    release: (process.env.VERCEL_GIT_COMMIT_SHA ?? 'local').slice(0, 7),
     server_name: `edge:${context.endpoint}`,
     tags: {
       endpoint: context.endpoint,

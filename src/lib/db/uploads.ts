@@ -4,6 +4,37 @@ import type { Upload } from '../../types';
 
 const BUCKET = 'uploads';
 
+// Keep in sync with the storage RLS policy's file-size limit and the
+// Supabase bucket max. 10MB covers logos, photos, and most PDFs without
+// letting a rogue upload fill a plan quota.
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+// MIME allowlist. Anything outside this is rejected client-side. Server-side
+// enforcement lives in the Supabase storage bucket settings.
+const ALLOWED_MIME_PREFIXES = [
+  'image/',            // logos, photos
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/',
+];
+
+function validateFile(file: File): void {
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error(`File "${file.name}" is too large. Max is ${Math.round(MAX_FILE_BYTES / 1024 / 1024)}MB.`);
+  }
+  if (file.size === 0) {
+    throw new Error(`File "${file.name}" is empty.`);
+  }
+  const mime = file.type || '';
+  const ok = ALLOWED_MIME_PREFIXES.some(p => mime === p || mime.startsWith(p));
+  if (!ok) {
+    throw new Error(`File type "${mime || 'unknown'}" is not allowed. Upload images, PDFs, or Office documents.`);
+  }
+}
+
 export async function listUploads(orgId: string, category?: string): Promise<Upload[]> {
   let q = supabase.from('uploads').select('*').eq('organization_id', orgId);
   if (category) q = q.eq('category', category);
@@ -18,8 +49,14 @@ export async function uploadFile(args: {
   file: File;
   userId?: string;
 }): Promise<Upload> {
+  validateFile(args.file);
   const uuid = crypto.randomUUID();
-  const safeName = args.file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  // Strip path traversal, control chars, and anything outside safe ASCII.
+  // Keep the original extension for readability but cap the length.
+  const safeName = args.file.name
+    .replace(/[^a-zA-Z0-9.\-_]/g, '_')
+    .replace(/\.\.+/g, '_')
+    .slice(0, 120);
   const storagePath = `orgs/${args.organizationId}/${uuid}-${safeName}`;
 
   const { error: storageErr } = await supabase.storage
