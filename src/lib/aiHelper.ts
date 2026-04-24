@@ -36,6 +36,8 @@ export function appendMessage(
  * function /api/ask-assistant which calls Claude. On any failure, returns a
  * short error message rather than a stale canned response.
  */
+export type ChatMode = 'onboarding' | 'analytics';
+
 export interface UserContext {
   firstName?: string;
   businessName?: string;
@@ -47,17 +49,33 @@ export interface UserContext {
   emergencyOffered?: unknown;
 }
 
-export async function askAssistant(
-  question: string,
-  history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
-  context: string | null = null,
-  userContext: UserContext | null = null,
-): Promise<string> {
+export interface Attachment {
+  fileName: string;
+  mimeType: string;
+  data: string; // base64 (no data-URL prefix)
+}
+
+export interface AskAssistantOptions {
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  context?: string | null;
+  userContext?: UserContext | null;
+  mode?: ChatMode;
+  attachments?: Attachment[];
+}
+
+export async function askAssistant(question: string, opts: AskAssistantOptions = {}): Promise<string> {
   try {
     const resp = await fetch('/api/ask-assistant', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ question, history, context, userContext }),
+      body: JSON.stringify({
+        question,
+        history: opts.history ?? [],
+        context: opts.context ?? null,
+        userContext: opts.userContext ?? null,
+        mode: opts.mode ?? 'onboarding',
+        attachments: opts.attachments ?? [],
+      }),
     });
 
     if (resp.ok) {
@@ -74,10 +92,21 @@ export async function askAssistant(
   }
 }
 
-export const SUGGESTED_QUESTIONS = [
+export const SUGGESTED_QUESTIONS_ONBOARDING = [
   'How do I give you domain access?',
   'What should I put for unique selling points?',
   'How do I grant Google Analytics access?',
   'Do I need to finish this in one sitting?',
   'What happens after I finish the onboarding?',
 ];
+
+export const SUGGESTED_QUESTIONS_ANALYTICS = [
+  'Summarize last month\'s performance across all channels',
+  'What\'s driving my cost per lead right now?',
+  'Where did my best leads come from this month?',
+  'How did Facebook Ads perform vs Google Ads?',
+  'What should I focus on next month?',
+];
+
+// Back-compat export for anything still importing the old name.
+export const SUGGESTED_QUESTIONS = SUGGESTED_QUESTIONS_ONBOARDING;

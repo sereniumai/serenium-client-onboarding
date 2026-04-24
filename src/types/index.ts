@@ -194,3 +194,16 @@ export interface AiChatMessage {
   context: string | null;         // e.g. "website.domain_access" when sent from a specific step
   createdAt: string;
 }
+
+// --- Analytics mode: PDF reports uploaded to the chat ---
+export interface AnalyticsUpload {
+  id: string;
+  userId: string;
+  organizationId: string | null;
+  fileName: string;
+  /** base64-encoded file bytes (no data URL prefix). */
+  fileData: string;
+  mimeType: string;
+  fileSize: number;
+  uploadedAt: string;
+}

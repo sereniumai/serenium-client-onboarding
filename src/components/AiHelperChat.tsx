@@ -1,15 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X, Send, Trash2, Bot, LifeBuoy } from 'lucide-react';
+import { Sparkles, X, Send, Trash2, Bot, LifeBuoy, Paperclip, BarChart3, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../auth/AuthContext';
 import { db } from '../lib/mockDb';
 import { useDbVersion } from '../hooks/useDb';
 import { getOrgProgress } from '../lib/progress';
-import { askAssistant, loadChatHistory, clearChatHistory, appendMessage, SUGGESTED_QUESTIONS, type ChatMessage } from '../lib/aiHelper';
+import {
+  askAssistant, loadChatHistory, clearChatHistory, appendMessage,
+  SUGGESTED_QUESTIONS_ONBOARDING, SUGGESTED_QUESTIONS_ANALYTICS,
+  type ChatMessage, type ChatMode, type Attachment,
+} from '../lib/aiHelper';
 import { Markdown } from './Markdown';
 import { cn } from '../lib/cn';
+
+// 5 MB per PDF, max 3 attached at a time. Keeps us well under localStorage caps
+// and controls Anthropic token cost per request.
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_ATTACHMENTS = 3;
 
 export function AiHelperChat() {
   const { user } = useAuth();
@@ -22,10 +31,19 @@ export function AiHelperChat() {
   const [helpNote, setHelpNote] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const messages: ChatMessage[] = user?.id ? loadChatHistory(user.id) : [];
+  if (!user) return null;
 
-  const currentOrg = user && user.role === 'client'
+  const isAdmin = user.role === 'admin';
+  const onReports = /\/onboarding\/[^/]+\/reports$/.test(location.pathname);
+  const onOnboarding = location.pathname.startsWith('/onboarding/') && !onReports;
+  const mode: ChatMode = (onReports || isAdmin) ? 'analytics' : 'onboarding';
+
+  const messages: ChatMessage[] = loadChatHistory(user.id);
+  const attachments = db.listAnalyticsUploadsForUser(user.id);
+
+  const currentOrg = !isAdmin
     ? db.listOrganizationsForUser(user.id)[0] ?? null
     : null;
   const currentOrgId = currentOrg?.id ?? null;
@@ -38,10 +56,8 @@ export function AiHelperChat() {
     return null;
   })();
 
-  // Personalization payload sent to the assistant so it can greet by name, reference the business,
-  // and tailor suggestions to what they've already shared.
   const userContext = (() => {
-    if (!user || !currentOrg) return null;
+    if (!currentOrg) return null;
     const progress = getOrgProgress(currentOrg.id);
     const submissions = db.listSubmissionsForOrg(currentOrg.id);
     const pick = (svc: string, mod: string, field: string) =>
@@ -74,18 +90,34 @@ export function AiHelperChat() {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, thinking]);
 
-  if (!user || user.role === 'admin') return null;
+  // Hide the chat entirely on auth pages or other routes where it doesn't belong.
+  if (!onOnboarding && !onReports && !location.pathname.startsWith('/admin')) return null;
+
+  const suggested = mode === 'analytics' ? SUGGESTED_QUESTIONS_ANALYTICS : SUGGESTED_QUESTIONS_ONBOARDING;
 
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
-    if (!content || thinking || !user) return;
+    if (!content || thinking) return;
     appendMessage(user.id, currentOrgId, 'user', content, currentContext);
     setInput('');
     setThinking(true);
 
     try {
       const historyForApi = messages.map(m => ({ role: m.role, content: m.content }));
-      const reply = await askAssistant(content, historyForApi, currentContext, userContext);
+      const attachmentsForApi: Attachment[] = mode === 'analytics'
+        ? attachments.slice(0, MAX_ATTACHMENTS).map(a => ({
+            fileName: a.fileName,
+            mimeType: a.mimeType,
+            data: a.fileData,
+          }))
+        : [];
+      const reply = await askAssistant(content, {
+        history: historyForApi,
+        context: currentContext,
+        userContext,
+        mode,
+        attachments: attachmentsForApi,
+      });
       appendMessage(user.id, currentOrgId, 'assistant', reply, currentContext);
     } catch {
       appendMessage(user.id, currentOrgId, 'assistant', "Sorry, I hit a snag. Try again, or email contact@sereniumai.com for anything urgent.", currentContext);
@@ -95,13 +127,15 @@ export function AiHelperChat() {
   };
 
   const clear = () => {
-    if (!user?.id) return;
     if (messages.length > 0 && !window.confirm('Clear this conversation? This can’t be undone.')) return;
     clearChatHistory(user.id);
   };
 
   const submitHumanHelp = () => {
-    if (!user || !currentOrgId) return;
+    if (!currentOrgId) {
+      toast.error('Not linked to a client org, can\'t route this.');
+      return;
+    }
     db.requestHumanHelp({
       organizationId: currentOrgId,
       userId: user.id,
@@ -118,6 +152,45 @@ export function AiHelperChat() {
     setRequestingHelp(false);
   };
 
+  const handleFiles = async (files: FileList | null) => {
+    if (!files) return;
+    const current = db.listAnalyticsUploadsForUser(user.id).length;
+    const remaining = MAX_ATTACHMENTS - current;
+    if (remaining <= 0) {
+      toast.error(`You already have ${MAX_ATTACHMENTS} reports attached. Remove one to add another.`);
+      return;
+    }
+    const toProcess = Array.from(files).slice(0, remaining);
+    for (const file of toProcess) {
+      if (file.type !== 'application/pdf') {
+        toast.error(`${file.name}: only PDFs are supported right now.`);
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name} is too large. Limit is ${Math.round(MAX_FILE_SIZE / 1024 / 1024)} MB.`);
+        continue;
+      }
+      try {
+        const data = await readFileAsBase64(file);
+        db.addAnalyticsUpload({
+          userId: user.id,
+          organizationId: currentOrgId,
+          fileName: file.name,
+          fileData: data,
+          mimeType: file.type,
+          fileSize: file.size,
+        });
+      } catch {
+        toast.error(`${file.name}: couldn't read the file.`);
+      }
+    }
+    toast.success('Report attached', { description: 'It\'ll be included with your next question.' });
+  };
+
+  const removeAttachment = (id: string) => {
+    db.removeAnalyticsUpload(id);
+  };
+
   return (
     <>
       {/* Floating trigger button */}
@@ -130,9 +203,9 @@ export function AiHelperChat() {
             transition={{ type: 'spring', stiffness: 260, damping: 22 }}
             onClick={() => setOpen(true)}
             className="fixed bottom-5 right-5 md:bottom-6 md:right-6 z-40 h-14 w-14 rounded-full bg-orange text-white shadow-orange-glow hover:bg-orange-hover active:scale-95 transition-all flex items-center justify-center group"
-            aria-label="Open onboarding assistant"
+            aria-label="Open assistant"
           >
-            <Sparkles className="h-6 w-6 group-hover:animate-pulse" />
+            {mode === 'analytics' ? <BarChart3 className="h-6 w-6 group-hover:animate-pulse" /> : <Sparkles className="h-6 w-6 group-hover:animate-pulse" />}
             <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-white animate-ping opacity-60" />
             <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-white" />
           </motion.button>
@@ -152,26 +225,30 @@ export function AiHelperChat() {
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle bg-gradient-to-r from-orange/10 via-bg-secondary to-bg-secondary shrink-0">
               <div className="h-9 w-9 rounded-xl bg-orange flex items-center justify-center shrink-0">
-                <Bot className="h-5 w-5 text-white" />
+                {mode === 'analytics' ? <BarChart3 className="h-5 w-5 text-white" /> : <Bot className="h-5 w-5 text-white" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">Serenium assistant</p>
+                <p className="font-semibold text-sm">
+                  {mode === 'analytics' ? 'Serenium analyst' : 'Serenium assistant'}
+                </p>
                 <p className="text-[11px] text-white/50 flex items-center gap-1.5">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                  Here to help with onboarding
+                  {mode === 'analytics' ? 'Ready to read your reports' : 'Here to help with onboarding'}
                 </p>
               </div>
-              <button
-                onClick={() => setRequestingHelp(v => !v)}
-                className={cn(
-                  'p-1.5 rounded hover:bg-white/5 transition-colors',
-                  requestingHelp ? 'text-orange' : 'text-white/40 hover:text-white/80',
-                )}
-                title="Talk to a human"
-                aria-label="Request help from the Serenium team"
-              >
-                <LifeBuoy className="h-4 w-4" />
-              </button>
+              {!isAdmin && (
+                <button
+                  onClick={() => setRequestingHelp(v => !v)}
+                  className={cn(
+                    'p-1.5 rounded hover:bg-white/5 transition-colors',
+                    requestingHelp ? 'text-orange' : 'text-white/40 hover:text-white/80',
+                  )}
+                  title="Talk to a human"
+                  aria-label="Request help from the Serenium team"
+                >
+                  <LifeBuoy className="h-4 w-4" />
+                </button>
+              )}
               {messages.length > 0 && (
                 <button onClick={clear} className="text-white/40 hover:text-white/80 p-1.5 rounded hover:bg-white/5" title="Clear chat">
                   <Trash2 className="h-4 w-4" />
@@ -184,7 +261,7 @@ export function AiHelperChat() {
 
             {/* Human help form */}
             <AnimatePresence>
-              {requestingHelp && (
+              {requestingHelp && !isAdmin && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
@@ -218,23 +295,44 @@ export function AiHelperChat() {
               )}
             </AnimatePresence>
 
+            {/* Attached reports strip (analytics mode only) */}
+            {mode === 'analytics' && attachments.length > 0 && (
+              <div className="border-b border-border-subtle px-3 py-2 flex flex-wrap gap-1.5 bg-bg-tertiary/20">
+                {attachments.map(a => (
+                  <span key={a.id} className="inline-flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-md bg-orange/10 border border-orange/20 text-orange text-xs max-w-full">
+                    <FileText className="h-3 w-3 shrink-0" />
+                    <span className="truncate max-w-[160px]">{a.fileName}</span>
+                    <button
+                      onClick={() => removeAttachment(a.id)}
+                      className="h-4 w-4 rounded hover:bg-orange/20 flex items-center justify-center shrink-0"
+                      aria-label={`Remove ${a.fileName}`}
+                    ><X className="h-3 w-3" /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {messages.length === 0 && (
                 <div className="text-center py-4">
                   <div className="h-14 w-14 rounded-2xl bg-orange/10 flex items-center justify-center mx-auto mb-3">
-                    <Sparkles className="h-7 w-7 text-orange" />
+                    {mode === 'analytics' ? <BarChart3 className="h-7 w-7 text-orange" /> : <Sparkles className="h-7 w-7 text-orange" />}
                   </div>
                   <p className="font-semibold text-sm mb-1">
-                    {userContext?.firstName ? `Hey ${userContext.firstName}, ask me anything` : 'Hey, ask me anything'}
+                    {mode === 'analytics'
+                      ? 'What do your numbers say?'
+                      : userContext?.firstName ? `Hey ${userContext.firstName}, ask me anything` : 'Hey, ask me anything'}
                   </p>
                   <p className="text-xs text-white/50 mb-5 px-2">
-                    {userContext?.businessName
-                      ? `I've got the full ${userContext.businessName} onboarding loaded. Ask what a field means, how to grant access, or what's next.`
-                      : "I can help you figure out what to put in each step, how to grant access to tools, and what's expected."}
+                    {mode === 'analytics'
+                      ? 'Attach your monthly reports (PDF) with the paperclip, then ask anything about performance across your channels.'
+                      : userContext?.businessName
+                        ? `I've got the full ${userContext.businessName} onboarding loaded. Ask what a field means, how to grant access, or what's next.`
+                        : "I can help you figure out what to put in each step, how to grant access to tools, and what's expected."}
                   </p>
                   <div className="space-y-1.5">
-                    {SUGGESTED_QUESTIONS.map(q => (
+                    {suggested.map(q => (
                       <button
                         key={q}
                         onClick={() => send(q)}
@@ -247,10 +345,7 @@ export function AiHelperChat() {
                 </div>
               )}
 
-              {messages.map(m => (
-                <MessageBubble key={m.id} message={m} />
-              ))}
-
+              {messages.map(m => <MessageBubble key={m.id} message={m} />)}
               {thinking && <TypingIndicator />}
               <div ref={endRef} />
             </div>
@@ -258,6 +353,27 @@ export function AiHelperChat() {
             {/* Input */}
             <div className="border-t border-border-subtle p-3 bg-bg shrink-0">
               <form onSubmit={e => { e.preventDefault(); send(); }} className="flex items-end gap-2">
+                {mode === 'analytics' && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      multiple
+                      className="hidden"
+                      onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-9 w-9 shrink-0 rounded-xl bg-bg-tertiary/60 border border-border-subtle hover:border-orange/40 text-white/70 hover:text-orange flex items-center justify-center transition-colors"
+                      title="Attach a PDF report"
+                      aria-label="Attach a PDF report"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -265,7 +381,7 @@ export function AiHelperChat() {
                   onKeyDown={e => {
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
                   }}
-                  placeholder="Ask about any onboarding step…"
+                  placeholder={mode === 'analytics' ? 'Ask about your reports…' : 'Ask about any onboarding step…'}
                   rows={1}
                   className="flex-1 resize-none bg-bg-tertiary/60 border border-border-subtle rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange/50 focus:ring-1 focus:ring-orange/30 placeholder:text-white/30 max-h-32"
                 />
@@ -277,7 +393,11 @@ export function AiHelperChat() {
                   <Send className="h-4 w-4" />
                 </button>
               </form>
-              <p className="text-[10px] text-white/30 mt-2 text-center">Answers may be imperfect, our team always has your back.</p>
+              <p className="text-[10px] text-white/30 mt-2 text-center">
+                {mode === 'analytics'
+                  ? 'Upload limit: 3 PDFs, 5 MB each. Attachments stay available for the whole conversation.'
+                  : 'Answers may be imperfect, our team always has your back.'}
+              </p>
             </div>
           </motion.div>
         )}
@@ -305,7 +425,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           'max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
           isUser
             ? 'bg-orange text-white rounded-br-md'
-            : 'bg-bg-tertiary/70 border border-border-subtle text-white/90 rounded-bl-md'
+            : 'bg-bg-tertiary/70 border border-border-subtle text-white/90 rounded-bl-md',
         )}
       >
         {isUser ? message.content : <Markdown>{message.content}</Markdown>}
@@ -327,4 +447,18 @@ function TypingIndicator() {
       </div>
     </div>
   );
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      // FileReader returns "data:<mime>;base64,<data>" — strip the prefix.
+      const result = r.result as string;
+      const idx = result.indexOf(',');
+      resolve(idx >= 0 ? result.slice(idx + 1) : result);
+    };
+    r.onerror = () => reject(new Error('read error'));
+    r.readAsDataURL(file);
+  });
 }

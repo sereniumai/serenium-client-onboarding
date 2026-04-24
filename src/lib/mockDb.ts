@@ -3,11 +3,11 @@ import type {
   ServiceKey, OrgStatus, ModuleProgress, TaskCompletion, Submission,
   Upload, Invitation, ModuleStatus, MonthlyReport, ReportFile,
   ActivityLogEntry, AdminNote, MemberRole,
-  FollowupSettings, FollowupSent, AiChatMessage,
+  FollowupSettings, FollowupSent, AiChatMessage, AnalyticsUpload,
 } from '../types';
 
 // Re-export for convenience so consumers only need one import path.
-export type { FollowupSettings, FollowupTemplate, FollowupSent, AiChatMessage } from '../types';
+export type { FollowupSettings, FollowupTemplate, FollowupSent, AiChatMessage, AnalyticsUpload } from '../types';
 import { SERVICES } from '../config/modules';
 
 const KEY = 'serenium.mockdb.v6';
@@ -39,6 +39,8 @@ interface DBShape {
   followupsSent: FollowupSent[];
   /** AI helper conversations (admin-visible for training/QA) */
   aiChatMessages: AiChatMessage[];
+  /** PDF reports uploaded to the analytics-mode chat (per user) */
+  analyticsUploads: AnalyticsUpload[];
   sessions: { userId: string } | null;
 }
 
@@ -134,6 +136,7 @@ const seed = (): DBShape => {
     followupSettings: DEFAULT_FOLLOWUP_SETTINGS,
     followupsSent: [],
     aiChatMessages: [],
+    analyticsUploads: [],
     sessions: null,
   };
 };
@@ -162,6 +165,7 @@ const load = (): DBShape => {
       followupSettings: parsed.followupSettings ?? DEFAULT_FOLLOWUP_SETTINGS,
       followupsSent: parsed.followupsSent ?? [],
       aiChatMessages: parsed.aiChatMessages ?? [],
+      analyticsUploads: parsed.analyticsUploads ?? [],
     };
     return full;
   } catch { return seed(); }
@@ -758,6 +762,33 @@ export const db = {
   clearAiChatForUser(userId: string) {
     const d = load();
     d.aiChatMessages = d.aiChatMessages.filter(m => m.userId !== userId);
+    save(d);
+  },
+
+  // --- Analytics uploads (PDF reports attached to the chat) ---
+  listAnalyticsUploadsForUser(userId: string): AnalyticsUpload[] {
+    return load().analyticsUploads
+      .filter(u => u.userId === userId)
+      .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
+  },
+
+  addAnalyticsUpload(entry: Omit<AnalyticsUpload, 'id' | 'uploadedAt'>): AnalyticsUpload {
+    const d = load();
+    const rec: AnalyticsUpload = { ...entry, id: uid(), uploadedAt: new Date().toISOString() };
+    d.analyticsUploads.push(rec);
+    save(d);
+    return rec;
+  },
+
+  removeAnalyticsUpload(id: string) {
+    const d = load();
+    d.analyticsUploads = d.analyticsUploads.filter(u => u.id !== id);
+    save(d);
+  },
+
+  clearAnalyticsUploadsForUser(userId: string) {
+    const d = load();
+    d.analyticsUploads = d.analyticsUploads.filter(u => u.userId !== userId);
     save(d);
   },
 
