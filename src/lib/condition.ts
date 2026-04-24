@@ -21,7 +21,7 @@ export function evaluate(cond: Condition, orgId: string, contextPrefix?: string)
   if ('field' in cond) {
     key = contextPrefix ? `${contextPrefix}.${cond.field}` : cond.field;
   } else {
-    // Full path — if it's just "field", prefix it; otherwise use as-is.
+    // Full path, if it's just "field", prefix it; otherwise use as-is.
     key = cond.path.includes('.') ? cond.path : (contextPrefix ? `${contextPrefix}.${cond.path}` : cond.path);
   }
 

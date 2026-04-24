@@ -24,7 +24,7 @@ export interface Organization {
   primaryContactEmail?: string;
   primaryContactPhone?: string;
   status: OrgStatus;
-  plan?: OrgPlan;               // optional — displayed in admin for filtering/billing context
+  plan?: OrgPlan;               // optional, displayed in admin for filtering/billing context
   tags?: string[];              // free-form admin labels ("VIP", "Q1-cohort", etc.)
   goLiveDate?: string;
   createdAt: string;
@@ -132,7 +132,8 @@ export type ActivityAction =
   | 'service_enabled'
   | 'service_disabled'
   | 'member_joined'
-  | 'followup_sent';
+  | 'followup_sent'
+  | 'help_requested';
 
 export interface ActivityLogEntry {
   id: string;

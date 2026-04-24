@@ -2,7 +2,7 @@ import { Logo } from './Logo';
 
 /**
  * Quiet route-transition fallback. Shown only during lazy-loaded chunk fetches,
- * which are typically <200ms — so intentionally low-key to avoid a flash of UI
+ * which are typically <200ms, so intentionally low-key to avoid a flash of UI
  * that competes with the page about to render.
  */
 export function RouteLoader() {

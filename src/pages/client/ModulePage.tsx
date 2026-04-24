@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 
 function ConditionalLinkBlock({ orgId, svcKey, modKey, links }: { orgId: string; svcKey: string; modKey: string; links: Record<string, string> }) {
-  // Watch for a "registrar"-style select in this module — when picked, show the matching link.
+  // Watch for a "registrar"-style select in this module, when picked, show the matching link.
   // Find the select field in siblings whose value matches a link key.
   const subs = db.listSubmissionsForOrg(orgId).filter(s => s.fieldKey.startsWith(`${svcKey}.${modKey}.`));
   const match = subs.find(s => typeof s.value === 'string' && links[s.value as string]);
@@ -89,7 +89,7 @@ export function ModulePage() {
 
   const svcIndex = svc.modules.findIndex(m => m.key === mod.key);
 
-  // "Up next" — smartest available actionable module across all services, skipping
+  // "Up next", smartest available actionable module across all services, skipping
   // completed/hidden/disabled/admin-locked. Returns null when everything is done.
   const nextActionable = findNextActionableModule(org.id, { serviceKey: svc.key, moduleKey: mod.key });
   const next = nextActionable?.module ?? null;
@@ -126,7 +126,7 @@ export function ModulePage() {
         zIndex: 9999,
       });
       toast.success(`${crossedMilestone}% there!`, {
-        description: 'Nice pace — keep the momentum going.',
+        description: 'Nice pace, keep the momentum going.',
         duration: 3500,
       });
     } else {
@@ -154,7 +154,7 @@ export function ModulePage() {
   return (
     <AppShell>
       <div className="lg:grid lg:grid-cols-[300px,1fr]">
-        {/* SIDEBAR — desktop */}
+        {/* SIDEBAR, desktop */}
         <aside className="hidden lg:block border-r border-border-subtle bg-bg-secondary/40 overflow-y-auto sticky top-[65px] h-[calc(100vh-65px)] p-5">
           <Link to={`/onboarding/${org.slug}`} className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white mb-5 px-3">
             <ChevronLeft className="h-3.5 w-3.5" /> Dashboard
@@ -162,7 +162,7 @@ export function ModulePage() {
           <CurriculumSidebar organizationId={org.id} orgSlug={org.slug} />
         </aside>
 
-        {/* SIDEBAR — mobile overlay */}
+        {/* SIDEBAR, mobile overlay */}
         <AnimatePresence>
           {mobileNavOpen && (
             <>
@@ -278,7 +278,7 @@ export function ModulePage() {
               </div>
             )}
 
-            {/* RETELL FORWARDING NUMBER — shown for the call forwarding step once admin sets it */}
+            {/* RETELL FORWARDING NUMBER, shown for the call forwarding step once admin sets it */}
             {mod.lockedUntilAdminFlag === 'ai_receptionist_ready_for_connection' && db.getRetellNumber(org.id) && (
               <div className="card mb-8 border-orange/50">
                 <p className="eyebrow mb-2">Your Serenium forwarding number</p>
@@ -423,12 +423,12 @@ export function ModulePage() {
 
       <CompletionOverlay
         show={showComplete}
-        title={next ? 'Submitted' : `${svc.label} — done`}
+        title={next ? 'Submitted' : `${svc.label}, done`}
         subtitle={next
           ? nextSvcKey === svc.key
             ? `Got it. Up next: ${next.title}.`
-            : `Got it. Up next: ${next.title} — in ${getService(nextSvcKey)?.label ?? 'the next section'}.`
-          : "That's everything we need. Nice work — head back to the dashboard to see what's left or review your progress."}
+            : `Got it. Up next: ${next.title}, in ${getService(nextSvcKey)?.label ?? 'the next section'}.`
+          : "That's everything we need. Nice work, head back to the dashboard to see what's left or review your progress."}
         primaryLabel={next ? 'Next step →' : 'Back to dashboard'}
         onPrimary={goNext}
         secondaryLabel="Stay on this page"

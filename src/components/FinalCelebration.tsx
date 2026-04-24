@@ -91,7 +91,7 @@ export function FinalCelebration({ show, businessName, firstName, onContinue }: 
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
                 className="text-white/50 text-sm max-w-md mx-auto mb-8"
               >
-                We've got everything we need. From here you'll get a monthly report walking you through performance, wins, and what's next — check back at the end of the month.
+                We've got everything we need. From here you'll get a monthly report walking you through performance, wins, and what's next, check back at the end of the month.
               </motion.p>
 
               <motion.button

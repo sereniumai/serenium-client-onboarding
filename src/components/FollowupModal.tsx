@@ -68,7 +68,7 @@ export function FollowupModal({ orgId, orgName, contactName, contactEmail, onClo
       mode: 'manual',
     });
     toast.success(`Follow-up queued for ${contactEmail}`, {
-      description: 'Email delivery is stubbed — will send once Resend is wired.',
+      description: 'Email delivery is stubbed, will send once Resend is wired.',
     });
     onClose();
   };
@@ -83,7 +83,7 @@ export function FollowupModal({ orgId, orgName, contactName, contactEmail, onClo
             <p className="text-sm text-white/60 mt-1">
               {contactEmail
                 ? <>To: <span className="text-white/80">{contactEmail}</span></>
-                : <span className="text-warning">No contact email on file — add one first.</span>}
+                : <span className="text-warning">No contact email on file, add one first.</span>}
             </p>
           </div>
           <button onClick={onClose} className="text-white/40 hover:text-white" aria-label="Close"><X className="h-5 w-5" /></button>

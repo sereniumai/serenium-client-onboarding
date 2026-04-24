@@ -1,4 +1,4 @@
-// Tiny markdown renderer — just enough for our instruction blocks.
+// Tiny markdown renderer, just enough for our instruction blocks.
 // Supports: **bold**, `code`, paragraphs, blank-line breaks, `- ` lists.
 
 export function Markdown({ children }: { children: string }) {

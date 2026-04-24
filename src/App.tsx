@@ -8,19 +8,19 @@ import { ImpersonationBanner } from './components/ImpersonationBanner';
 import { RouteLoader } from './components/RouteLoader';
 import { db } from './lib/mockDb';
 
-// Auth pages — small, but loaded once and thrown away after sign-in.
+// Auth pages, small, but loaded once and thrown away after sign-in.
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage').then(m => ({ default: m.RegisterPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 
-// Client-facing portal — admins never need this, and clients never need admin code.
+// Client-facing portal, admins never need this, and clients never need admin code.
 const OnboardingDashboard = lazy(() => import('./pages/client/OnboardingDashboard').then(m => ({ default: m.OnboardingDashboard })));
 const ModulePage = lazy(() => import('./pages/client/ModulePage').then(m => ({ default: m.ModulePage })));
 const ServicePage = lazy(() => import('./pages/client/ServicePage').then(m => ({ default: m.ServicePage })));
 const ReportsPage = lazy(() => import('./pages/client/ReportsPage').then(m => ({ default: m.ReportsPage })));
 
-// Admin — the biggest chunk, kept out of the client bundle entirely.
+// Admin, the biggest chunk, kept out of the client bundle entirely.
 const AdminHome = lazy(() => import('./pages/admin/AdminHome').then(m => ({ default: m.AdminHome })));
 const NewClientWizard = lazy(() => import('./pages/admin/NewClientWizard').then(m => ({ default: m.NewClientWizard })));
 const ClientDetail = lazy(() => import('./pages/admin/ClientDetail').then(m => ({ default: m.ClientDetail })));

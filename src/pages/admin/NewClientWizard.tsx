@@ -106,7 +106,7 @@ export function NewClientWizard() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <p className="text-sm text-white/60 mb-2">Pick the services this client is onboarding for. For each enabled service, pick only the steps you actually need — unchecked steps won't appear in their portal.</p>
+              <p className="text-sm text-white/60 mb-2">Pick the services this client is onboarding for. For each enabled service, pick only the steps you actually need, unchecked steps won't appear in their portal.</p>
 
               {SELECTABLE_SERVICES.map(s => {
                 const on = services.includes(s.key);
@@ -191,7 +191,7 @@ export function NewClientWizard() {
 
           {step === 3 && (
             <div className="card space-y-4">
-              <p className="text-sm text-white/60">Add the users who'll log in. The primary contact is the default owner. In local mode, accounts are created instantly — real email invites get wired up when Supabase is connected.</p>
+              <p className="text-sm text-white/60">Add the users who'll log in. The primary contact is the default owner. In local mode, accounts are created instantly, real email invites get wired up when Supabase is connected.</p>
               {users.map((u, i) => (
                 <div key={i} className="flex flex-col md:flex-row gap-2">
                   <input className="input md:w-1/3" placeholder="Full name"

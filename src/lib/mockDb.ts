@@ -52,7 +52,7 @@ const DEFAULT_FOLLOWUP_SETTINGS: FollowupSettings = {
       subject: 'Just checking in on your onboarding',
       body: `Hi {{firstName}},
 
-Just checking in — wanted to make sure you haven't hit any roadblocks in your Serenium onboarding. If there's anything unclear or you need a hand, just hit reply.
+Just checking in, wanted to make sure you haven't hit any roadblocks in your Serenium onboarding. If there's anything unclear or you need a hand, just hit reply.
 
 You can pick up where you left off here: {{portalUrl}}
 
@@ -426,7 +426,7 @@ export const db = {
     const now = new Date().toISOString();
     const existing = d.submissions.find(s => s.organizationId === input.organizationId && s.fieldKey === input.fieldKey);
 
-    // Log to activity, but debounce — a client typing rapidly should not create one
+    // Log to activity, but debounce, a client typing rapidly should not create one
     // entry per keystroke. Log on first write, or when the last log for this field
     // was more than 60s ago.
     const isEmpty = input.value == null || input.value === '' || (Array.isArray(input.value) && input.value.length === 0);
@@ -527,7 +527,7 @@ export const db = {
     save(d);
   },
 
-  // --- Uploads (file meta only — we store file names + data URLs for preview in mock mode) ---
+  // --- Uploads (file meta only, we store file names + data URLs for preview in mock mode) ---
   addUpload(input: Omit<Upload, 'id' | 'uploadedAt'>): Upload {
     const d = load();
     const upload: Upload = { ...input, id: uid(), uploadedAt: new Date().toISOString() };
@@ -552,7 +552,7 @@ export const db = {
     save(d);
   },
 
-  // --- Videos (global — one Loom URL per step, visible to all clients) ---
+  // --- Videos (global, one Loom URL per step, visible to all clients) ---
   getVideoUrl(serviceKey: ServiceKey, moduleKey: string): string | null {
     const d = load();
     return d.videos[`${serviceKey}.${moduleKey}`] ?? null;
@@ -570,7 +570,7 @@ export const db = {
     return { ...load().videos };
   },
 
-  // --- Welcome video (global — one upload, shown to each new user on first login) ---
+  // --- Welcome video (global, one upload, shown to each new user on first login) ---
   getWelcomeVideo() {
     return load().welcomeVideo;
   },
@@ -758,6 +758,17 @@ export const db = {
   clearAiChatForUser(userId: string) {
     const d = load();
     d.aiChatMessages = d.aiChatMessages.filter(m => m.userId !== userId);
+    save(d);
+  },
+
+  requestHumanHelp(input: { organizationId: string; userId: string; note?: string; context?: string | null }) {
+    const d = load();
+    logActivityInto(d, {
+      organizationId: input.organizationId,
+      userId: input.userId,
+      action: 'help_requested',
+      metadata: { note: input.note ?? '', context: input.context ?? null },
+    });
     save(d);
   },
 

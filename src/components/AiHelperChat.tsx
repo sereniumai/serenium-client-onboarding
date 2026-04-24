@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X, Send, Trash2, Bot } from 'lucide-react';
+import { Sparkles, X, Send, Trash2, Bot, LifeBuoy } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '../auth/AuthContext';
 import { db } from '../lib/mockDb';
 import { useDbVersion } from '../hooks/useDb';
+import { getOrgProgress } from '../lib/progress';
 import { askAssistant, loadChatHistory, clearChatHistory, appendMessage, SUGGESTED_QUESTIONS, type ChatMessage } from '../lib/aiHelper';
 import { Markdown } from './Markdown';
 import { cn } from '../lib/cn';
@@ -16,14 +18,17 @@ export function AiHelperChat() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
+  const [requestingHelp, setRequestingHelp] = useState(false);
+  const [helpNote, setHelpNote] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const messages: ChatMessage[] = user?.id ? loadChatHistory(user.id) : [];
 
-  const currentOrgId = user && user.role === 'client'
-    ? db.listOrganizationsForUser(user.id)[0]?.id ?? null
+  const currentOrg = user && user.role === 'client'
+    ? db.listOrganizationsForUser(user.id)[0] ?? null
     : null;
+  const currentOrgId = currentOrg?.id ?? null;
 
   const currentContext = (() => {
     const m = location.pathname.match(/\/services\/([^/]+)\/([^/]+)/);
@@ -31,6 +36,30 @@ export function AiHelperChat() {
     const s = location.pathname.match(/\/services\/([^/]+)/);
     if (s) return s[1];
     return null;
+  })();
+
+  // Personalization payload sent to the assistant so it can greet by name, reference the business,
+  // and tailor suggestions to what they've already shared.
+  const userContext = (() => {
+    if (!user || !currentOrg) return null;
+    const progress = getOrgProgress(currentOrg.id);
+    const submissions = db.listSubmissionsForOrg(currentOrg.id);
+    const pick = (svc: string, mod: string, field: string) =>
+      submissions.find(s => s.fieldKey === `${svc}.${mod}.${field}`)?.value;
+
+    return {
+      firstName: user.fullName.split(' ')[0],
+      businessName: currentOrg.businessName,
+      progressPercent: progress.overall,
+      completeServices: progress.enabledServices.filter(k => {
+        const mods = progress.perService[k];
+        return mods && mods.length > 0 && mods.every(m => m.status === 'complete');
+      }),
+      yearsInBusiness: pick('business_profile', 'years_in_business', 'years_in_business'),
+      serviceAreas: pick('business_profile', 'service_areas', 'service_areas'),
+      servicesOffered: pick('business_profile', 'services_offered', 'services_offered'),
+      emergencyOffered: pick('business_profile', 'emergency_service', 'emergency_offered'),
+    };
   })();
 
   useEffect(() => {
@@ -56,10 +85,10 @@ export function AiHelperChat() {
 
     try {
       const historyForApi = messages.map(m => ({ role: m.role, content: m.content }));
-      const reply = await askAssistant(content, historyForApi, currentContext);
+      const reply = await askAssistant(content, historyForApi, currentContext, userContext);
       appendMessage(user.id, currentOrgId, 'assistant', reply, currentContext);
     } catch {
-      appendMessage(user.id, currentOrgId, 'assistant', "Sorry — I hit a snag. Try again, or email contact@sereniumai.com for anything urgent.", currentContext);
+      appendMessage(user.id, currentOrgId, 'assistant', "Sorry, I hit a snag. Try again, or email contact@sereniumai.com for anything urgent.", currentContext);
     } finally {
       setThinking(false);
     }
@@ -69,6 +98,24 @@ export function AiHelperChat() {
     if (!user?.id) return;
     if (messages.length > 0 && !window.confirm('Clear this conversation? This can’t be undone.')) return;
     clearChatHistory(user.id);
+  };
+
+  const submitHumanHelp = () => {
+    if (!user || !currentOrgId) return;
+    db.requestHumanHelp({
+      organizationId: currentOrgId,
+      userId: user.id,
+      note: helpNote.trim(),
+      context: currentContext,
+    });
+    appendMessage(
+      user.id, currentOrgId, 'assistant',
+      `Got it. The Serenium team has been notified and someone will reach out to you directly at ${user.email}. In the meantime, you can keep working through the portal or ask me anything else.`,
+      currentContext,
+    );
+    toast.success('Help request sent', { description: 'The Serenium team has been notified.' });
+    setHelpNote('');
+    setRequestingHelp(false);
   };
 
   return (
@@ -114,6 +161,17 @@ export function AiHelperChat() {
                   Here to help with onboarding
                 </p>
               </div>
+              <button
+                onClick={() => setRequestingHelp(v => !v)}
+                className={cn(
+                  'p-1.5 rounded hover:bg-white/5 transition-colors',
+                  requestingHelp ? 'text-orange' : 'text-white/40 hover:text-white/80',
+                )}
+                title="Talk to a human"
+                aria-label="Request help from the Serenium team"
+              >
+                <LifeBuoy className="h-4 w-4" />
+              </button>
               {messages.length > 0 && (
                 <button onClick={clear} className="text-white/40 hover:text-white/80 p-1.5 rounded hover:bg-white/5" title="Clear chat">
                   <Trash2 className="h-4 w-4" />
@@ -124,6 +182,42 @@ export function AiHelperChat() {
               </button>
             </div>
 
+            {/* Human help form */}
+            <AnimatePresence>
+              {requestingHelp && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden border-b border-border-subtle bg-orange/5"
+                >
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <p className="font-semibold text-sm mb-1">Talk to a human</p>
+                      <p className="text-xs text-white/60">The Serenium team will be notified and will reach out to you at <span className="text-white/80">{user.email}</span>.</p>
+                    </div>
+                    <textarea
+                      value={helpNote}
+                      onChange={e => setHelpNote(e.target.value)}
+                      placeholder="What do you need help with? (optional)"
+                      rows={2}
+                      className="w-full resize-none bg-bg-tertiary/60 border border-border-subtle rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange/50 placeholder:text-white/30"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => { setRequestingHelp(false); setHelpNote(''); }}
+                        className="text-xs text-white/60 hover:text-white px-3 py-1.5"
+                      >Cancel</button>
+                      <button
+                        onClick={submitHumanHelp}
+                        className="text-xs bg-orange hover:bg-orange-hover text-white font-medium px-3 py-1.5 rounded-md transition-colors"
+                      >Send help request</button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {messages.length === 0 && (
@@ -131,8 +225,14 @@ export function AiHelperChat() {
                   <div className="h-14 w-14 rounded-2xl bg-orange/10 flex items-center justify-center mx-auto mb-3">
                     <Sparkles className="h-7 w-7 text-orange" />
                   </div>
-                  <p className="font-semibold text-sm mb-1">Hey — ask me anything</p>
-                  <p className="text-xs text-white/50 mb-5 px-2">I can help you figure out what to put in each step, how to grant access to tools, and what's expected.</p>
+                  <p className="font-semibold text-sm mb-1">
+                    {userContext?.firstName ? `Hey ${userContext.firstName}, ask me anything` : 'Hey, ask me anything'}
+                  </p>
+                  <p className="text-xs text-white/50 mb-5 px-2">
+                    {userContext?.businessName
+                      ? `I've got the full ${userContext.businessName} onboarding loaded. Ask what a field means, how to grant access, or what's next.`
+                      : "I can help you figure out what to put in each step, how to grant access to tools, and what's expected."}
+                  </p>
                   <div className="space-y-1.5">
                     {SUGGESTED_QUESTIONS.map(q => (
                       <button
@@ -177,7 +277,7 @@ export function AiHelperChat() {
                   <Send className="h-4 w-4" />
                 </button>
               </form>
-              <p className="text-[10px] text-white/30 mt-2 text-center">Answers may be imperfect — our team always has your back.</p>
+              <p className="text-[10px] text-white/30 mt-2 text-center">Answers may be imperfect, our team always has your back.</p>
             </div>
           </motion.div>
         )}

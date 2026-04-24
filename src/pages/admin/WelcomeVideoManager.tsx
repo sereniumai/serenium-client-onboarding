@@ -58,7 +58,7 @@ export function WelcomeVideoManager() {
 
           <p className="eyebrow mb-3">Library</p>
           <h1 className="font-display font-black text-[clamp(1.75rem,6vw,3rem)] leading-[1.05] tracking-[-0.03em] mb-3">Welcome video</h1>
-          <p className="text-white/60 mb-8 md:mb-10 text-sm md:text-base">One video, played to every new client the first time they land on their dashboard. Upload an MP4 or MOV — we'll host it locally (Supabase Storage once wired up).</p>
+          <p className="text-white/60 mb-8 md:mb-10 text-sm md:text-base">One video, played to every new client the first time they land on their dashboard. Upload an MP4 or MOV, we'll host it locally (Supabase Storage once wired up).</p>
 
           {current ? (
             <div className="card">

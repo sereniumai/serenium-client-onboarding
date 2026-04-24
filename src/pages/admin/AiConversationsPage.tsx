@@ -20,7 +20,7 @@ export function AiConversationsPage() {
   const all = db.listAllAiChats();
   const orgs = db.listAllOrganizations();
 
-  // userId -> display name. A user may be in multiple orgs — we only need their name here;
+  // userId -> display name. A user may be in multiple orgs, we only need their name here;
   // the org context comes from each message's own `organizationId`, not the profile.
   const userNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -39,7 +39,7 @@ export function AiConversationsPage() {
       .filter(m => !query || m.content.toLowerCase().includes(query.toLowerCase()));
   }, [all, query, selectedOrgId]);
 
-  // Group into conversations per (user + org + day) — ensures a user chatting from two orgs
+  // Group into conversations per (user + org + day), ensures a user chatting from two orgs
   // on the same day doesn't get merged into one conversation.
   const groups = useMemo(() => {
     const map = new Map<string, typeof filtered>();

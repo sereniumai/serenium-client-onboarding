@@ -62,7 +62,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
           <h1 className="font-display font-black text-3xl tracking-[-0.025em] mb-3">Something broke.</h1>
           <p className="text-white/60 mb-6">
-            We hit an unexpected error. Reload the page and we'll pick up where you left off — your progress is saved.
+            We hit an unexpected error. Reload the page and we'll pick up where you left off, your progress is saved.
           </p>
           <div className="bg-bg-secondary border border-border-subtle rounded-lg p-4 mb-6 text-left">
             <p className="text-xs font-mono text-white/50 break-words">{this.state.error.message}</p>

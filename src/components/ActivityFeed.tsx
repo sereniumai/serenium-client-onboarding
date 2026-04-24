@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { CheckCircle2, RotateCcw, Upload as UploadIcon, FileBarChart2, Edit3, Trash2, Power, PowerOff, UserPlus, Mail } from 'lucide-react';
+import { CheckCircle2, RotateCcw, Upload as UploadIcon, FileBarChart2, Edit3, Trash2, Power, PowerOff, UserPlus, Mail, LifeBuoy } from 'lucide-react';
 import { db } from '../lib/mockDb';
 import { useDbVersion } from '../hooks/useDb';
 import { getService, getModule } from '../config/modules';
@@ -18,6 +18,7 @@ const ACTION_META: Record<ActivityAction, { icon: typeof CheckCircle2; color: st
   service_disabled: { icon: PowerOff,       color: 'text-white/50 bg-bg-tertiary' },
   member_joined:    { icon: UserPlus,       color: 'text-orange bg-orange/10' },
   followup_sent:    { icon: Mail,           color: 'text-orange bg-orange/10' },
+  help_requested:   { icon: LifeBuoy,       color: 'text-warning bg-warning/10' },
 };
 
 export function ActivityFeed({ organizationId, limit = 25 }: { organizationId: string; limit?: number }) {
@@ -128,5 +129,6 @@ function describe(entry: ActivityLogEntry): { title: string; detail?: string } {
     }
     case 'member_joined':    return { title: 'Member joined' };
     case 'followup_sent':    return { title: `Sent follow-up · ${m.mode ?? 'manual'}`, detail: m.subject };
+    case 'help_requested':   return { title: 'Client asked to speak with a human', detail: m.note || 'No details shared' };
   }
 }

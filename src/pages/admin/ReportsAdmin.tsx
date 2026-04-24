@@ -128,7 +128,7 @@ function ReportEditor({ orgId, initial, onDone }: { orgId: string; initial: Edit
     const trimmedHighlights = highlights.map(h => h.trim()).filter(Boolean);
     const payload = {
       period: period.trim(),
-      title: title.trim() || `Report — ${safeFormatPeriod(period)}`,
+      title: title.trim() || `Report, ${safeFormatPeriod(period)}`,
       summary: summary.trim() || undefined,
       loomUrl: loomUrl.trim() || undefined,
       highlights: trimmedHighlights.length ? trimmedHighlights : undefined,
@@ -181,7 +181,7 @@ function ReportEditor({ orgId, initial, onDone }: { orgId: string; initial: Edit
 
       <div>
         <label className="label">Highlights</label>
-        <p className="text-xs text-white/40 mb-2">Short wins or stats — shown as pills at the top of the report.</p>
+        <p className="text-xs text-white/40 mb-2">Short wins or stats, shown as pills at the top of the report.</p>
         <div className="space-y-2">
           {highlights.map((h, i) => (
             <div key={i} className="flex gap-2">

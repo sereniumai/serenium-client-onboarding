@@ -22,7 +22,7 @@ function motivation(pct: number, hasReports: boolean) {
   if (pct === 0) return "A few quick steps to give us what we need to launch your campaigns.";
   if (pct < 30)  return "Good start. Keep moving through the sections below.";
   if (pct < 60)  return "You're past the halfway mark. A few more to go.";
-  if (pct < 90)  return "Almost done — we've got most of what we need.";
+  if (pct < 90)  return "Almost done, we've got most of what we need.";
   if (pct < 100) return "One last step and we're ready to launch.";
   return hasReports
     ? "Your latest monthly report is ready below."
@@ -117,7 +117,7 @@ export function OnboardingDashboard() {
 
         </section>
 
-        {/* POST-ONBOARDING — latest report + complete banner */}
+        {/* POST-ONBOARDING, latest report + complete banner */}
         {onboardingDone && (
           <section className="relative mx-auto max-w-6xl px-6 pb-2">
             <CompleteBanner hasReports={reports.length > 0} />

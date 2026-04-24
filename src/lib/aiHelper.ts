@@ -1,9 +1,9 @@
 // ============================================================================
-// AI helper — client-side chat wiring.
+// AI helper, client-side chat wiring.
 // ============================================================================
 // Conversation storage lives in mockDb. The actual "brain" is the Vercel edge
 // function at /api/ask-assistant which calls Claude with a scoped system prompt
-// generated from the module config. No client-side fallback logic — if the
+// generated from the module config. No client-side fallback logic, if the
 // function is unreachable we show a clear error message.
 // ============================================================================
 
@@ -36,16 +36,28 @@ export function appendMessage(
  * function /api/ask-assistant which calls Claude. On any failure, returns a
  * short error message rather than a stale canned response.
  */
+export interface UserContext {
+  firstName?: string;
+  businessName?: string;
+  progressPercent?: number;
+  completeServices?: string[];
+  yearsInBusiness?: unknown;
+  serviceAreas?: unknown;
+  servicesOffered?: unknown;
+  emergencyOffered?: unknown;
+}
+
 export async function askAssistant(
   question: string,
   history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
   context: string | null = null,
+  userContext: UserContext | null = null,
 ): Promise<string> {
   try {
     const resp = await fetch('/api/ask-assistant', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ question, history, context }),
+      body: JSON.stringify({ question, history, context, userContext }),
     });
 
     if (resp.ok) {
@@ -54,9 +66,9 @@ export async function askAssistant(
     }
 
     if (resp.status === 503) {
-      return "I'm not set up just yet — the Serenium team is finishing my configuration. In the meantime, email **contact@sereniumai.com** with anything you're stuck on.";
+      return "I'm not set up just yet. The Serenium team is finishing my configuration. In the meantime, email **contact@sereniumai.com** with anything you're stuck on.";
     }
-    return "Sorry — I hit a snag answering that. Try again in a moment, or email **contact@sereniumai.com** for anything urgent.";
+    return "Sorry, I hit a snag answering that. Try again in a moment, or email **contact@sereniumai.com** for anything urgent.";
   } catch {
     return "I'm temporarily unreachable. Check your connection and try again, or email **contact@sereniumai.com**.";
   }

@@ -59,17 +59,17 @@ export interface Field {
   helpText?: string;
   accept?: string;
   conditional?: Condition;
-  /** For type='info' — static content shown as guidance */
+  /** For type='info', static content shown as guidance */
   content?: string;
-  /** For repeatable fields — minimum entries required */
+  /** For repeatable fields, minimum entries required */
   minItems?: number;
-  /** For type='structured' — sub-field schema (e.g. street/city/postal). */
+  /** For type='structured', sub-field schema (e.g. street/city/postal). */
   schema?: StructuredSubField[];
-  /** For type='slider' — numeric range config. */
+  /** For type='slider', numeric range config. */
   slider?: { min: number; max: number; step: number; default: number; suffix?: string };
-  /** For type='logo_picker' — which Business Profile field to offer as "reuse" option. */
+  /** For type='logo_picker', which Business Profile field to offer as "reuse" option. */
   logoReuseFieldKey?: string;
-  /** For type='weekly_availability' — which days to render. Defaults to Mon–Fri. */
+  /** For type='weekly_availability', which days to render. Defaults to Mon–Fri. */
   weekDays?: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'>;
   /** Synchronous validation. Returns error message or null. */
   validate?: FieldValidator;
@@ -108,12 +108,12 @@ export interface ServiceDef {
 }
 
 // ============================================================================
-// BUSINESS PROFILE — default on, shown first, but admin can disable if not needed
+// BUSINESS PROFILE, default on, shown first, but admin can disable if not needed
 // ============================================================================
 const BUSINESS_PROFILE: ServiceDef = {
   key: 'business_profile',
   label: 'Business Profile',
-  description: 'Core business info used across all services — filled out once, used everywhere',
+  description: 'Core business info used across all services, filled out once, used everywhere',
   modules: [
     {
       key: 'years_in_business',
@@ -180,7 +180,7 @@ const BUSINESS_PROFILE: ServiceDef = {
       key: 'insurance',
       title: 'Insurance details',
       estimatedMinutes: 2,
-      fields: [{ key: 'insurance', label: 'Liability, WCB, bonding — what you carry', type: 'textarea' }],
+      fields: [{ key: 'insurance', label: 'Liability, WCB, bonding, what you carry', type: 'textarea' }],
     },
     {
       key: 'financing',
@@ -278,7 +278,7 @@ const BUSINESS_PROFILE: ServiceDef = {
       key: 'social_profiles',
       title: 'Social profiles',
       estimatedMinutes: 4,
-      instructions: 'Paste links to any of these platforms where you have a presence. All optional — skip the ones you don\'t use.',
+      instructions: 'Paste links to any of these platforms where you have a presence. All optional, skip the ones you don\'t use.',
       fields: [
         { key: 'social_facebook',  label: 'Facebook',    type: 'url', placeholder: 'https://facebook.com/...' },
         { key: 'social_instagram', label: 'Instagram',   type: 'url', placeholder: 'https://instagram.com/...' },
@@ -293,7 +293,7 @@ const BUSINESS_PROFILE: ServiceDef = {
       key: 'year_founded',
       title: 'Year founded',
       estimatedMinutes: 1,
-      fields: [{ key: 'year_founded', label: 'Year the business was founded', type: 'number', placeholder: 'e.g. 2012', helpText: 'Stable value for "Est. 2012" branding — years_in_business drifts, year_founded doesn\'t.' }],
+      fields: [{ key: 'year_founded', label: 'Year the business was founded', type: 'number', placeholder: 'e.g. 2012', helpText: 'Stable value for "Est. 2012" branding, years_in_business drifts, year_founded doesn\'t.' }],
     },
     {
       key: 'review_platforms',
@@ -343,7 +343,7 @@ const BUSINESS_PROFILE: ServiceDef = {
 };
 
 // ============================================================================
-// FACEBOOK ADS — placeholder, to be respec'd
+// FACEBOOK ADS, placeholder, to be respec'd
 // ============================================================================
 const FACEBOOK_ADS: ServiceDef = {
   key: 'facebook_ads',
@@ -359,14 +359,14 @@ const FACEBOOK_ADS: ServiceDef = {
         { key: 'fb_business_manager_exists', label: 'Do you have a Meta Business Manager (BM)?', type: 'select', required: true, options: ['Yes', 'No', 'Not sure'] },
         { key: 'fb_bm_create_help', type: 'info',
           conditional: { field: 'fb_business_manager_exists', op: 'eq', value: 'No' },
-          content: "No problem — create one free at **business.facebook.com/overview** before continuing. You'll need it to run ads and to grant Serenium partner access." },
+          content: "No problem, create one free at **business.facebook.com/overview** before continuing. You'll need it to run ads and to grant Serenium partner access." },
         { key: 'fb_bm_find_help', type: 'info',
           conditional: { field: 'fb_business_manager_exists', op: 'eq', value: 'Not sure' },
           content: "Head to **business.facebook.com**. If you're logged in and see a 'Business Manager' option, you have one. If not, select 'Create Account' and set one up." },
         { key: 'fb_page_exists', label: 'Do you have a Facebook Page for your business?', type: 'select', required: true, options: ['Yes', 'No'] },
         { key: 'fb_page_help', type: 'info',
           conditional: { field: 'fb_page_exists', op: 'eq', value: 'No' },
-          content: "Pre-requisite: your Page must belong to your Business Manager, not a personal profile. Serenium can create or guide you — ping us if you need help." },
+          content: "Pre-requisite: your Page must belong to your Business Manager, not a personal profile. Serenium can create or guide you, ping us if you need help." },
       ],
     },
     {
@@ -386,7 +386,7 @@ const FACEBOOK_ADS: ServiceDef = {
 };
 
 // ============================================================================
-// GOOGLE ADS — NEW
+// GOOGLE ADS, NEW
 // ============================================================================
 const GOOGLE_ADS: ServiceDef = {
   key: 'google_ads',
@@ -401,7 +401,7 @@ const GOOGLE_ADS: ServiceDef = {
         { key: 'google_ads_account_exists', label: 'Do you already have a Google Ads account?', type: 'select', required: true, options: ['Yes', 'No', 'Not sure'] },
         { key: 'google_ads_no_info', type: 'info',
           conditional: { field: 'google_ads_account_exists', op: 'eq', value: 'No' },
-          content: "No problem — Serenium will create a new account linked to our Manager Account. No action needed from you, skip the rest of this service." },
+          content: "No problem, Serenium will create a new account linked to our Manager Account. No action needed from you, skip the rest of this service." },
       ],
     },
     {
@@ -409,7 +409,7 @@ const GOOGLE_ADS: ServiceDef = {
       title: 'Customer ID',
       estimatedMinutes: 2,
       conditional: { field: 'google_ads_account_exists', op: 'eq', value: 'Yes' },
-      instructions: `We need your **10-digit Google Ads Customer ID** to send an MCC link request. Log into Google Ads — the number appears in the top-right of every screen, formatted like **123-456-7890**.`,
+      instructions: `We need your **10-digit Google Ads Customer ID** to send an MCC link request. Log into Google Ads, the number appears in the top-right of every screen, formatted like **123-456-7890**.`,
       fields: [
         { key: 'google_ads_customer_id', label: 'Customer ID', type: 'text', required: true, placeholder: '123-456-7890', validate: validateGoogleAdsId },
       ],
@@ -428,7 +428,7 @@ const GOOGLE_ADS: ServiceDef = {
 };
 
 // ============================================================================
-// GOOGLE BUSINESS PROFILE — NEW (extracted from Website)
+// GOOGLE BUSINESS PROFILE, NEW (extracted from Website)
 // ============================================================================
 const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
   key: 'google_business_profile',
@@ -443,10 +443,10 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
         { key: 'gbp_profile_exists', label: 'Do you have a Google Business Profile?', type: 'select', required: true, options: ['Yes verified', 'Yes unverified', 'No', 'Not sure'] },
         { key: 'gbp_help_create', type: 'info',
           conditional: { any: [{ field: 'gbp_profile_exists', op: 'eq', value: 'No' }, { field: 'gbp_profile_exists', op: 'eq', value: 'Not sure' }] },
-          content: "We'll help you create or claim a profile. Skip the rest of this service — Serenium takes it from here." },
+          content: "We'll help you create or claim a profile. Skip the rest of this service, Serenium takes it from here." },
         { key: 'gbp_help_unverified', type: 'info',
           conditional: { field: 'gbp_profile_exists', op: 'eq', value: 'Yes unverified' },
-          content: "Verification is required before we can be added as a Manager. Google typically verifies by postcard or phone — finish verification, then come back." },
+          content: "Verification is required before we can be added as a Manager. Google typically verifies by postcard or phone, finish verification, then come back." },
       ],
     },
     {
@@ -455,7 +455,7 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
       estimatedMinutes: 1,
       conditional: { any: [{ field: 'gbp_profile_exists', op: 'eq', value: 'Yes verified' }, { field: 'gbp_profile_exists', op: 'eq', value: 'Yes unverified' }] },
       fields: [
-        { key: 'gbp_ownership_confirmed', label: "I confirm I'm the verified owner of this Google Business Profile — not a third party, and not a stolen or old listing", type: 'checkbox', required: true },
+        { key: 'gbp_ownership_confirmed', label: "I confirm I'm the verified owner of this Google Business Profile, not a third party, and not a stolen or old listing", type: 'checkbox', required: true },
       ],
     },
     {
@@ -508,7 +508,7 @@ const AI_SMS: ServiceDef = {
           label: 'Opening message',
           type: 'textarea',
           required: true,
-          placeholder: "Hi [Name], thanks for reaching out to [Company] about your roof! I'm [AI Name] — happy to help you get a free estimate. Mind if I grab a few quick details?",
+          placeholder: "Hi [Name], thanks for reaching out to [Company] about your roof! I'm [AI Name], happy to help you get a free estimate. Mind if I grab a few quick details?",
           helpText: 'First message the AI sends to a new lead.',
         },
         {
@@ -534,7 +534,7 @@ const AI_SMS: ServiceDef = {
           options: ['Share ranges', 'Share specifics', 'Always punt to human'],
           helpText: 'Most roofers pick "punt to human".',
         },
-        { key: 'sms_ai_never_say', label: 'Guardrails — things the AI should NEVER say', type: 'textarea', required: true },
+        { key: 'sms_ai_never_say', label: 'Guardrails, things the AI should NEVER say', type: 'textarea', required: true },
       ],
     },
     {
@@ -593,7 +593,7 @@ const AI_SMS: ServiceDef = {
       key: 'casl',
       title: 'CASL compliance (existing site)',
       estimatedMinutes: 5,
-      instructions: `Canada's Anti-Spam Legislation requires explicit consent before AI-assisted SMS follow-up. If Serenium is building your new website, we handle this automatically — so this step only shows up when we're NOT building your site.
+      instructions: `Canada's Anti-Spam Legislation requires explicit consent before AI-assisted SMS follow-up. If Serenium is building your new website, we handle this automatically, so this step only shows up when we're NOT building your site.
 
 **Add this checkbox to your existing lead forms:**
 
@@ -617,7 +617,7 @@ const AI_SMS: ServiceDef = {
           label: 'What do you currently use for booking?',
           type: 'select',
           required: true,
-          options: ['Cal.com', 'Calendly', 'Google Calendar', 'Acuity', 'Square Appointments', 'Other', 'None yet — Serenium to set up'],
+          options: ['Cal.com', 'Calendly', 'Google Calendar', 'Acuity', 'Square Appointments', 'Other', 'None yet, Serenium to set up'],
         },
         {
           key: 'sms_existing_calendar_other',
@@ -659,7 +659,7 @@ const AI_SMS: ServiceDef = {
           label: 'Who gets notified (name, phone, email each)',
           type: 'repeatable',
           required: true,
-          helpText: 'System uses whichever channel matches your preference above — include both phone AND email for each person.',
+          helpText: 'System uses whichever channel matches your preference above, include both phone AND email for each person.',
         },
       ],
     },
@@ -668,7 +668,7 @@ const AI_SMS: ServiceDef = {
       title: 'GHL Calendar setup',
       estimatedMinutes: 10,
       lockedUntilAdminFlag: 'ghl_calendar_ready_for_client',
-      lockedMessage: "Serenium is setting this up — we'll unlock it for you soon.",
+      lockedMessage: "Serenium is setting this up, we'll unlock it for you soon.",
       videoUrl: 'https://www.youtube.com/watch?v=KcdUwD3I5ms',
       instructions: `Once Serenium has provisioned your GHL subaccount, connect your Google Calendar and set availability here.`,
       fields: [
@@ -691,7 +691,7 @@ const AI_SMS: ServiceDef = {
 const AI_RECEPTIONIST: ServiceDef = {
   key: 'ai_receptionist',
   label: 'AI Receptionist',
-  description: 'Inbound call AI — captures info and emails you a summary. Does not book appointments.',
+  description: 'Inbound call AI, captures info and emails you a summary. Does not book appointments.',
   modules: [
     {
       key: 'purpose_goal',
@@ -717,7 +717,7 @@ const AI_RECEPTIONIST: ServiceDef = {
           label: 'Greeting script',
           type: 'textarea',
           required: true,
-          placeholder: "Thanks for calling [Company], this is [AI Name] — how can I help you today?",
+          placeholder: "Thanks for calling [Company], this is [AI Name], how can I help you today?",
         },
         {
           key: 'retell_question_flow',
@@ -728,7 +728,7 @@ const AI_RECEPTIONIST: ServiceDef = {
         },
         { key: 'retell_faqs', label: 'FAQs callers commonly ask', type: 'repeatable', required: true },
         { key: 'retell_pricing_stance', label: 'Pricing stance', type: 'select', required: true, options: ['Share ranges', 'Always punt to human'] },
-        { key: 'retell_ai_never_say', label: 'Guardrails — never say', type: 'textarea', required: true },
+        { key: 'retell_ai_never_say', label: 'Guardrails, never say', type: 'textarea', required: true },
         { key: 'retell_voice_preference', label: 'Voice preference', type: 'select', options: ['Male', 'Female', 'No preference'] },
       ],
     },
@@ -795,64 +795,64 @@ const AI_RECEPTIONIST: ServiceDef = {
           type: 'select',
           required: true,
           options: [
-            "Option A — Use Serenium's AI phone number directly",
-            'Option B — Keep existing number, forward to AI',
+            "Option A, Use Serenium's AI phone number directly",
+            'Option B, Keep existing number, forward to AI',
           ],
         },
         {
           key: 'retell_phone_option_a_info',
           type: 'info',
-          conditional: { field: 'retell_phone_mode', op: 'eq', value: "Option A — Use Serenium's AI phone number directly" },
+          conditional: { field: 'retell_phone_mode', op: 'eq', value: "Option A, Use Serenium's AI phone number directly" },
           content: "We'll give you a dedicated AI phone number to publish on your website, ads, and business cards. Calls go straight to the AI. No forwarding setup needed on your end.",
         },
 
         // Option B branch
         { key: 'retell_forwarding_mode', label: 'Forwarding mode', type: 'select', required: true,
-          options: ['Immediate forward — phone never rings on my end', "Ring first, forward if unanswered"],
-          conditional: { field: 'retell_phone_mode', op: 'eq', value: 'Option B — Keep existing number, forward to AI' },
+          options: ['Immediate forward, phone never rings on my end', "Ring first, forward if unanswered"],
+          conditional: { field: 'retell_phone_mode', op: 'eq', value: 'Option B, Keep existing number, forward to AI' },
         },
         { key: 'retell_phone_carrier', label: 'Your phone carrier', type: 'select', required: true,
           options: ['Rogers', 'Bell', 'Telus', 'Freedom', 'Koodo', 'Fido', 'Virgin Plus', 'Public Mobile', 'Lucky Mobile', 'Chatr', 'Other'],
           helpText: 'Canadian GSM standard: dial *004*[AI number]# to set forwarding, ##004# to cancel. Confirm with your carrier.',
-          conditional: { field: 'retell_phone_mode', op: 'eq', value: 'Option B — Keep existing number, forward to AI' },
+          conditional: { field: 'retell_phone_mode', op: 'eq', value: 'Option B, Keep existing number, forward to AI' },
         },
         { key: 'retell_phone_brand', label: 'Your phone brand', type: 'select', required: true,
           options: ['Apple (iPhone)', 'Samsung (Galaxy)', 'Google (Pixel)', 'Motorola', 'OnePlus', 'Other Android'],
-          conditional: { field: 'retell_phone_mode', op: 'eq', value: 'Option B — Keep existing number, forward to AI' },
+          conditional: { field: 'retell_phone_mode', op: 'eq', value: 'Option B, Keep existing number, forward to AI' },
         },
 
         // Per-brand inline steps
         { key: 'retell_brand_apple_info', type: 'info',
           conditional: { field: 'retell_phone_brand', op: 'eq', value: 'Apple (iPhone)' },
-          content: '**🍎 Apple (iPhone) — forwarding setup:**\n\n1. Open **Settings**\n2. Tap **Phone**\n3. Tap **Call Forwarding**\n4. Toggle **On**\n5. Enter the AI forwarding number provided by Serenium',
+          content: '**🍎 Apple (iPhone), forwarding setup:**\n\n1. Open **Settings**\n2. Tap **Phone**\n3. Tap **Call Forwarding**\n4. Toggle **On**\n5. Enter the AI forwarding number provided by Serenium',
         },
         { key: 'retell_brand_samsung_info', type: 'info',
           conditional: { field: 'retell_phone_brand', op: 'eq', value: 'Samsung (Galaxy)' },
-          content: '**📱 Samsung (Galaxy) — forwarding setup:**\n\n1. Open the **Phone** app\n2. Tap the **3-dot menu** (top right)\n3. Tap **Settings → Supplementary services**\n4. Tap **Call forwarding → Voice call → Always forward**\n5. Enter the AI forwarding number and tap **Enable**',
+          content: '**📱 Samsung (Galaxy), forwarding setup:**\n\n1. Open the **Phone** app\n2. Tap the **3-dot menu** (top right)\n3. Tap **Settings → Supplementary services**\n4. Tap **Call forwarding → Voice call → Always forward**\n5. Enter the AI forwarding number and tap **Enable**',
         },
         { key: 'retell_brand_pixel_info', type: 'info',
           conditional: { field: 'retell_phone_brand', op: 'eq', value: 'Google (Pixel)' },
-          content: '**🔵 Google (Pixel) — forwarding setup:**\n\n1. Open the **Phone** app\n2. Tap **3-dot menu → Settings**\n3. Tap **Calls → Calling accounts**\n4. Select your carrier\n5. Tap **Call forwarding → Always forward**\n6. Enter the AI forwarding number',
+          content: '**🔵 Google (Pixel), forwarding setup:**\n\n1. Open the **Phone** app\n2. Tap **3-dot menu → Settings**\n3. Tap **Calls → Calling accounts**\n4. Select your carrier\n5. Tap **Call forwarding → Always forward**\n6. Enter the AI forwarding number',
         },
         { key: 'retell_brand_motorola_info', type: 'info',
           conditional: { field: 'retell_phone_brand', op: 'eq', value: 'Motorola' },
-          content: '**🟠 Motorola — forwarding setup:**\n\n1. Open the **Phone** app\n2. Tap **3-dot menu → Settings**\n3. Tap **Calls → Call forwarding → Always forward**\n4. Enter the AI forwarding number',
+          content: '**🟠 Motorola, forwarding setup:**\n\n1. Open the **Phone** app\n2. Tap **3-dot menu → Settings**\n3. Tap **Calls → Call forwarding → Always forward**\n4. Enter the AI forwarding number',
         },
         { key: 'retell_brand_oneplus_info', type: 'info',
           conditional: { field: 'retell_phone_brand', op: 'eq', value: 'OnePlus' },
-          content: '**🔴 OnePlus — forwarding setup:**\n\n1. Open the **Phone** app\n2. Tap **3-dot menu → Settings**\n3. Tap **Call settings → Call forwarding → Always forward**\n4. Enter the AI forwarding number',
+          content: '**🔴 OnePlus, forwarding setup:**\n\n1. Open the **Phone** app\n2. Tap **3-dot menu → Settings**\n3. Tap **Call settings → Call forwarding → Always forward**\n4. Enter the AI forwarding number',
         },
         { key: 'retell_brand_other_info', type: 'info',
           conditional: { field: 'retell_phone_brand', op: 'eq', value: 'Other Android' },
-          content: '**⚙️ Other Android — forwarding setup:**\n\n1. Open the **Phone** app\n2. Go to **Settings → Calls → Call forwarding** (path varies by manufacturer skin)\n3. Select **Always forward**\n4. Enter the AI forwarding number\n\n**Fallback for any phone:** dial `*004*[AI number]#` on most Canadian carriers.',
+          content: '**⚙️ Other Android, forwarding setup:**\n\n1. Open the **Phone** app\n2. Go to **Settings → Calls → Call forwarding** (path varies by manufacturer skin)\n3. Select **Always forward**\n4. Enter the AI forwarding number\n\n**Fallback for any phone:** dial `*004*[AI number]#` on most Canadian carriers.',
         },
 
         // Safety checks (always shown in Option B)
         { key: 'retell_forwarding_setup_confirmed', label: "I've set up call forwarding using the steps above", type: 'checkbox', required: true,
-          conditional: { field: 'retell_phone_mode', op: 'eq', value: 'Option B — Keep existing number, forward to AI' },
+          conditional: { field: 'retell_phone_mode', op: 'eq', value: 'Option B, Keep existing number, forward to AI' },
         },
         { key: 'retell_forwarding_tested', label: "I've called my own number and confirmed the AI picked up", type: 'checkbox', required: true,
-          conditional: { field: 'retell_phone_mode', op: 'eq', value: 'Option B — Keep existing number, forward to AI' },
+          conditional: { field: 'retell_phone_mode', op: 'eq', value: 'Option B, Keep existing number, forward to AI' },
         },
       ],
     },
@@ -865,7 +865,7 @@ const AI_RECEPTIONIST: ServiceDef = {
 const WEBSITE: ServiceDef = {
   key: 'website',
   label: 'Website',
-  description: 'Custom website build with foundational SEO baked in — creative first, technical access at the end.',
+  description: 'Custom website build with foundational SEO baked in, creative first, technical access at the end.',
   modules: [
     {
       key: 'purpose_goal',
@@ -965,7 +965,7 @@ const WEBSITE: ServiceDef = {
       key: 'registrar_delegation',
       title: 'Registrar / DNS delegation',
       estimatedMinutes: 8,
-      instructions: `Add **contact@sereniumai.com** to your registrar with admin / DNS-edit permissions. Pick your registrar below — we'll show you a walkthrough.`,
+      instructions: `Add **contact@sereniumai.com** to your registrar with admin / DNS-edit permissions. Pick your registrar below, we'll show you a walkthrough.`,
       fields: [
         { key: 'registrar', label: 'Your domain registrar', type: 'select', required: true, options: ['GoDaddy', 'Namecheap', 'Cloudflare', 'Other'] },
         { key: 'other_registrar_info', type: 'info',
@@ -1010,7 +1010,7 @@ const WEBSITE: ServiceDef = {
 };
 
 // ============================================================================
-// EXPORTS — SERVICES in dashboard order
+// EXPORTS, SERVICES in dashboard order
 // ============================================================================
 export const SERVICES: ServiceDef[] = [
   BUSINESS_PROFILE,

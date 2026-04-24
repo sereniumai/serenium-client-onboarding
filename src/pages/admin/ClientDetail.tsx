@@ -278,7 +278,7 @@ function ServicesTab({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-white/60">
-        Toggle services, steps, or individual fields on/off per client. Business Profile is on by default but can be disabled if you don't need it. Unchecked items are hidden from the client — submitted data is preserved if you re-enable.
+        Toggle services, steps, or individual fields on/off per client. Business Profile is on by default but can be disabled if you don't need it. Unchecked items are hidden from the client, submitted data is preserved if you re-enable.
       </p>
       {SERVICES.map(svc => {
         const entry = all.find(s => s.serviceKey === svc.key);
@@ -322,7 +322,7 @@ function ServiceAccordion({
   const toggleService = (on: boolean) => {
     db.setServiceEnabled(orgId, svcKey, on);
     toast.success(on ? `${serviceLabel} enabled` : `${serviceLabel} disabled`, {
-      description: on ? 'Steps are now visible to the client' : 'Hidden from the client — data preserved',
+      description: on ? 'Steps are now visible to the client' : 'Hidden from the client, data preserved',
     });
     if (on) setOpen(true);
   };
@@ -434,7 +434,7 @@ function UsersTab({ orgId, members }: { orgId: string; members: ReturnType<typeo
       const inviteUrl = `${window.location.origin}/register?token=${result.token}`;
       navigator.clipboard?.writeText(inviteUrl).catch(() => { /* clipboard may be unavailable */ });
       toast.success('User added · invite link copied', {
-        description: `${fullName.trim() || email.trim()} — link is on your clipboard`,
+        description: `${fullName.trim() || email.trim()}, link is on your clipboard`,
         duration: 6000,
       });
     } else {
@@ -911,7 +911,7 @@ function FilesTab({ orgId, orgName }: { orgId: string; orgName: string }) {
           <ImageIcon className="h-7 w-7 text-orange" />
         </div>
         <h3 className="font-display font-bold text-xl mb-2">No files uploaded yet</h3>
-        <p className="text-white/50 text-sm max-w-md mx-auto">Logos, job photos, videos, testimonials — anything the client uploads through their onboarding shows up here.</p>
+        <p className="text-white/50 text-sm max-w-md mx-auto">Logos, job photos, videos, testimonials, anything the client uploads through their onboarding shows up here.</p>
       </div>
     );
   }
@@ -1023,7 +1023,7 @@ function NotesTab({ orgId }: { orgId: string }) {
           rows={3}
           value={body}
           onChange={e => setBody(e.target.value)}
-          placeholder="Leave a note about this client — context, preferences, things to watch…"
+          placeholder="Leave a note about this client, context, preferences, things to watch…"
           className="input"
           onKeyDown={e => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) add();
@@ -1220,7 +1220,7 @@ function AiChatTab({ orgId }: { orgId: string }) {
       <EmptyState
         icon={Sparkles}
         title="No AI conversations yet"
-        description="When this client asks the onboarding assistant for help, every exchange will show up here — useful for spotting confusion and improving the tool."
+        description="When this client asks the onboarding assistant for help, every exchange will show up here, useful for spotting confusion and improving the tool."
       />
     );
   }

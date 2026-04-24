@@ -11,7 +11,7 @@ type Status = 'idle' | 'saving' | 'saved' | 'error';
  *                              → error (on failure, sticky)
  */
 export function useAutosave<T>(organizationId: string, fieldKey: string, userId?: string) {
-  // Seed state lazily — re-seed whenever orgId or fieldKey changes so the hook
+  // Seed state lazily, re-seed whenever orgId or fieldKey changes so the hook
   // can be reused across different fields without carrying stale values.
   const [value, setValue] = useState<T | undefined>(
     () => db.getSubmission(organizationId, fieldKey)?.value as T | undefined,
@@ -53,7 +53,7 @@ export function useAutosave<T>(organizationId: string, fieldKey: string, userId?
     return () => {
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
     };
-    // userId omitted intentionally — it's injected once per session, not a trigger.
+    // userId omitted intentionally, it's injected once per session, not a trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, organizationId, fieldKey]);
 

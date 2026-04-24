@@ -1,4 +1,4 @@
-// Lightweight UI sound effects via the Web Audio API — no asset files needed.
+// Lightweight UI sound effects via the Web Audio API, no asset files needed.
 // Toggleable per user via localStorage.
 
 const KEY = 'serenium.sounds.enabled';

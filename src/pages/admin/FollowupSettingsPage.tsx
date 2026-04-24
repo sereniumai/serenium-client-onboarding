@@ -27,7 +27,7 @@ export function FollowupSettingsPage() {
 
   const removeTemplate = (key: string) => {
     if (['gentle', 'stronger', 'final'].includes(key)) {
-      toast.error("Can't remove a default template — toggle it off instead.");
+      toast.error("Can't remove a default template, toggle it off instead.");
       return;
     }
     const tpl = settings.templates.find(t => t.key === key);
@@ -140,9 +140,9 @@ export function FollowupSettingsPage() {
           <div className="mt-8 p-4 rounded-xl border border-orange/20 bg-orange/5 text-sm text-white/70">
             <p className="font-semibold text-white mb-1">Available placeholders</p>
             <ul className="text-xs space-y-0.5">
-              <li><code className="font-mono text-orange">{'{{firstName}}'}</code> — primary contact's first name</li>
-              <li><code className="font-mono text-orange">{'{{businessName}}'}</code> — client business name</li>
-              <li><code className="font-mono text-orange">{'{{portalUrl}}'}</code> — link back to their onboarding portal</li>
+              <li><code className="font-mono text-orange">{'{{firstName}}'}</code>, primary contact's first name</li>
+              <li><code className="font-mono text-orange">{'{{businessName}}'}</code>, client business name</li>
+              <li><code className="font-mono text-orange">{'{{portalUrl}}'}</code>, link back to their onboarding portal</li>
             </ul>
           </div>
         </div>

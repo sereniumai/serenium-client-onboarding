@@ -259,7 +259,7 @@ function ModuleSection({
           </div>
         )}
 
-        {/* Retell forwarding number card — only for the call forwarding step */}
+        {/* Retell forwarding number card, only for the call forwarding step */}
         {module.lockedUntilAdminFlag === 'ai_receptionist_ready_for_connection' && retellNumber && (
           <div className="rounded-lg border border-orange/50 p-4">
             <p className="eyebrow mb-1">Your Serenium forwarding number</p>
@@ -267,7 +267,7 @@ function ModuleSection({
           </div>
         )}
 
-        {/* Video — only if module has one */}
+        {/* Video, only if module has one */}
         {hasVideo && (
           embed ? (
             <div className="aspect-video rounded-xl border border-border-subtle overflow-hidden bg-black">

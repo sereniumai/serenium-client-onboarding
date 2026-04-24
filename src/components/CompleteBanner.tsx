@@ -16,7 +16,7 @@ export function CompleteBanner({ hasReports }: { hasReports: boolean }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="eyebrow mb-1 flex items-center gap-1.5"><Sparkles className="h-3 w-3" /> All set</p>
-          <h2 className="font-display font-black text-lg md:text-2xl leading-[1.15] tracking-[-0.02em] mb-1">Onboarding complete — we're live on your account.</h2>
+          <h2 className="font-display font-black text-lg md:text-2xl leading-[1.15] tracking-[-0.02em] mb-1">Onboarding complete, we're live on your account.</h2>
           <p className="text-white/70 text-sm">
             {hasReports
               ? "We're working in the background. Your latest monthly report is below."

@@ -30,7 +30,7 @@ export function submissionIsFilled(
       const data = value as Record<string, unknown>;
       const required = field.schema?.filter(s => s.required) ?? [];
       if (required.length === 0) {
-        // No required sub-fields — at least one sub-field must be non-empty.
+        // No required sub-fields, at least one sub-field must be non-empty.
         return Object.values(data).some(v => v != null && v !== '');
       }
       return required.every(s => {
@@ -195,7 +195,7 @@ export function moduleIsReady(org: string, svcKey: ServiceKey, moduleKey: string
 export { SERVICES };
 
 /**
- * Find the next actionable module for a client — the next step they should tackle.
+ * Find the next actionable module for a client, the next step they should tackle.
  * Skips: disabled services/modules, hidden (conditional-false) modules, admin-locked modules,
  * and already-completed modules. Walks services in dashboard order, wrapping around so that
  * if the current service is fully done, it returns the next service's first incomplete step.

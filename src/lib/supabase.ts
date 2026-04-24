@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-// Supabase client — returns null if env vars aren't set (local mock mode).
+// Supabase client, returns null if env vars aren't set (local mock mode).
 // Once keys are configured in .env.local, this becomes the live backend.
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;

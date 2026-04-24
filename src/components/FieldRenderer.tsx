@@ -359,7 +359,7 @@ function FileField({ field, organizationId, fieldKey, userId }: Props) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// StructuredField — groups sub-fields (e.g. business_address = street/city/postal)
+// StructuredField, groups sub-fields (e.g. business_address = street/city/postal)
 // into one field key. Stores as a nested object keyed by sub-field key.
 // ─────────────────────────────────────────────────────────────────────────────
 function StructuredField({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
@@ -406,7 +406,7 @@ function StructuredField({ field, organizationId, fieldKey, userId, onStatusChan
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SliderField — draggable numeric range with snap-to-step. Stores as number.
+// SliderField, draggable numeric range with snap-to-step. Stores as number.
 // ─────────────────────────────────────────────────────────────────────────────
 function SliderField({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
   const cfg = field.slider ?? { min: 0, max: 100, step: 1, default: 0 };
@@ -443,7 +443,7 @@ function SliderField({ field, organizationId, fieldKey, userId, onStatusChange }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LogoPickerField — 3-tab picker: reuse Business Profile / upload / external URL
+// LogoPickerField, 3-tab picker: reuse Business Profile / upload / external URL
 // ─────────────────────────────────────────────────────────────────────────────
 type LogoPickerValue = { mode: 'reuse' | 'upload' | 'url'; url?: string };
 
@@ -525,7 +525,7 @@ function LogoPickerField({ field, organizationId, fieldKey, userId, onStatusChan
               <p className="text-sm text-white/70">
                 {isDragActive ? 'Drop to upload…' : 'Drop a logo here, or click to browse'}
               </p>
-              <p className="text-[10px] text-white/40 mt-1">PNG, SVG, PDF, AI, EPS — vector preferred</p>
+              <p className="text-[10px] text-white/40 mt-1">PNG, SVG, PDF, AI, EPS, vector preferred</p>
             </div>
             {uploads.length > 0 && (
               <div className="mt-3 space-y-1">
@@ -557,7 +557,7 @@ function LogoPickerField({ field, organizationId, fieldKey, userId, onStatusChan
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FieldValidationMessage — runs field.validate on current value, shows error.
+// FieldValidationMessage, runs field.validate on current value, shows error.
 // ─────────────────────────────────────────────────────────────────────────────
 function FieldValidationMessage({ field, organizationId, fieldKey }: { field: Field; organizationId: string; fieldKey: string }) {
   if (!field.validate) return null;
