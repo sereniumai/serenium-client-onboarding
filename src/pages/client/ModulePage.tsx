@@ -56,6 +56,8 @@ import { getService, getModule } from '../../config/modules';
 import { evaluate } from '../../lib/condition';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
 import { moduleIsReady, findNextActionableModule, getOrgProgress } from '../../lib/progress';
+import { useQuery } from '@tanstack/react-query';
+import { listStepVideos } from '../../lib/db/videos';
 import type { ServiceKey } from '../../types';
 
 export function ModulePage() {
@@ -70,6 +72,7 @@ export function ModulePage() {
   const { snapshot, isLoading } = useOrgSnapshot(org?.id);
   const setModStatus = useSetModuleStatus();
   const setTask = useSetTaskCompletion();
+  const { data: stepVideos = [] } = useQuery({ queryKey: ['step_videos'], queryFn: listStepVideos });
 
   const svc = serviceKey ? getService(serviceKey as ServiceKey) : null;
   const mod = svc && moduleKey ? getModule(svc.key, moduleKey) : null;
@@ -99,6 +102,7 @@ export function ModulePage() {
 
   const svcIndex = svc.modules.findIndex(m => m.key === mod.key);
 
+  const stepVideo = stepVideos.find(v => v.serviceKey === svc.key && v.moduleKey === mod.key);
   const nextActionable = findNextActionableModule(snapshot, { serviceKey: svc.key, moduleKey: mod.key });
   const next = nextActionable?.module ?? null;
   const nextSvcKey = nextActionable?.serviceKey ?? svc.key;
@@ -208,7 +212,8 @@ export function ModulePage() {
 
             {/* VIDEO */}
             {(() => {
-              const stored = mod.videoUrl || '';
+              const override = stepVideo?.url;
+              const stored = override || mod.videoUrl || '';
               const embed = stored ? videoEmbedUrl(stored) : null;
               if (embed) {
                 return (

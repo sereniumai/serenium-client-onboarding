@@ -16,6 +16,8 @@ import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../
 import { getService, type ModuleDef } from '../../config/modules';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
 import { getOrgProgress, getEnabledModulesForService, moduleIsAdminLocked, moduleIsReady } from '../../lib/progress';
+import { useQuery } from '@tanstack/react-query';
+import { listStepVideos } from '../../lib/db/videos';
 import { sfx } from '../../lib/soundFx';
 import type { ServiceKey } from '../../types';
 import { cn } from '../../lib/cn';
@@ -43,6 +45,7 @@ export function ServicePage() {
   const svc = serviceKey ? getService(serviceKey as ServiceKey) : null;
   const setModStatus = useSetModuleStatus();
   const setTask = useSetTaskCompletion();
+  const { data: stepVideos = [] } = useQuery({ queryKey: ['step_videos'], queryFn: listStepVideos });
 
   if (isLoading) {
     return (
@@ -100,6 +103,7 @@ export function ServicePage() {
                   snapshot={snapshot}
                   serviceKey={svc.key}
                   userId={user?.id}
+                  stepVideoOverride={stepVideos.find(v => v.serviceKey === svc.key && v.moduleKey === m.key)?.url}
                   onStatusChange={setSaveStatus}
                   onSetTask={(taskKey, checked) => setTask.mutate({ organizationId: org.id, taskKey, completed: checked, userId: user?.id })}
                   onSetModuleStatus={(status) => setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: m.key, status, userId: user?.id })}
@@ -137,7 +141,7 @@ export function ServicePage() {
 }
 
 function ModuleSection({
-  index, total, module, snapshot, serviceKey, userId, onStatusChange, onSetTask, onSetModuleStatus, onComplete,
+  index, total, module, snapshot, serviceKey, userId, stepVideoOverride, onStatusChange, onSetTask, onSetModuleStatus, onComplete,
 }: {
   index: number;
   total: number;
@@ -145,6 +149,7 @@ function ModuleSection({
   snapshot: import('../../lib/progress').OrgSnapshot;
   serviceKey: ServiceKey;
   userId?: string;
+  stepVideoOverride?: string;
   onStatusChange: (s: 'idle' | 'saving' | 'saved' | 'error') => void;
   onSetTask: (taskKey: string, checked: boolean) => void;
   onSetModuleStatus: (status: 'not_started' | 'in_progress' | 'complete') => void;
@@ -156,8 +161,8 @@ function ModuleSection({
   const mp = snapshot.moduleProgress.find(p => p.serviceKey === serviceKey && p.moduleKey === module.key);
   const complete = mp?.status === 'complete';
   const adminLocked = moduleIsAdminLocked(snapshot, module);
-  // Retell number + stored video are Phase 6/7. Config-level videoUrl still works.
-  const embed = module.videoUrl ? videoEmbedUrl(module.videoUrl) : null;
+  const effectiveUrl = stepVideoOverride || module.videoUrl;
+  const embed = effectiveUrl ? videoEmbedUrl(effectiveUrl) : null;
   const hasVideo = !!embed || !!module.videoPlaceholder;
 
   const svcEntry = snapshot.services.find(s => s.serviceKey === serviceKey);
