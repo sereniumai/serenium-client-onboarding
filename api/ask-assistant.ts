@@ -329,8 +329,8 @@ export default async function handler(req: Request): Promise<Response> {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: mode === 'analytics' ? 1200 : 600,
+        model: process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-20241022',
+        max_tokens: mode === 'analytics' ? 1200 : 800,
         system,
         messages,
       }),
@@ -339,11 +339,16 @@ export default async function handler(req: Request): Promise<Response> {
     if (!resp.ok) {
       const errText = await resp.text();
       console.error('[ask-assistant] Anthropic error', resp.status, errText);
-      return json({ error: 'Assistant is having trouble right now. Please try again.' }, 502);
+      return json({ error: `Anthropic ${resp.status}: ${errText.slice(0, 300)}` }, 502);
     }
 
-    const data = (await resp.json()) as { content?: Array<{ type: string; text: string }> };
+    const data = (await resp.json()) as { content?: Array<{ type: string; text: string }>; stop_reason?: string };
     let text = data.content?.filter(c => c.type === 'text').map(c => c.text).join('\n').trim() ?? '';
+
+    if (!text) {
+      console.error('[ask-assistant] empty content from Anthropic', JSON.stringify(data).slice(0, 500));
+      return json({ error: `Assistant returned no text (stop_reason: ${data.stop_reason ?? 'unknown'}).` }, 502);
+    }
 
     // Safety net: strip em dashes in case Claude slips one in.
     text = text.replace(/\s—\s/g, ', ').replace(/—/g, ', ');

@@ -277,7 +277,7 @@ const BUSINESS_PROFILE: ServiceDef = {
 const FACEBOOK_ADS: ServiceDef = {
   key: 'facebook_ads',
   label: 'Facebook Ads',
-  description: 'Partner access to your Meta Business Manager so Serenium can run Facebook + Instagram ads on your behalf, no password sharing needed.',
+  description: 'Partner access so Serenium can run Facebook + Instagram ads for you.',
   modules: [
     {
       key: 'prerequisites',
@@ -653,7 +653,7 @@ const AI_SMS: ServiceDef = {
 const AI_RECEPTIONIST: ServiceDef = {
   key: 'ai_receptionist',
   label: 'AI Receptionist',
-  description: 'A phone AI that picks up every inbound call, qualifies the caller, and emails you a full summary. Never miss a lead while you\'re on a roof.',
+  description: 'A phone AI that picks up every inbound call and emails you a full summary.',
   modules: [
     {
       key: 'purpose_goal',
