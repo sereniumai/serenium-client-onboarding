@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { useOrgBySlug, useOrgMembers, useOrgServices, useUpdateOrg, useDeleteOrg } from '../../hooks/useOrgs';
-import { useOrgSnapshot } from '../../hooks/useOnboarding';
+import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
+import { useAuth } from '../../auth/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../lib/queryClient';
 import { listInvitationsForOrg, createInvitation, revokeInvitation, buildInviteUrl } from '../../lib/db/invitations';
@@ -17,7 +18,7 @@ import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey, OrgStatus, Upload } from '../../types';
 import { cn } from '../../lib/cn';
 
-type Tab = 'overview' | 'services' | 'submissions' | 'users';
+type Tab = 'overview' | 'services' | 'submissions' | 'progress' | 'users';
 
 export function ClientDetail() {
   const { orgSlug } = useParams();
@@ -71,12 +72,14 @@ export function ClientDetail() {
             <TabBtn active={tab === 'overview'} onClick={() => setTab('overview')}>Overview</TabBtn>
             <TabBtn active={tab === 'services'} onClick={() => setTab('services')}>Services</TabBtn>
             <TabBtn active={tab === 'submissions'} onClick={() => setTab('submissions')}>Submitted info</TabBtn>
+            <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')}>Progress</TabBtn>
             <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>Users</TabBtn>
           </div>
 
           {tab === 'overview' && <OverviewTab org={org} onDelete={() => navigate('/admin')} />}
           {tab === 'services' && <ServicesTab orgId={org.id} />}
           {tab === 'submissions' && <SubmissionsTab orgId={org.id} />}
+          {tab === 'progress' && <ProgressTab orgId={org.id} />}
           {tab === 'users' && <UsersTab orgId={org.id} />}
 
           <div className="mt-8 text-xs text-white/30">
@@ -524,6 +527,115 @@ function UploadRow({ upload }: { upload: Upload }) {
       <span className="text-white/40 tabular-nums shrink-0">{(upload.fileSize / 1024).toFixed(0)} KB</span>
     </div>
   );
+}
+
+// ─── Progress tab ─────────────────────────────────────────────────────────
+function ProgressTab({ orgId }: { orgId: string }) {
+  const { user } = useAuth();
+  const { snapshot, isLoading } = useOrgSnapshot(orgId);
+  const setModStatus = useSetModuleStatus();
+  const setTask = useSetTaskCompletion();
+
+  if (isLoading || !snapshot) {
+    return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading…</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="card">
+        <p className="eyebrow mb-1">Progress (admin override)</p>
+        <p className="text-sm text-white/60">Mark tasks or whole modules complete on the client's behalf, useful after phone calls, for testing, or when you collected info offline.</p>
+      </div>
+
+      {snapshot.services.map(svcEntry => {
+        const svc = getService(svcEntry.serviceKey);
+        if (!svc) return null;
+        const Icon = SERVICE_ICON[svc.key];
+        const modules = getEnabledModulesForService(snapshot, svc.key);
+
+        return (
+          <div key={svc.key} className="card p-0 overflow-hidden">
+            <div className="px-5 py-4 flex items-center gap-3 border-b border-border-subtle">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange/10 text-orange"><Icon className="h-5 w-5" /></div>
+              <h3 className="font-display font-bold text-lg">{svc.label}</h3>
+            </div>
+            {modules.length === 0 ? (
+              <p className="px-5 py-5 text-sm text-white/50">No modules visible.</p>
+            ) : modules.map(m => {
+              const mp = snapshot.moduleProgress.find(p => p.serviceKey === svc.key && p.moduleKey === m.key);
+              const modStatus = mp?.status ?? 'not_started';
+              const isComplete = modStatus === 'complete';
+              return (
+                <div key={m.key} className="px-5 py-4 border-b border-border-subtle last:border-0">
+                  <div className="flex items-start gap-3 mb-3">
+                    <input
+                      type="checkbox"
+                      checked={isComplete}
+                      onChange={e => setModStatus.mutate({
+                        organizationId: orgId,
+                        serviceKey: svc.key,
+                        moduleKey: m.key,
+                        status: e.target.checked ? 'complete' : 'in_progress',
+                        userId: user?.id,
+                      })}
+                      className="mt-1 h-4 w-4 accent-orange"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold">{m.title}</p>
+                        <StatusDot status={modStatus} />
+                      </div>
+                      {m.description && <p className="text-xs text-white/50 mt-0.5">{m.description}</p>}
+                    </div>
+                  </div>
+                  {m.tasks && m.tasks.length > 0 && (
+                    <div className="ml-7 space-y-1.5">
+                      {m.tasks.map(t => {
+                        const taskKey = `${svc.key}.${m.key}.${t.key}`;
+                        const done = !!snapshot.taskCompletions.find(c => c.taskKey === taskKey && c.completed);
+                        return (
+                          <label key={t.key} className="flex items-start gap-2 text-sm cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={done}
+                              onChange={e => setTask.mutate({
+                                organizationId: orgId,
+                                taskKey,
+                                completed: e.target.checked,
+                                userId: user?.id,
+                              })}
+                              className="mt-0.5 h-3.5 w-3.5 accent-orange"
+                            />
+                            <span className={cn('text-white/80 group-hover:text-white transition-colors', done && 'line-through text-white/40')}>
+                              {t.label}{t.required === false && <span className="text-white/30 text-xs ml-1">(optional)</span>}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatusDot({ status }: { status: 'not_started' | 'in_progress' | 'complete' }) {
+  const styles: Record<typeof status, string> = {
+    not_started: 'bg-white/10 text-white/50',
+    in_progress: 'bg-orange/15 text-orange',
+    complete:    'bg-success/15 text-success',
+  };
+  const labels: Record<typeof status, string> = {
+    not_started: 'Not started',
+    in_progress: 'In progress',
+    complete:    'Complete',
+  };
+  return <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider', styles[status])}>{labels[status]}</span>;
 }
 
 function StatusBadge({ status }: { status: OrgStatus }) {
