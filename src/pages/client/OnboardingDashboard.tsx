@@ -9,9 +9,10 @@ import { LatestReportHero } from '../../components/LatestReportHero';
 import { CompleteBanner } from '../../components/CompleteBanner';
 import { AnimatedNumber } from '../../components/AnimatedNumber';
 import { timeOfDayGreeting } from '../../lib/greeting';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
-import { db } from '../../lib/mockDb';
-import { useDbVersion } from '../../hooks/useDb';
+import { useOrgBySlug } from '../../hooks/useOrgs';
+import { useOrgSnapshot } from '../../hooks/useOnboarding';
 import { getOrgProgress, getEnabledModulesForService, estimatedMinutesRemaining, formatMinutes } from '../../lib/progress';
 import { getService } from '../../config/modules';
 import { PHASES } from '../../config/phases';
@@ -33,15 +34,25 @@ function motivation(pct: number, hasReports: boolean) {
 export function OnboardingDashboard() {
   const { orgSlug } = useParams();
   const { user } = useAuth();
-  useDbVersion();
+  const { data: org, isLoading: orgLoading } = useOrgBySlug(orgSlug);
+  const { snapshot, isLoading: snapLoading } = useOrgSnapshot(org?.id);
 
-  const org = orgSlug ? db.getOrganizationBySlug(orgSlug) : null;
-  if (!org) return <Navigate to="/login" replace />;
+  if (orgLoading || snapLoading) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center min-h-[60vh] text-white/60">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
+        </div>
+      </AppShell>
+    );
+  }
+  if (!org || !snapshot) return <Navigate to="/login" replace />;
 
-  const progress = getOrgProgress(org.id);
+  const progress = getOrgProgress(snapshot);
   const firstName = user?.fullName.split(' ')[0] ?? 'there';
-  const reports = db.listReportsForOrg(org.id);
-  const latestReport = reports[0];
+  // Reports come back in Phase 7, for now an empty array keeps the UI quiet.
+  const reports: Array<never> = [];
+  const latestReport = undefined;
   const onboardingDone = progress.totalModules > 0 && progress.overall === 100;
 
   // Find next service with unfinished steps (top-level section, not individual module)
@@ -115,7 +126,7 @@ export function OnboardingDashboard() {
                   <p className="font-display font-black text-xl tabular-nums">
                     {onboardingDone
                       ? <>{progress.completeModules}<span className="text-white/30 text-sm">/{progress.totalModules}</span></>
-                      : formatMinutes(estimatedMinutesRemaining(org.id))}
+                      : formatMinutes(estimatedMinutesRemaining(snapshot))}
                   </p>
                 </div>
               </div>
@@ -203,7 +214,7 @@ export function OnboardingDashboard() {
                   <div className={cn('space-y-4', showPhaseChrome ? 'pl-0 md:pl-16' : 'pl-0')}>
                     {phaseServices.map(svcKey => {
                       const svc = getService(svcKey)!;
-                      const enabledMods = getEnabledModulesForService(org.id, svcKey);
+                      const enabledMods = getEnabledModulesForService(snapshot, svcKey);
                       const summaries = progress.perService[svcKey];
                       const Icon = SERVICE_ICON[svcKey];
                       const svcComplete = summaries.filter(s => s.status === 'complete').length;

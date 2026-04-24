@@ -1,37 +1,46 @@
 import { useEffect, useRef, useState } from 'react';
-import { db } from '../lib/mockDb';
+import { useQueryClient } from '@tanstack/react-query';
+import { upsertSubmission, getSubmission } from '../lib/db/submissions';
+import { qk } from '../lib/queryClient';
 
 type Status = 'idle' | 'saving' | 'saved' | 'error';
 
 /**
- * Debounced autosave for a single field on the `submissions` table. The initial
- * value is read once per (organizationId, fieldKey) pair via lazy state; after
- * that all updates go through a 800ms debounce. Status transitions:
+ * Debounced autosave for a single submission row.
+ *
+ * On mount: fetches the initial value from Supabase (one-shot, not cached
+ * through React Query to avoid write-after-invalidate races). After that,
+ * any change kicks an 800ms debounce, upserts to Supabase, and reports
+ * saving → saved → idle.
+ *
+ * Status transitions:
  *   idle → saving (on change) → saved (on success) → idle (after 1.8s)
  *                              → error (on failure, sticky)
  */
 export function useAutosave<T>(organizationId: string, fieldKey: string, userId?: string) {
-  // Seed state lazily, re-seed whenever orgId or fieldKey changes so the hook
-  // can be reused across different fields without carrying stale values.
-  const [value, setValue] = useState<T | undefined>(
-    () => db.getSubmission(organizationId, fieldKey)?.value as T | undefined,
-  );
+  const qc = useQueryClient();
+  const [value, setValue] = useState<T | undefined>(undefined);
   const [status, setStatus] = useState<Status>('idle');
+
   const saveTimer = useRef<number | null>(null);
   const resetTimer = useRef<number | null>(null);
   const initial = useRef(true);
   const keyRef = useRef(`${organizationId}::${fieldKey}`);
 
-  // If the identity of the hook instance changes (different org/field), re-seed
-  // the value and reset the "initial" flag so we don't autosave stale data.
+  // Initial load + re-seed whenever org/field identity changes.
   useEffect(() => {
     const nextKey = `${organizationId}::${fieldKey}`;
-    if (keyRef.current !== nextKey) {
-      keyRef.current = nextKey;
-      initial.current = true;
-      setValue(db.getSubmission(organizationId, fieldKey)?.value as T | undefined);
-      setStatus('idle');
-    }
+    let cancelled = false;
+    keyRef.current = nextKey;
+    initial.current = true;
+    setStatus('idle');
+    getSubmission(organizationId, fieldKey)
+      .then(sub => {
+        if (cancelled) return;
+        setValue(sub?.value as T | undefined);
+      })
+      .catch(() => { /* empty state on load fail, next save will overwrite */ });
+    return () => { cancelled = true; };
   }, [organizationId, fieldKey]);
 
   useEffect(() => {
@@ -39,25 +48,23 @@ export function useAutosave<T>(organizationId: string, fieldKey: string, userId?
     setStatus('saving');
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      try {
-        db.upsertSubmission({ organizationId, fieldKey, value, updatedBy: userId });
-        setStatus('saved');
-        if (resetTimer.current) window.clearTimeout(resetTimer.current);
-        resetTimer.current = window.setTimeout(() => {
-          setStatus(s => (s === 'saved' ? 'idle' : s));
-        }, 1800);
-      } catch {
-        setStatus('error');
-      }
+      upsertSubmission({ organizationId, fieldKey, value, userId })
+        .then(() => {
+          setStatus('saved');
+          qc.invalidateQueries({ queryKey: qk.submissions(organizationId) });
+          if (resetTimer.current) window.clearTimeout(resetTimer.current);
+          resetTimer.current = window.setTimeout(() => {
+            setStatus(s => (s === 'saved' ? 'idle' : s));
+          }, 1800);
+        })
+        .catch(() => { setStatus('error'); });
     }, 800);
     return () => {
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
     };
-    // userId omitted intentionally, it's injected once per session, not a trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, organizationId, fieldKey]);
 
-  // Clean up the status-reset timer on unmount so we don't setState after unmount.
   useEffect(() => {
     return () => {
       if (resetTimer.current) window.clearTimeout(resetTimer.current);

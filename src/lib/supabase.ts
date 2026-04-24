@@ -1,24 +1,29 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-
-// Supabase client, returns null if env vars aren't set (local mock mode).
-// Once keys are configured in .env.local, this becomes the live backend.
+import { createClient } from '@supabase/supabase-js';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-export const hasSupabase = Boolean(url && anonKey);
-
-export const supabase: SupabaseClient | null = hasSupabase
-  ? createClient(url!, anonKey!, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    })
-  : null;
-
-if (!hasSupabase && typeof window !== 'undefined') {
-  // eslint-disable-next-line no-console
-  console.info('[serenium] Running in local mock mode. Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY to enable live backend.');
+if (!url || !anonKey) {
+  throw new Error(
+    'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. ' +
+    'Add them to .env.local (or Vercel env vars in production).',
+  );
 }
+
+/**
+ * Supabase client (untyped at the generic level; we enforce shapes at the
+ * mapper boundary instead). When we stabilize, run `supabase gen types` to
+ * regenerate typed bindings and re-introduce the Database generic.
+ */
+export const supabase = createClient(url, anonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    storageKey: 'serenium-auth',
+  },
+  realtime: {
+    params: { eventsPerSecond: 5 },
+  },
+});

@@ -12,11 +12,11 @@ import { Markdown } from '../../components/Markdown';
 import { CurriculumSidebar } from '../../components/CurriculumSidebar';
 import { FinalCelebration } from '../../components/FinalCelebration';
 import { useAuth } from '../../auth/AuthContext';
-import { db } from '../../lib/mockDb';
+import { useOrgBySlug } from '../../hooks/useOrgs';
+import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
 import { getService, type ModuleDef } from '../../config/modules';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
-import { getOrgProgress, getEnabledModulesForService, moduleIsAdminLocked } from '../../lib/progress';
-import { useDbVersion } from '../../hooks/useDb';
+import { getOrgProgress, getEnabledModulesForService, moduleIsAdminLocked, moduleIsReady } from '../../lib/progress';
 import { sfx } from '../../lib/soundFx';
 import type { ServiceKey } from '../../types';
 import { cn } from '../../lib/cn';
@@ -26,7 +26,6 @@ export function ServicePage() {
   const location = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  useDbVersion();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showFinal, setShowFinal] = useState(false);
@@ -41,15 +40,26 @@ export function ServicePage() {
     }
   }, [location.hash, serviceKey]);
 
-  const org = orgSlug ? db.getOrganizationBySlug(orgSlug) : null;
+  const { data: org } = useOrgBySlug(orgSlug);
+  const { snapshot, isLoading } = useOrgSnapshot(org?.id);
   const svc = serviceKey ? getService(serviceKey as ServiceKey) : null;
-  if (!org || !svc) return <Navigate to={`/onboarding/${orgSlug}`} replace />;
-  if (!db.listServicesForOrganization(org.id).some(s => s.serviceKey === svc.key)) {
+  const setModStatus = useSetModuleStatus();
+  const setTask = useSetTaskCompletion();
+
+  if (isLoading) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center min-h-[60vh] text-white/60">Loading…</div>
+      </AppShell>
+    );
+  }
+  if (!org || !svc || !snapshot) return <Navigate to={`/onboarding/${orgSlug}`} replace />;
+  if (!snapshot.services.some(s => s.serviceKey === svc.key)) {
     return <Navigate to={`/onboarding/${org.slug}`} replace />;
   }
 
-  const modules = getEnabledModulesForService(org.id, svc.key);
-  const progress = getOrgProgress(org.id);
+  const modules = getEnabledModulesForService(snapshot, svc.key);
+  const progress = getOrgProgress(snapshot);
   const svcSummaries = progress.perService[svc.key] ?? [];
   const done = svcSummaries.filter(s => s.status === 'complete').length;
   const total = svcSummaries.length;
@@ -125,13 +135,14 @@ export function ServicePage() {
                   index={i + 1}
                   total={modules.length}
                   module={m}
-                  orgId={org.id}
+                  snapshot={snapshot}
                   serviceKey={svc.key}
                   userId={user?.id}
                   onStatusChange={setSaveStatus}
+                  onSetTask={(taskKey, checked) => setTask.mutate({ organizationId: org.id, taskKey, completed: checked, userId: user?.id })}
+                  onSetModuleStatus={(status) => setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: m.key, status, userId: user?.id })}
                   onComplete={() => {
-                    const after = getOrgProgress(org.id);
-                    if (after.totalModules > 0 && after.overall === 100) {
+                    if (progress.totalModules > 0 && progress.completeModules + 1 === progress.totalModules) {
                       setShowFinal(true);
                     }
                   }}
@@ -165,65 +176,52 @@ export function ServicePage() {
 }
 
 function ModuleSection({
-  index, total, module, orgId, serviceKey, userId, onStatusChange, onComplete,
+  index, total, module, snapshot, serviceKey, userId, onStatusChange, onSetTask, onSetModuleStatus, onComplete,
 }: {
   index: number;
   total: number;
   module: ModuleDef;
-  orgId: string;
+  snapshot: import('../../lib/progress').OrgSnapshot;
   serviceKey: ServiceKey;
   userId?: string;
   onStatusChange: (s: 'idle' | 'saving' | 'saved' | 'error') => void;
+  onSetTask: (taskKey: string, checked: boolean) => void;
+  onSetModuleStatus: (status: 'not_started' | 'in_progress' | 'complete') => void;
   onComplete: () => void;
 }) {
-  useDbVersion();
+  void userId;
   const sectionRef = useRef<HTMLDivElement>(null);
-  const taskCompletions = db.getTaskCompletions(orgId);
-  const mp = db.listModuleProgress(orgId).find(p => p.serviceKey === serviceKey && p.moduleKey === module.key);
+  const orgId = snapshot.organizationId;
+  const mp = snapshot.moduleProgress.find(p => p.serviceKey === serviceKey && p.moduleKey === module.key);
   const complete = mp?.status === 'complete';
-  const adminLocked = moduleIsAdminLocked(orgId, module);
-  const retellNumber = db.getRetellNumber(orgId);
-  const configVideo = module.videoUrl ? videoEmbedUrl(module.videoUrl) : null;
-  const storedVideo = db.getVideoUrl(serviceKey, module.key);
-  const embed = configVideo || (storedVideo ? videoEmbedUrl(storedVideo) : null);
+  const adminLocked = moduleIsAdminLocked(snapshot, module);
+  // Retell number + stored video are Phase 6/7. Config-level videoUrl still works.
+  const embed = module.videoUrl ? videoEmbedUrl(module.videoUrl) : null;
   const hasVideo = !!embed || !!module.videoPlaceholder;
 
-  const svcEntry = db.listServicesForOrganization(orgId).find(s => s.serviceKey === serviceKey);
+  const svcEntry = snapshot.services.find(s => s.serviceKey === serviceKey);
   const disabledFieldSet = new Set(svcEntry?.disabledFieldKeys ?? []);
   const enabledFields = (module.fields ?? []).filter(f => !disabledFieldSet.has(`${module.key}.${f.key}`));
 
-  const readyFor = (() => {
-    const requiredTasks = module.tasks?.filter(t => t.required !== false) ?? [];
-    const tasksDone = requiredTasks.every(t =>
-      taskCompletions.find(c => c.taskKey === `${serviceKey}.${module.key}.${t.key}` && c.completed)
-    );
-    const requiredFields = enabledFields.filter(f => f.required && f.type !== 'info');
-    const submissions = db.listSubmissionsForOrg(orgId);
-    const fieldsDone = requiredFields.every(f =>
-      submissions.find(s => s.fieldKey === `${serviceKey}.${module.key}.${f.key}` && s.value != null && s.value !== '' && s.value !== false)
-    );
-    return tasksDone && fieldsDone;
-  })();
+  const readyFor = moduleIsReady(snapshot, serviceKey, module.key);
 
   const toggleTask = (taskKey: string, checked: boolean) => {
-    db.setTaskCompletion({ organizationId: orgId, taskKey: `${serviceKey}.${module.key}.${taskKey}`, completed: checked, userId });
+    onSetTask(`${serviceKey}.${module.key}.${taskKey}`, checked);
     if (checked) sfx.check();
     if (!complete && mp?.status === 'not_started') {
-      db.setModuleStatus({ organizationId: orgId, serviceKey, moduleKey: module.key, status: 'in_progress', userId });
+      onSetModuleStatus('in_progress');
     }
   };
 
   const markComplete = () => {
-    db.setModuleStatus({ organizationId: orgId, serviceKey, moduleKey: module.key, status: 'complete', userId });
+    onSetModuleStatus('complete');
     sfx.submit();
     confetti({ particleCount: 30, spread: 50, origin: { y: 0.5 }, colors: ['#FF6B1F', '#FF7A35', '#ffffff'], zIndex: 9999 });
     toast.success('Submitted', { description: module.title });
     onComplete();
   };
 
-  const markIncomplete = () => {
-    db.setModuleStatus({ organizationId: orgId, serviceKey, moduleKey: module.key, status: 'in_progress', userId });
-  };
+  const markIncomplete = () => { onSetModuleStatus('in_progress'); };
 
   return (
     <div ref={sectionRef} id={`module-${module.key}`} className={cn(
@@ -260,10 +258,10 @@ function ModuleSection({
         )}
 
         {/* Retell forwarding number card, only for the call forwarding step */}
-        {module.lockedUntilAdminFlag === 'ai_receptionist_ready_for_connection' && retellNumber && (
+        {false && module.lockedUntilAdminFlag === 'ai_receptionist_ready_for_connection' && (
           <div className="rounded-lg border border-orange/50 p-4">
             <p className="eyebrow mb-1">Your Serenium forwarding number</p>
-            <p className="font-display font-black text-2xl md:text-3xl tracking-tight tabular-nums">{retellNumber}</p>
+            <p className="font-display font-black text-2xl md:text-3xl tracking-tight tabular-nums">—</p>
           </div>
         )}
 
@@ -316,7 +314,7 @@ function ModuleSection({
           <div className="space-y-2">
             {module.tasks.map(t => {
               const tk = `${serviceKey}.${module.key}.${t.key}`;
-              const checked = !!taskCompletions.find(c => c.taskKey === tk && c.completed);
+              const checked = !!snapshot.taskCompletions.find(c => c.taskKey === tk && c.completed);
               return (
                 <TaskCheckbox
                   key={t.key}

@@ -1,6 +1,6 @@
 import { differenceInDays } from 'date-fns';
-import { db } from './mockDb';
-import { getOrgProgress } from './progress';
+import { getOrgProgress, type OrgSnapshot } from './progress';
+import type { Organization } from '../types';
 
 export type HealthState = 'complete' | 'fresh' | 'healthy' | 'stalled';
 
@@ -14,14 +14,22 @@ export interface ClientHealth {
 
 const STALE_DAYS = 7;
 
-export function getClientHealth(organizationId: string): ClientHealth {
-  const org = db.getOrganization(organizationId);
-  const progress = getOrgProgress(organizationId);
-  const activity = db.listActivityForOrg(organizationId, 1);
+/**
+ * Compute health state for a client. Pure, accepts pre-fetched data.
+ *
+ * lastActivityAt is the most recent activity_log entry's created_at, or null
+ * if nothing is logged. When activity_log is re-ported (Phase 7), pass it in.
+ */
+export function getClientHealth(args: {
+  org: Organization;
+  snapshot: OrgSnapshot;
+  lastActivityAt?: string | null;
+}): ClientHealth {
+  const { org, snapshot, lastActivityAt = null } = args;
+  const progress = getOrgProgress(snapshot);
   const now = new Date();
 
-  const daysSinceCreated = org ? differenceInDays(now, new Date(org.createdAt)) : 0;
-  const lastActivityAt = activity[0]?.createdAt ?? null;
+  const daysSinceCreated = differenceInDays(now, new Date(org.createdAt));
   const daysSinceActivity = lastActivityAt ? differenceInDays(now, new Date(lastActivityAt)) : null;
 
   if (progress.totalModules > 0 && progress.overall === 100) {

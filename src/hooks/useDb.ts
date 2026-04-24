@@ -1,11 +1,7 @@
-import { useSyncExternalStore } from 'react';
-import { db } from '../lib/mockDb';
-
-// Triggers re-render whenever the mock DB changes.
-export function useDbVersion() {
-  return useSyncExternalStore(
-    (cb) => db.subscribe(cb),
-    () => localStorage.getItem('serenium.mockdb.v2') ?? '',
-    () => '',
-  );
+/**
+ * Legacy pub/sub hook from the mockDb era. React Query handles reactivity now,
+ * kept as a no-op so existing imports compile during the migration sweep.
+ */
+export function useDbVersion(): number {
+  return 0;
 }

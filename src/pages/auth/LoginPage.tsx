@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { Mail } from 'lucide-react';
 import { AuthLayout } from '../../components/AuthLayout';
 import { useAuth } from '../../auth/AuthContext';
-import { db } from '../../lib/mockDb';
+import { listOrgsForUser } from '../../lib/db/orgs';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -37,7 +37,7 @@ export function LoginPage() {
       if (profile.role === 'admin') {
         navigate('/admin', { replace: true });
       } else {
-        const orgs = db.listOrganizationsForUser(profile.id);
+        const orgs = await listOrgsForUser(profile.id);
         if (orgs[0]) {
           navigate(`/onboarding/${orgs[0].slug}`, { replace: true });
         } else {
@@ -109,13 +109,6 @@ export function LoginPage() {
           <span className="text-white/40 text-xs">Invite-only · no public signup</span>
         </div>
       </form>
-
-      <div className="mt-6 pt-6 border-t border-border-subtle text-xs text-white/40">
-        <p className="mb-2 font-semibold text-white/60">Dev preview accounts</p>
-        <p>Admin: <span className="text-white/70">adam@sereniumai.com</span></p>
-        <p>Client: <span className="text-white/70">craig@surewest.ca</span></p>
-        <p className="mt-1 text-white/40">Any password works in local mode.</p>
-      </div>
     </AuthLayout>
   );
 }

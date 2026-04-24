@@ -106,7 +106,10 @@ export interface Upload {
   organizationId: string;
   category: string;
   fileName: string;
+  /** Legacy: direct URL / data URL (used during localStorage era). Set to '' for Supabase-backed uploads. */
   fileUrl: string;
+  /** Supabase Storage path, format: orgs/{orgId}/{uuid}-{filename}. Empty during localStorage era. */
+  storagePath?: string;
   fileSize: number;
   mimeType: string;
   uploadedAt: string;

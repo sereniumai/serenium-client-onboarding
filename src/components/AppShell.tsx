@@ -8,8 +8,8 @@ import { AiHelperChat } from './AiHelperChat';
 import { AdminSubNav } from './AdminSubNav';
 import { ErrorBoundary } from './ErrorBoundary';
 import { useAuth } from '../auth/AuthContext';
-import { db } from '../lib/mockDb';
-import { useDbVersion } from '../hooks/useDb';
+import { useOrgsForUser } from '../hooks/useOrgs';
+import { useOrgSnapshot } from '../hooks/useOnboarding';
 import { getOrgProgress } from '../lib/progress';
 import { cn } from '../lib/cn';
 
@@ -17,7 +17,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  useDbVersion();
   const [sound, setSound] = useState(soundsEnabled());
 
   const handleSignOut = async () => {
@@ -28,13 +27,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const homePath = user?.role === 'admin' ? '/admin' : '/';
 
   // Find the user's org (client side) to build nav links
-  const org = user && user.role === 'client'
-    ? db.listOrganizationsForUser(user.id)[0] ?? null
-    : null;
+  const userOrgs = useOrgsForUser(user && user.role === 'client' ? user.id : undefined);
+  const org = userOrgs.data?.[0] ?? null;
   const orgSlug = org?.slug ?? null;
-  const progress = org ? getOrgProgress(org.id) : null;
+  const { snapshot } = useOrgSnapshot(org?.id);
+  const progress = snapshot ? getOrgProgress(snapshot) : null;
   const onboardingDone = !!progress && progress.totalModules > 0 && progress.overall === 100;
-  const unreadReports = user && org ? db.countUnreadReports(user.id, org.id) : 0;
+  // Unread-reports badge will come back when reports are ported in Phase 7.
+  const unreadReports = 0;
 
   const clientNavItems: Array<{ to: string; label: string; icon: typeof LayoutDashboard; active: boolean; badge?: number; dot?: boolean }> = [];
   if (orgSlug) {

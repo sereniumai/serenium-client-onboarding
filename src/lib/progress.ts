@@ -1,22 +1,30 @@
-import { db } from './mockDb';
 import { SERVICES, getService, type ModuleDef, type Field } from '../config/modules';
 import { evaluate } from './condition';
-import type { ServiceKey, ModuleStatus } from '../types';
+import type {
+  ServiceKey, ModuleStatus, Submission, ModuleProgress, TaskCompletion,
+  OrganizationService, Upload,
+} from '../types';
 
 /**
- * Does a submission satisfy "filled" for its field type?
- *
- * Naive `value != null && value !== ''` passes for empty objects/arrays and for
- * composite fields where every sub-input is blank. This function knows what
- * "empty" actually means per type.
- *
- * The optional `context` gives access to organization-scoped state (needed for
- * `logo_picker`, which references the uploads table).
+ * Snapshot of everything needed to evaluate onboarding state for one org.
+ * All progress helpers take a snapshot, they don't reach into a store.
+ * This keeps them pure, cheap to memoize, and trivial to test.
  */
+export interface OrgSnapshot {
+  organizationId: string;
+  services: OrganizationService[];      // only enabled services
+  submissions: Submission[];
+  moduleProgress: ModuleProgress[];
+  taskCompletions: TaskCompletion[];
+  uploads: Upload[];                    // used by logo_picker submissionIsFilled check
+  adminFlags: Record<string, boolean>;
+}
+
+/** Does a submission satisfy "filled" for its field type? */
 export function submissionIsFilled(
   field: Field,
   value: unknown,
-  context?: { organizationId: string; fieldKey: string },
+  context?: { uploads: Upload[]; fieldKey: string },
 ): boolean {
   if (value == null || value === '') return false;
 
@@ -30,7 +38,6 @@ export function submissionIsFilled(
       const data = value as Record<string, unknown>;
       const required = field.schema?.filter(s => s.required) ?? [];
       if (required.length === 0) {
-        // No required sub-fields, at least one sub-field must be non-empty.
         return Object.values(data).some(v => v != null && v !== '');
       }
       return required.every(s => {
@@ -43,13 +50,13 @@ export function submissionIsFilled(
       if (typeof value !== 'object' || Array.isArray(value)) return false;
       const data = value as { mode?: string; url?: string };
       if (data.mode === 'url') return !!(data.url && data.url.trim());
-      if (!context) return !!data.mode; // best-effort fallback when no org context
+      if (!context) return !!data.mode;
       if (data.mode === 'upload') {
-        return db.listUploads(context.organizationId, context.fieldKey).length > 0;
+        return context.uploads.filter(u => u.category === context.fieldKey).length > 0;
       }
       if (data.mode === 'reuse') {
         const reuseKey = field.logoReuseFieldKey ?? 'business_profile.logo_files.logo_files';
-        return db.listUploads(context.organizationId, reuseKey).length > 0;
+        return context.uploads.filter(u => u.category === reuseKey).length > 0;
       }
       return false;
     }
@@ -57,7 +64,6 @@ export function submissionIsFilled(
     case 'weekly_availability': {
       if (typeof value !== 'object' || Array.isArray(value)) return false;
       const days = value as Record<string, { closed?: boolean; open?: string; close?: string }>;
-      // At least one day must be open with both open and close times.
       return Object.values(days).some(d => !d.closed && !!d.open && !!d.close);
     }
 
@@ -68,20 +74,18 @@ export function submissionIsFilled(
       return typeof value === 'number';
 
     default:
-      return true; // non-empty scalar already passed the early-return check above.
+      return true;
   }
 }
 
-/** Returns true if module is hidden (conditional evaluates false). */
-export function moduleIsHidden(organizationId: string, svcKey: ServiceKey, mod: ModuleDef): boolean {
+export function moduleIsHidden(snap: OrgSnapshot, svcKey: ServiceKey, mod: ModuleDef): boolean {
   if (!mod.conditional) return false;
-  return !evaluate(mod.conditional, organizationId, `${svcKey}.${mod.key}`);
+  return !evaluate(mod.conditional, snap.submissions, `${svcKey}.${mod.key}`);
 }
 
-/** Returns true if module is locked by admin flag. */
-export function moduleIsAdminLocked(organizationId: string, mod: ModuleDef): boolean {
+export function moduleIsAdminLocked(snap: OrgSnapshot, mod: ModuleDef): boolean {
   if (!mod.lockedUntilAdminFlag) return false;
-  return !db.getAdminFlag(organizationId, mod.lockedUntilAdminFlag);
+  return !snap.adminFlags[mod.lockedUntilAdminFlag];
 }
 
 export interface ModuleSummary {
@@ -92,34 +96,29 @@ export interface ModuleSummary {
   canStart: boolean;
 }
 
-export function getOrgProgress(organizationId: string) {
-  const enabledSvcs = db.listServicesForOrganization(organizationId);
-  const enabled = enabledSvcs.map(s => s.serviceKey);
-  const moduleProgress = db.listModuleProgress(organizationId);
-  const taskCompletions = db.getTaskCompletions(organizationId);
-  const submissions = db.listSubmissionsForOrg(organizationId);
+export function getOrgProgress(snap: OrgSnapshot) {
+  const enabled = snap.services.map(s => s.serviceKey);
 
   const perService: Record<ServiceKey, ModuleSummary[]> = {} as Record<ServiceKey, ModuleSummary[]>;
   let total = 0;
   let complete = 0;
 
-
   for (const svcKey of enabled) {
     const svc = getService(svcKey);
     if (!svc) continue;
-    const svcEntry = enabledSvcs.find(s => s.serviceKey === svcKey);
+    const svcEntry = snap.services.find(s => s.serviceKey === svcKey);
     const disabledModKeys = new Set(svcEntry?.disabledModuleKeys ?? []);
     const summaries: ModuleSummary[] = [];
 
     for (const m of svc.modules) {
       if (disabledModKeys.has(m.key)) continue;
-      if (moduleIsHidden(organizationId, svcKey, m)) continue;
-      const mp = moduleProgress.find(p => p.serviceKey === svcKey && p.moduleKey === m.key);
+      if (moduleIsHidden(snap, svcKey, m)) continue;
+      const mp = snap.moduleProgress.find(p => p.serviceKey === svcKey && p.moduleKey === m.key);
       const status = mp?.status ?? 'not_started';
 
       const taskTotal = m.tasks?.filter(t => t.required !== false).length ?? 0;
       const taskDone = (m.tasks ?? []).filter(t =>
-        taskCompletions.find(c => c.taskKey === `${svcKey}.${m.key}.${t.key}` && c.completed)
+        snap.taskCompletions.find(c => c.taskKey === `${svcKey}.${m.key}.${t.key}` && c.completed)
       ).length;
 
       const disabledFieldSet = new Set(svcEntry?.disabledFieldKeys ?? []);
@@ -127,13 +126,11 @@ export function getOrgProgress(organizationId: string) {
       const fieldTotal = requiredFields.length;
       const fieldDone = requiredFields.filter(f => {
         const fieldKey = `${svcKey}.${m.key}.${f.key}`;
-        const sub = submissions.find(s => s.fieldKey === fieldKey);
-        return sub ? submissionIsFilled(f, sub.value, { organizationId, fieldKey }) : false;
+        const sub = snap.submissions.find(s => s.fieldKey === fieldKey);
+        return sub ? submissionIsFilled(f, sub.value, { uploads: snap.uploads, fieldKey }) : false;
       }).length;
 
-      // Clients can open any step at any time. The only remaining lock is admin-flag
-      // gating (e.g. AI Receptionist call-forwarding waits for admin to flip the switch).
-      const adminUnlocked = !moduleIsAdminLocked(organizationId, m);
+      const adminUnlocked = !moduleIsAdminLocked(snap, m);
       const canStart = adminUnlocked;
 
       summaries.push({
@@ -158,35 +155,33 @@ export function getOrgProgress(organizationId: string) {
   };
 }
 
-export function getEnabledModulesForService(organizationId: string, serviceKey: ServiceKey) {
+export function getEnabledModulesForService(snap: OrgSnapshot, serviceKey: ServiceKey) {
   const svc = getService(serviceKey);
   if (!svc) return [];
-  const svcEntry = db.listServicesForOrganization(organizationId).find(s => s.serviceKey === serviceKey);
+  const svcEntry = snap.services.find(s => s.serviceKey === serviceKey);
   if (!svcEntry) return [];
   const disabled = new Set(svcEntry.disabledModuleKeys ?? []);
-  return svc.modules.filter(m => !disabled.has(m.key) && !moduleIsHidden(organizationId, serviceKey, m));
+  return svc.modules.filter(m => !disabled.has(m.key) && !moduleIsHidden(snap, serviceKey, m));
 }
 
-export function moduleIsReady(org: string, svcKey: ServiceKey, moduleKey: string): boolean {
+export function moduleIsReady(snap: OrgSnapshot, svcKey: ServiceKey, moduleKey: string): boolean {
   const svc = getService(svcKey);
   if (!svc) return false;
   const m = svc.modules.find(x => x.key === moduleKey);
   if (!m) return false;
-  const taskCompletions = db.getTaskCompletions(org);
-  const submissions = db.listSubmissionsForOrg(org);
-  const svcEntry = db.listServicesForOrganization(org).find(s => s.serviceKey === svcKey);
+  const svcEntry = snap.services.find(s => s.serviceKey === svcKey);
   const disabledFieldSet = new Set(svcEntry?.disabledFieldKeys ?? []);
 
   const requiredTasks = m.tasks?.filter(t => t.required !== false) ?? [];
   const tasksDone = requiredTasks.every(t =>
-    taskCompletions.find(c => c.taskKey === `${svcKey}.${m.key}.${t.key}` && c.completed)
+    snap.taskCompletions.find(c => c.taskKey === `${svcKey}.${m.key}.${t.key}` && c.completed)
   );
 
   const requiredFields = m.fields?.filter(f => f.required && !disabledFieldSet.has(`${m.key}.${f.key}`)) ?? [];
   const fieldsDone = requiredFields.every(f => {
     const fieldKey = `${svcKey}.${m.key}.${f.key}`;
-    const sub = submissions.find(s => s.fieldKey === fieldKey);
-    return sub ? submissionIsFilled(f, sub.value, { organizationId: org, fieldKey }) : false;
+    const sub = snap.submissions.find(s => s.fieldKey === fieldKey);
+    return sub ? submissionIsFilled(f, sub.value, { uploads: snap.uploads, fieldKey }) : false;
   });
 
   return tasksDone && fieldsDone;
@@ -194,23 +189,17 @@ export function moduleIsReady(org: string, svcKey: ServiceKey, moduleKey: string
 
 export { SERVICES };
 
-/**
- * Estimated minutes left on the org's onboarding. Sums estimatedMinutes on
- * every enabled, not-yet-complete, not-hidden, not-admin-locked module.
- */
-export function estimatedMinutesRemaining(organizationId: string): number {
-  const enabledSvcs = db.listServicesForOrganization(organizationId);
-  const moduleProgress = db.listModuleProgress(organizationId);
+export function estimatedMinutesRemaining(snap: OrgSnapshot): number {
   let mins = 0;
-  for (const svcEntry of enabledSvcs) {
+  for (const svcEntry of snap.services) {
     const svc = getService(svcEntry.serviceKey);
     if (!svc) continue;
     const disabled = new Set(svcEntry.disabledModuleKeys ?? []);
     for (const m of svc.modules) {
       if (disabled.has(m.key)) continue;
-      if (moduleIsHidden(organizationId, svcEntry.serviceKey, m)) continue;
-      if (moduleIsAdminLocked(organizationId, m)) continue;
-      const status = moduleProgress.find(p => p.serviceKey === svcEntry.serviceKey && p.moduleKey === m.key)?.status;
+      if (moduleIsHidden(snap, svcEntry.serviceKey, m)) continue;
+      if (moduleIsAdminLocked(snap, m)) continue;
+      const status = snap.moduleProgress.find(p => p.serviceKey === svcEntry.serviceKey && p.moduleKey === m.key)?.status;
       if (status === 'complete') continue;
       mins += m.estimatedMinutes ?? 3;
     }
@@ -218,7 +207,6 @@ export function estimatedMinutesRemaining(organizationId: string): number {
   return mins;
 }
 
-/** Format a minute count as "~12 min" or "~1h 20m". */
 export function formatMinutes(mins: number): string {
   if (mins < 60) return `~${mins} min`;
   const h = Math.floor(mins / 60);
@@ -226,39 +214,28 @@ export function formatMinutes(mins: number): string {
   return m === 0 ? `~${h}h` : `~${h}h ${m}m`;
 }
 
-/**
- * Find the next actionable module for a client, the next step they should tackle.
- * Skips: disabled services/modules, hidden (conditional-false) modules, admin-locked modules,
- * and already-completed modules. Walks services in dashboard order, wrapping around so that
- * if the current service is fully done, it returns the next service's first incomplete step.
- */
 export function findNextActionableModule(
-  organizationId: string,
+  snap: OrgSnapshot,
   after?: { serviceKey: ServiceKey; moduleKey: string },
 ): { serviceKey: ServiceKey; module: ModuleDef } | null {
-  const enabledSvcs = db.listServicesForOrganization(organizationId);
-  const progress = db.listModuleProgress(organizationId);
+  const servicesInOrder = SERVICES.filter(s => snap.services.some(e => e.serviceKey === s.key));
 
-  const servicesInOrder = SERVICES.filter(s => enabledSvcs.some(e => e.serviceKey === s.key));
-
-  // Build a flat, in-order list of candidate modules (skipping disabled/hidden/locked).
   type Candidate = { serviceKey: ServiceKey; module: ModuleDef };
   const candidates: Candidate[] = [];
   for (const svc of servicesInOrder) {
-    const svcEntry = enabledSvcs.find(e => e.serviceKey === svc.key);
+    const svcEntry = snap.services.find(e => e.serviceKey === svc.key);
     const disabled = new Set(svcEntry?.disabledModuleKeys ?? []);
     for (const m of svc.modules) {
       if (disabled.has(m.key)) continue;
-      if (moduleIsHidden(organizationId, svc.key, m)) continue;
-      if (moduleIsAdminLocked(organizationId, m)) continue;
+      if (moduleIsHidden(snap, svc.key, m)) continue;
+      if (moduleIsAdminLocked(snap, m)) continue;
       candidates.push({ serviceKey: svc.key, module: m });
     }
   }
 
   const isComplete = (svcKey: ServiceKey, modKey: string) =>
-    progress.find(p => p.serviceKey === svcKey && p.moduleKey === modKey)?.status === 'complete';
+    snap.moduleProgress.find(p => p.serviceKey === svcKey && p.moduleKey === modKey)?.status === 'complete';
 
-  // Start searching just after the current module, if provided; wrap around to beginning.
   const startIdx = after
     ? candidates.findIndex(c => c.serviceKey === after.serviceKey && c.module.key === after.moduleKey) + 1
     : 0;
