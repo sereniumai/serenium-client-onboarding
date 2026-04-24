@@ -34,13 +34,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted) return;
         if (session) {
+          // Try once, retry once after a short delay. NEVER signOut here,
+          // a transient RLS/network blip on refresh must not destroy the
+          // user's session. TOKEN_REFRESHED will re-attempt later anyway.
           try {
             const profile = await loadProfile(session.user.id);
             if (mounted) setUser(profile);
           } catch (profileErr) {
-            // Profile row missing or RLS blocked, sign out to force a clean re-auth.
-            console.error('[auth] profile load failed, signing out', profileErr);
-            await supabase.auth.signOut().catch(() => {});
+            console.warn('[auth] profile load failed on restore, retrying', profileErr);
+            await new Promise(r => setTimeout(r, 800));
+            try {
+              const profile = await loadProfile(session.user.id);
+              if (mounted) setUser(profile);
+            } catch (retryErr) {
+              console.error('[auth] profile load failed on retry, keeping session', retryErr);
+            }
           }
         }
       } catch (err) {
