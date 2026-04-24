@@ -123,7 +123,7 @@ const BUSINESS_PROFILE: ServiceDef = {
   modules: [
     {
       key: 'logo_files',
-      title: 'Logo files',
+      title: 'Logo',
       estimatedMinutes: 3,
       fields: [{
         key: 'logo_files',

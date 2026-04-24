@@ -1,54 +1,84 @@
 # Launch Checklist
 
-Running list of what's left before first real client. Tick items as they land. Keep this short — archive anything that's done for more than a week.
+Living list of what's left before first real client. Ticking items as they land.
 
 ---
 
-## 🚨 Open blockers (fix before first real client)
+## 🚨 Open blockers (must fix before first real client)
 
-### [ ] Logo / file submit bug — reported by Rob 2026-04-24
-Adding info + logo on Website → Brand assets doesn't let the module submit. Needs repro:
-- Which field specifically? (logo_picker? file_multiple?)
-- Does the autosave indicator show "saved" after typing, or "error"?
-- Does the module show as ready-to-complete but the confetti never fires?
-- Any toast error?
-- What does the browser Console show when you click submit / move on?
+_None outstanding. Next batch waiting: verify current fixes by running a full end-to-end dry run._
 
-### [x] Admin login lands on /onboarding/test instead of /admin — FIXED
-OnboardingDashboard now redirects admin users to /admin/clients/:slug unless `?impersonate=1` is present. Commit pending.
+---
+
+## 🟢 Needs verification (you to test, not code changes)
+
+### [ ] End-to-end dry run with a throwaway email
+1. Admin → create a fake client, send invite to a real Gmail you own
+2. Accept invite in incognito window
+3. Fill at least 2 modules including at least one Drive-link URL field
+4. Hit a required logo/brand-assets section
+5. Watch the module auto-complete, confetti, progress bar
+6. Log out, log back in, confirm state persisted
+7. Confirm the team email lands in your inbox on module completion
+
+### [ ] Run the site once more after current deploy
+Vercel should be live with commits through `0b1ba0c`. Verify:
+- Admin login lands on /admin (not /onboarding/X)
+- Impersonation banner sits cleanly next to sidebar (no overlap)
+- Client dashboard shows the "Portal status" pill with a hover tooltip
+- Logo fields are now Drive/Dropbox URL inputs
+- Toggling `business_profile` on/off on admin shows/hides the `website_logo` field
 
 ---
 
 ## 🟠 Known issues (post-launch OK for first 1-2 clients)
 
-- **Wizard rollback** — if client creation fails mid-way, zombie org exists. Admin notices and can delete.
-- **Ex-admin role change** — demoted admin keeps admin UI for up to 1hr until token refresh. Low risk at 5 clients.
+- **Wizard rollback** — if client creation fails mid-way, zombie org. Admin can delete manually.
+- **Ex-admin role change** — demoted admin keeps admin UI for up to 1hr until JWT refresh. Low risk at 5 clients.
 - **Invitation email send failure** — client-side `.catch(console.warn)` with no toast. Admin UX improvement.
-- **Modal focus trap + Esc handling** — keyboard-only users can't close CompletionOverlay / FinalCelebration / WelcomeVideoModal with keyboard.
+- **Modal focus trap + Esc handling** — keyboard-only users can't close CompletionOverlay / FinalCelebration / WelcomeVideoModal.
 - **Autosave optimistic concurrency** — two tabs editing same field can last-write-wins. Unlikely at our scale.
-- **Impersonation writes not tagged** — edits made while impersonating look like client edits in activity log. Auditing gap, not a bug.
+- **Impersonation writes not tagged** — edits made while impersonating look like client edits in activity log.
+- **Supabase Pro upgrade + PITR** — $25/mo, gives 7-day point-in-time recovery. Needed before meaningful client data. Currently deferred.
+- **Stranded uploaded files** — clients who uploaded to the now-removed file fields have orphan files in Supabase Storage. Safe to delete manually; not urgent.
 
 ---
 
-## ✅ Done (recent, for reference)
+## ✅ Done
 
+### Security + infra
+- Auth hardened (stub user from JWT, timeout, idle logout)
+- Admin audit log + impersonation audit table
 - Forgot password wired
-- send-invitation error-path crash fixed
-- Password length unified at 10
-- CSP tightened, headers solid
-- Branded sign-out-everywhere modal
-- Report files — confirmed JSON-on-monthly_reports, no separate table needed
-- Conditional hooks bug in ModulePage
-- Legal (Privacy + Terms) complete with Serenium AI Inc., CASL + Alberta OIPC, wide layout
-- Sentry + email alerts firing
-- UptimeRobot monitoring
-- Runbook at docs/RUNBOOK.md
-- Robots.txt + noindex meta + OG/Twitter cards
-- Image thumbnails fixed (SignedImg component)
-- Silent upload + autosave failures now surface toasts + Sentry
+- Password length unified at 10 chars everywhere
+- CSP tightened, HSTS, robots.txt, noindex meta, OG/Twitter cards
+- Branded sign-out-everywhere modal (no native confirm)
+- Sentry wired with email alerts on every new issue
+- UptimeRobot hitting /api/health every 5min
+- No npm vulnerabilities
+
+### Legal + compliance
+- Privacy Policy: Serenium AI Inc., PIPEDA, PIPA, Alberta OIPC, CASL, subprocessors (Supabase/Vercel/Resend/Anthropic/Sentry/UptimeRobot/Fonts)
+- Terms of Service: invitation-only, AI disclaimers, liability cap, Alberta governing law
+- Email footers identify Serenium AI Inc. + Privacy/Terms/CASL
+
+### Launch-prep fixes
+- send-invitation error path no longer crashes
+- Report files confirmed as JSON on monthly_reports (no separate table)
+- Conditional hooks crash in ModulePage fixed
+- Image thumbnails fixed (SignedImg component — still exists for admin uploads)
+- Silent upload/autosave failures surface toasts + Sentry
 - Autosave flushes pending writes on unmount
-- Impersonation banner no longer duplicated over sidebar logo
-- "Available to enable" shown above enabled services on client detail
-- Client-side system-health pill on onboarding dashboard
-- Diagnostics Re-run button on one line
-- Admin direct-URL to /onboarding/X bounces to /admin/clients/X
+- Impersonation banner no longer duplicated
+- "Available to enable" shown above enabled services
+- Diagnostics "Re-run" button fixed
+- Client-side system-health pill with live tooltip
+- Admin direct-URL `/onboarding/X` bounces to `/admin/clients/X`
+- Required file fields no longer block module completion
+
+### UX reshapes
+- All file upload fields replaced with Drive/Dropbox URL fields
+- `business_profile.logo_files` module renamed "Logo"
+- `website.brand_assets.website_logo` hidden when business_profile is enabled (no duplicate ask)
+- Business Profile excluded from client's "Not in your plan" list
+- Post-launch runbook at `docs/RUNBOOK.md`
