@@ -321,28 +321,16 @@ export default async function handler(req: Request): Promise<Response> {
     { role: 'user' as const, content: currentUserContent },
   ];
 
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-        max_tokens: mode === 'analytics' ? 1200 : 800,
-        system,
-        messages,
-      }),
-    });
+  // Hard timeout on the Anthropic request. Edge functions have a Vercel-wide
+  // limit but a hanging upstream should fail fast with a clean error rather
+  // than burning the whole budget.
+  const ANTHROPIC_TIMEOUT_MS = 25000;
 
-    // On 404 (model not available on this account) retry once with a known-good
-    // fallback so one bad default doesn't take the whole assistant offline.
-    let finalResp = resp;
-    if (resp.status === 404) {
-      console.warn('[ask-assistant] primary model 404, falling back to claude-3-haiku-20240307');
-      finalResp = await fetch('https://api.anthropic.com/v1/messages', {
+  const callAnthropic = async (model: string): Promise<Response> => {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), ANTHROPIC_TIMEOUT_MS);
+    try {
+      return await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -350,12 +338,28 @@ export default async function handler(req: Request): Promise<Response> {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
+          model,
           max_tokens: mode === 'analytics' ? 1200 : 800,
           system,
           messages,
         }),
+        signal: ac.signal,
       });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  try {
+    const primaryModel = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
+    const resp = await callAnthropic(primaryModel);
+
+    // On 404 (model not available on this account) retry once with a known-good
+    // fallback so one bad default doesn't take the whole assistant offline.
+    let finalResp = resp;
+    if (resp.status === 404) {
+      console.warn('[ask-assistant] primary model 404, falling back to claude-3-haiku-20240307');
+      finalResp = await callAnthropic('claude-3-haiku-20240307');
     }
 
     if (!finalResp.ok) {
@@ -381,9 +385,14 @@ export default async function handler(req: Request): Promise<Response> {
 
     return json({ reply: text || "Sorry, I didn't get a response. Try again?" });
   } catch (err) {
+    const aborted = err instanceof Error && err.name === 'AbortError';
     console.error('[ask-assistant] fetch threw', err);
-    captureEdgeError(err, { endpoint: 'ask-assistant', extra: { mode } });
-    return json({ error: 'Assistant is unreachable right now. Please try again.' }, 502);
+    captureEdgeError(err, { endpoint: 'ask-assistant', extra: { mode, aborted } });
+    return json({
+      error: aborted
+        ? 'Assistant took too long to respond. Try again in a moment.'
+        : 'Assistant is unreachable right now. Please try again.',
+    }, aborted ? 504 : 502);
   }
 }
 

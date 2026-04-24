@@ -6,6 +6,7 @@
 // ============================================================================
 
 import { createClient } from '@supabase/supabase-js';
+import { captureEdgeError } from './_sentry';
 
 export const config = { runtime: 'edge' };
 
@@ -89,6 +90,11 @@ export default async function handler(req: Request): Promise<Response> {
   if (!resp.ok) {
     const txt = await resp.text();
     console.error('[send-test-email] Resend error', resp.status, txt);
+    captureEdgeError(new Error(`Resend ${resp.status}`), {
+      endpoint: 'send-test-email',
+      userId: user.id,
+      extra: { status: resp.status, body: txt.slice(0, 500) },
+    });
     return json({ error: 'Email send failed. Try again in a moment.' }, 502);
   }
 
