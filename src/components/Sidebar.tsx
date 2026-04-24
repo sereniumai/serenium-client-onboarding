@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, Volume2, VolumeX } from 'lucide-react';
+import { LogOut, Menu, X, Volume2, VolumeX, Moon, Sun } from 'lucide-react';
+import { getTheme, setTheme } from '../lib/theme';
 import type { LucideIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Logo } from './Logo';
@@ -38,6 +39,13 @@ export function Sidebar({ sections, children, footerExtra }: {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [sound, setSound] = useState(soundsEnabled());
+  const [theme, setThemeState] = useState(getTheme());
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    setThemeState(next);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -94,18 +102,27 @@ export function Sidebar({ sections, children, footerExtra }: {
         )}
         <div className="flex gap-1">
           <button
+            onClick={toggleTheme}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium text-white/60 hover:bg-bg-tertiary hover:text-white transition-colors"
+            title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          </button>
+          <button
             onClick={() => { const next = !sound; setSoundsEnabled(next); setSound(next); }}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white/60 hover:bg-bg-tertiary hover:text-white transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium text-white/60 hover:bg-bg-tertiary hover:text-white transition-colors"
             title={sound ? 'Sound on' : 'Sound off'}
+            aria-label={sound ? 'Mute sound effects' : 'Enable sound effects'}
           >
             {sound ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
-            Sound
           </button>
           <button
             onClick={handleSignOut}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white/60 hover:bg-bg-tertiary hover:text-white transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium text-white/60 hover:bg-bg-tertiary hover:text-white transition-colors"
+            aria-label="Sign out"
           >
-            <LogOut className="h-3.5 w-3.5" /> Sign out
+            <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { User, Mail, Lock, Save, ChevronLeft } from 'lucide-react';
+import { User, Mail, Lock, Save, ChevronLeft, Moon, Sun } from 'lucide-react';
+import { getTheme, setTheme, type Theme } from '../../lib/theme';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
@@ -41,6 +42,7 @@ export function AccountPage() {
               onSaved={() => { refresh(); qc.invalidateQueries(); toast.success('Email updated, check your inbox to confirm the change'); }}
             />
             <PasswordCard />
+            <AppearanceCard />
           </div>
         </div>
       </div>
@@ -192,6 +194,51 @@ function PasswordCard() {
       <div className="flex justify-end pt-2">
         <button onClick={save} disabled={!canSave} className="btn-primary">
           <Save className="h-4 w-4" /> {saving ? 'Updating…' : 'Update password'}
+        </button>
+      </div>
+    </SettingsCard>
+  );
+}
+
+function AppearanceCard() {
+  const [current, setCurrent] = useState<Theme>(getTheme());
+  const pick = (t: Theme) => { setTheme(t); setCurrent(t); };
+  return (
+    <SettingsCard icon={current === 'light' ? Sun : Moon} title="Appearance" subtitle="Pick light or dark. The choice follows you across devices in your browser.">
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => pick('dark')}
+          className={cn(
+            'relative rounded-xl border p-4 text-left transition-all',
+            current === 'dark' ? 'border-orange bg-orange/5' : 'border-border-subtle hover:border-border-emphasis',
+          )}
+        >
+          <div className="h-16 rounded-lg bg-[#0A0706] border border-white/10 mb-3 relative overflow-hidden">
+            <div className="absolute left-2 top-2 h-1.5 w-8 rounded-full bg-white/60" />
+            <div className="absolute left-2 bottom-2 h-1 w-12 rounded-full bg-orange" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Moon className="h-4 w-4 text-orange" />
+            <p className="font-semibold text-sm">Dark</p>
+            {current === 'dark' && <span className="ml-auto text-[10px] uppercase tracking-wider text-orange font-semibold">Active</span>}
+          </div>
+        </button>
+        <button
+          onClick={() => pick('light')}
+          className={cn(
+            'relative rounded-xl border p-4 text-left transition-all',
+            current === 'light' ? 'border-orange bg-orange/5' : 'border-border-subtle hover:border-border-emphasis',
+          )}
+        >
+          <div className="h-16 rounded-lg bg-[#F6F3EF] border border-black/10 mb-3 relative overflow-hidden">
+            <div className="absolute left-2 top-2 h-1.5 w-8 rounded-full bg-black/60" />
+            <div className="absolute left-2 bottom-2 h-1 w-12 rounded-full bg-orange" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Sun className="h-4 w-4 text-orange" />
+            <p className="font-semibold text-sm">Light</p>
+            {current === 'light' && <span className="ml-auto text-[10px] uppercase tracking-wider text-orange font-semibold">Active</span>}
+          </div>
         </button>
       </div>
     </SettingsCard>
