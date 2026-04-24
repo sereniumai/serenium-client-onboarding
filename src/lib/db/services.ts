@@ -37,6 +37,11 @@ export async function enableService(orgId: string, serviceKey: ServiceKey): Prom
       enabled_at: new Date().toISOString(),
     }, { onConflict: 'organization_id,service_key' });
   if (error) throw error;
+  await supabase.from('activity_log').insert({
+    organization_id: orgId,
+    action: 'service_enabled',
+    metadata: { service_key: serviceKey },
+  });
 }
 
 export async function disableService(orgId: string, serviceKey: ServiceKey): Promise<void> {
@@ -46,6 +51,11 @@ export async function disableService(orgId: string, serviceKey: ServiceKey): Pro
     .eq('organization_id', orgId)
     .eq('service_key', serviceKey);
   if (error) throw error;
+  await supabase.from('activity_log').insert({
+    organization_id: orgId,
+    action: 'service_disabled',
+    metadata: { service_key: serviceKey },
+  });
 }
 
 export async function setDisabledModuleKeys(orgId: string, serviceKey: ServiceKey, keys: string[]): Promise<void> {

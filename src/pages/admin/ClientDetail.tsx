@@ -23,7 +23,7 @@ import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey, OrgStatus, Upload } from '../../types';
 import { cn } from '../../lib/cn';
 
-type Tab = 'overview' | 'services' | 'submissions' | 'progress' | 'users' | 'ai';
+type Tab = 'overview' | 'services' | 'submissions' | 'progress' | 'activity' | 'users' | 'ai';
 
 export function ClientDetail() {
   const { orgSlug } = useParams();
@@ -78,6 +78,7 @@ export function ClientDetail() {
             <TabBtn active={tab === 'services'} onClick={() => setTab('services')}>Services</TabBtn>
             <TabBtn active={tab === 'submissions'} onClick={() => setTab('submissions')}>Submitted info</TabBtn>
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')}>Progress</TabBtn>
+            <TabBtn active={tab === 'activity'} onClick={() => setTab('activity')}>Activity</TabBtn>
             <TabBtn active={tab === 'ai'} onClick={() => setTab('ai')}>AI chats</TabBtn>
             <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>Users</TabBtn>
           </div>
@@ -86,6 +87,7 @@ export function ClientDetail() {
           {tab === 'services' && <ServicesTab orgId={org.id} />}
           {tab === 'submissions' && <SubmissionsTab orgId={org.id} />}
           {tab === 'progress' && <ProgressTab orgId={org.id} />}
+          {tab === 'activity' && <ActivityTab orgId={org.id} />}
           {tab === 'ai' && <AiChatsTab orgId={org.id} />}
           {tab === 'users' && <UsersTab orgId={org.id} />}
 
@@ -703,6 +705,78 @@ function ProgressTab({ orgId }: { orgId: string }) {
       })}
     </div>
   );
+}
+
+// ─── Activity tab ────────────────────────────────────────────────────────
+function ActivityTab({ orgId }: { orgId: string }) {
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ['activity', orgId],
+    queryFn: () => import('../../lib/db/activity').then(m => m.listActivityForOrg(orgId, 200)),
+  });
+
+  if (isLoading) return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading activity…</div>;
+
+  if (items.length === 0) {
+    return (
+      <div className="card text-center py-16">
+        <p className="text-white/50">No activity yet. Actions like module completions, uploads, and service toggles show up here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <p className="eyebrow mb-4">Recent activity</p>
+      <div className="relative pl-5 border-l border-border-subtle space-y-5">
+        {items.map(item => (
+          <ActivityRow key={item.id} action={item.action} metadata={item.metadata} createdAt={item.createdAt} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActivityRow({ action, metadata, createdAt }: { action: string; metadata: Record<string, unknown>; createdAt: string }) {
+  const labels: Record<string, { verb: string; tone: string }> = {
+    step_completed:   { verb: 'Completed a module',         tone: 'text-success' },
+    step_reopened:    { verb: 'Re-opened a module',         tone: 'text-orange' },
+    file_uploaded:    { verb: 'Uploaded a file',            tone: 'text-orange' },
+    field_submitted:  { verb: 'Updated a field',            tone: 'text-white/60' },
+    service_enabled:  { verb: 'Service enabled',            tone: 'text-success' },
+    service_disabled: { verb: 'Service disabled',           tone: 'text-white/50' },
+    member_joined:    { verb: 'Member joined',              tone: 'text-orange' },
+    followup_sent:    { verb: 'Follow-up email sent',       tone: 'text-orange' },
+    help_requested:   { verb: 'Requested help from team',   tone: 'text-orange' },
+    report_published: { verb: 'Report published',           tone: 'text-success' },
+    report_updated:   { verb: 'Report updated',             tone: 'text-white/60' },
+    report_deleted:   { verb: 'Report deleted',             tone: 'text-error' },
+  };
+  const entry = labels[action] ?? { verb: action, tone: 'text-white/60' };
+  const detail = describeMeta(action, metadata);
+
+  return (
+    <div className="relative">
+      <span className="absolute -left-[22px] top-1.5 h-2 w-2 rounded-full bg-orange" />
+      <p className={`text-sm font-medium ${entry.tone}`}>{entry.verb}</p>
+      {detail && <p className="text-xs text-white/50 mt-0.5">{detail}</p>}
+      <p className="text-[11px] text-white/30 mt-0.5 tabular-nums">{new Date(createdAt).toLocaleString()}</p>
+    </div>
+  );
+}
+
+function describeMeta(action: string, meta: Record<string, unknown>): string | null {
+  switch (action) {
+    case 'step_completed':
+    case 'step_reopened':
+      return `${meta.service_key ?? ''} · ${meta.module_key ?? ''}`;
+    case 'file_uploaded':
+      return `${meta.file_name ?? ''}${meta.category ? ' in ' + meta.category : ''}`;
+    case 'service_enabled':
+    case 'service_disabled':
+      return String(meta.service_key ?? '');
+    default:
+      return Object.keys(meta).length ? JSON.stringify(meta) : null;
+  }
 }
 
 // ─── AI chats tab (per-client) ───────────────────────────────────────────

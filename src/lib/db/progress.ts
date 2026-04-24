@@ -35,6 +35,15 @@ export async function setModuleStatus(args: {
     .from('module_progress')
     .upsert(row, { onConflict: 'organization_id,service_key,module_key' });
   if (error) throw error;
+
+  if (args.status === 'complete' || args.status === 'in_progress') {
+    await supabase.from('activity_log').insert({
+      organization_id: args.organizationId,
+      user_id: args.userId ?? null,
+      action: args.status === 'complete' ? 'step_completed' : 'step_reopened',
+      metadata: { service_key: args.serviceKey, module_key: args.moduleKey },
+    });
+  }
 }
 
 export async function listTaskCompletions(orgId: string): Promise<TaskCompletion[]> {

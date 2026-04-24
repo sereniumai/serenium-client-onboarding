@@ -49,6 +49,14 @@ export async function uploadFile(args: {
     await supabase.storage.from(BUCKET).remove([storagePath]).catch(() => {});
     throw error;
   }
+
+  await supabase.from('activity_log').insert({
+    organization_id: args.organizationId,
+    user_id: args.userId ?? null,
+    action: 'file_uploaded',
+    metadata: { category: args.category, file_name: args.file.name, file_size: args.file.size },
+  });
+
   return toUpload(data);
 }
 
