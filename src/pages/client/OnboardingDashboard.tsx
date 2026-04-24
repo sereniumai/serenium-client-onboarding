@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle2, PlayCircle, ArrowRight } from 'lucide-react';
@@ -76,9 +76,25 @@ export function OnboardingDashboard() {
   }
   if (!org || !snapshot) return <Navigate to="/login" replace />;
 
-  const progress = getOrgProgress(snapshot);
+  // Memoized — getOrgProgress walks every enabled service's modules and
+  // every submission. React Query's structural sharing means the snapshot
+  // reference only changes when actual data changes, so this skips the
+  // walk on child-triggered re-renders (e.g. the StatusPill pinging
+  // /api/health every 60s shouldn't recompute the entire dashboard).
+  const progress = useMemo(() => getOrgProgress(snapshot), [snapshot]);
+  const filledCount = useMemo(
+    () => snapshot.submissions.filter(s => s.value != null && s.value !== '').length,
+    [snapshot.submissions],
+  );
   const firstName = user?.fullName.split(' ')[0] ?? 'there';
   const onboardingDone = progress.totalModules > 0 && progress.overall === 100;
+  // Memoized — sorts the entire submissions list by updated_at, then
+  // walks modules looking for the last-touched one. Stays stable while
+  // the background status pill refetches.
+  const resume = useMemo(
+    () => (onboardingDone ? null : findLastTouchedModule(snapshot)),
+    [snapshot, onboardingDone],
+  );
 
   // Post-onboarding states handled here:
   // - status === 'live'       → reports have been unlocked, redirect to /reports
@@ -135,7 +151,7 @@ export function OnboardingDashboard() {
           <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <StatChip label="Modules done" value={`${progress.completeModules}/${progress.totalModules}`} />
-              <StatChip label="Fields answered" value={String(snapshot.submissions.filter(s => s.value != null && s.value !== '').length)} />
+              <StatChip label="Fields answered" value={String(filledCount)} />
               <StatChip label="Files uploaded" value={String(snapshot.uploads.length)} />
               <StatChip label="Started" value={daysSince(org.createdAt)} />
             </div>
@@ -143,11 +159,8 @@ export function OnboardingDashboard() {
         )}
 
         {/* Resume where you left off */}
-        {!onboardingDone && (() => {
-          const resume = findLastTouchedModule(snapshot);
-          if (!resume) return null;
-          return (
-            <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-4">
+        {!onboardingDone && resume && (
+          <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-4">
               <Link
                 to={`/onboarding/${org.slug}/services/${resume.serviceKey}/${resume.moduleKey}`}
                 className="card block group border-orange/30 hover:border-orange/60 hover:-translate-y-0.5 transition-all"
@@ -167,8 +180,7 @@ export function OnboardingDashboard() {
                 </div>
               </Link>
             </section>
-          );
-        })()}
+        )}
 
         {/* POST-ONBOARDING, latest report + complete banner */}
         {onboardingDone && (

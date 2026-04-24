@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, CheckCircle2, Clock, PlayCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -59,8 +59,11 @@ export function ServicePage() {
     return <Navigate to={`/onboarding/${org.slug}`} replace />;
   }
 
-  const modules = getEnabledModulesForService(snapshot, svc.key);
-  const progress = getOrgProgress(snapshot);
+  // Memoized so autosave's React Query invalidation doesn't rebuild every
+  // module row on every keystroke — expensive when Business Profile has
+  // 13 modules × N fields each.
+  const modules = useMemo(() => getEnabledModulesForService(snapshot, svc.key), [snapshot, svc.key]);
+  const progress = useMemo(() => getOrgProgress(snapshot), [snapshot]);
   const svcSummaries = progress.perService[svc.key] ?? [];
   const done = svcSummaries.filter(s => s.status === 'complete').length;
   const total = svcSummaries.length;

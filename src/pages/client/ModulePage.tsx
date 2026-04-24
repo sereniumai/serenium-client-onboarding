@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
 import { ChevronLeft, CheckCircle2, ArrowRight } from 'lucide-react';
 import { cn } from '../../lib/cn';
@@ -90,7 +90,13 @@ export function ModulePage() {
   const svcIndex = svc.modules.findIndex(m => m.key === mod.key);
 
   const stepVideo = stepVideos.find(v => v.serviceKey === svc.key && v.moduleKey === mod.key);
-  const nextActionable = findNextActionableModule(snapshot, { serviceKey: svc.key, moduleKey: mod.key });
+  // Memoized — findNextActionableModule walks every enabled service and
+  // every module looking for the next not-complete one. No need to re-walk
+  // on every keystroke while the user types into the current form.
+  const nextActionable = useMemo(
+    () => findNextActionableModule(snapshot, { serviceKey: svc.key, moduleKey: mod.key }),
+    [snapshot, svc.key, mod.key],
+  );
   const next = nextActionable?.module ?? null;
   const nextSvcKey = nextActionable?.serviceKey ?? svc.key;
 
