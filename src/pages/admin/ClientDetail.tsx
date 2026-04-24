@@ -426,6 +426,11 @@ function ServiceDrillDown({ orgId, service, svcDef, disabledModuleSet, disabledF
       if (enabled) next.delete(fieldPath);
       else next.add(fieldPath);
       await setDisabledFieldKeys(orgId, service.serviceKey, Array.from(next));
+      supabase.from('activity_log').insert({
+        organization_id: orgId,
+        action: 'admin_config_changed',
+        metadata: { type: 'field_toggle', service_key: service.serviceKey, field_path: fieldPath, enabled },
+      }).then(({ error }) => { if (error) console.warn('[activity] toggle field log failed', error); });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.orgServices(orgId) }),
   });
@@ -911,9 +916,24 @@ function AdminSetupCard({ orgId }: { orgId: string }) {
 
   const saveNumber = useMutation({
     mutationFn: async () => {
+      const trimmed = number.trim();
+      if (trimmed) {
+        // E.164 format: optional +, digits, up to 15 total. Permissive enough
+        // for common Canadian/US inputs (10-digit, +1-prefixed, spaced).
+        const digits = trimmed.replace(/[\s()\-.]/g, '');
+        if (!/^\+?[1-9]\d{9,14}$/.test(digits)) {
+          throw new Error('Enter a valid phone number in E.164 format, e.g. +14035551234');
+        }
+      }
       const { setRetellNumber, clearRetellNumber } = await import('../../lib/db/retellNumbers');
-      if (number.trim()) await setRetellNumber(orgId, number.trim());
+      if (trimmed) await setRetellNumber(orgId, trimmed);
       else await clearRetellNumber(orgId);
+
+      supabase.from('activity_log').insert({
+        organization_id: orgId,
+        action: 'admin_config_changed',
+        metadata: { type: 'retell_number', set: !!trimmed },
+      }).then(({ error }) => { if (error) console.warn('[activity] retell log failed', error); });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['retell', orgId] });
@@ -926,11 +946,17 @@ function AdminSetupCard({ orgId }: { orgId: string }) {
     mutationFn: async (value: boolean) => {
       const { setAdminFlag } = await import('../../lib/db/progress');
       await setAdminFlag(orgId, 'ai_receptionist_ready_for_connection', value);
+      supabase.from('activity_log').insert({
+        organization_id: orgId,
+        action: 'admin_config_changed',
+        metadata: { type: 'ai_receptionist_ready', value },
+      }).then(({ error }) => { if (error) console.warn('[activity] flag log failed', error); });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.adminFlags(orgId) });
       toast.success('Setup flag updated');
     },
+    onError: (err: Error) => toast.error('Save failed', { description: err.message }),
   });
 
   const dirty = number.trim() !== (retell ?? '');
