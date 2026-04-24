@@ -314,23 +314,23 @@ function OtherSerenumServices({ unavailableServiceKeys }: { unavailableServiceKe
               transition={{ delay: i * 0.04 }}
             >
               <div
-                className="card relative border-dashed border-white/10 bg-bg-secondary/30"
+                className="card relative"
                 aria-disabled="true"
                 title="Not included in your current plan"
               >
-                <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-white/45 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-orange bg-orange/10 border border-orange/30 rounded-full px-2 py-0.5">
                   <Lock className="h-3 w-3" /> Not in plan
                 </span>
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-white/45">
+                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-orange/10 text-orange">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0 pr-20">
-                    <h4 className="font-display font-bold text-lg tracking-[-0.01em] truncate text-white/70">{svc.label}</h4>
+                    <h4 className="font-display font-bold text-lg tracking-[-0.01em] truncate">{svc.label}</h4>
                     <p className="text-xs text-white/55 leading-relaxed mt-0.5">{svc.description}</p>
                   </div>
                 </div>
-                <div className="pt-3 border-t border-white/5">
+                <div className="pt-3 border-t border-border-subtle">
                   <a
                     href="mailto:contact@sereniumai.com?subject=Adding%20a%20service%20to%20my%20Serenium%20plan"
                     className="inline-flex items-center gap-1 text-xs font-semibold text-orange hover:text-orange-hover"
