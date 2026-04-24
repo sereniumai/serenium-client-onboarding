@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { LayoutDashboard, UserPlus, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, Briefcase, Globe, Bot, LifeBuoy } from 'lucide-react';
+import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, Briefcase, Globe, Bot, LifeBuoy } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { PHASES } from '../config/phases';
 import { Sidebar, type SidebarSection } from './Sidebar';
@@ -99,7 +99,6 @@ function buildSections({
         title: 'Operations',
         items: [
           { to: '/admin', label: 'Clients', icon: LayoutDashboard, end: true },
-          { to: '/admin/clients/new', label: 'New client', icon: UserPlus },
         ],
       },
       {

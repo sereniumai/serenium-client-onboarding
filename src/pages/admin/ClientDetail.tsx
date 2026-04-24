@@ -11,11 +11,11 @@ import { useAuth } from '../../auth/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../lib/queryClient';
 import { listInvitationsForOrg, createInvitation, revokeInvitation, buildInviteUrl, sendInvitationEmail } from '../../lib/db/invitations';
-import { enableService, disableService, reorderServices } from '../../lib/db/services';
+import { enableService, disableService, reorderServices, setDisabledModuleKeys, setDisabledFieldKeys } from '../../lib/db/services';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ChevronDown, ChevronRight, Settings2 } from 'lucide-react';
 import { getUploadSignedUrl } from '../../lib/db/uploads';
 import { FollowupModal } from '../../components/FollowupModal';
 import { getEnabledModulesForService } from '../../lib/progress';
@@ -250,15 +250,14 @@ function ServicesTab({ orgId }: { orgId: string }) {
             <SortableContext items={enabledKeys} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
                 {enabledKeys.map(key => {
-                  const svc = SELECTABLE_SERVICES.find(s => s.key === key);
-                  if (!svc) return null;
+                  const svcEntry = services.find(s => s.serviceKey === key);
+                  if (!svcEntry) return null;
                   return (
                     <SortableServiceRow
                       key={key}
-                      svcKey={svc.key}
-                      label={svc.label}
-                      description={svc.description}
-                      onDisable={() => toggle.mutate({ key: svc.key, enabled: false })}
+                      orgId={orgId}
+                      service={svcEntry}
+                      onDisable={() => toggle.mutate({ key, enabled: false })}
                     />
                   );
                 })}
@@ -292,32 +291,147 @@ function ServicesTab({ orgId }: { orgId: string }) {
   );
 }
 
-function SortableServiceRow({ svcKey, label, description, onDisable }: {
-  svcKey: ServiceKey; label: string; description: string; onDisable: () => void;
+function SortableServiceRow({ orgId, service, onDisable }: {
+  orgId: string;
+  service: import('../../types').OrganizationService;
+  onDisable: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: svcKey });
-  const Icon = SERVICE_ICON[svcKey];
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: service.serviceKey });
   const style = { transform: CSS.Transform.toString(transform), transition };
+  const svcDef = getService(service.serviceKey);
+  const Icon = SERVICE_ICON[service.serviceKey];
+  const [expanded, setExpanded] = useState(false);
+
+  if (!svcDef) return null;
+
+  const disabledModuleSet = new Set(service.disabledModuleKeys ?? []);
+  const disabledFieldSet = new Set(service.disabledFieldKeys ?? []);
+  const totalModules = svcDef.modules.length;
+  const enabledModuleCount = totalModules - disabledModuleSet.size;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-3 p-3 rounded-xl border border-border-subtle bg-bg-secondary/40',
+        'rounded-xl border border-border-subtle bg-bg-secondary/40',
         isDragging && 'shadow-lg border-orange/40 z-10',
       )}
     >
-      <button {...attributes} {...listeners} className="text-white/30 hover:text-white cursor-grab active:cursor-grabbing" title="Drag to reorder">
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange/10 text-orange shrink-0">
-        <Icon className="h-4 w-4" />
+      <div className="flex items-center gap-3 p-3">
+        <button {...attributes} {...listeners} className="text-white/30 hover:text-white cursor-grab active:cursor-grabbing" title="Drag to reorder">
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange/10 text-orange shrink-0">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">{svcDef.label}</p>
+          <p className="text-xs text-white/50 truncate">
+            {enabledModuleCount}/{totalModules} modules enabled
+            {disabledFieldSet.size > 0 && ` · ${disabledFieldSet.size} field${disabledFieldSet.size === 1 ? '' : 's'} hidden`}
+          </p>
+        </div>
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="inline-flex items-center gap-1 text-xs text-white/60 hover:text-white px-2 py-1 rounded hover:bg-bg-tertiary"
+          title="Configure modules + fields"
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+          {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        </button>
+        <button onClick={onDisable} className="text-xs text-white/40 hover:text-error px-2">Disable service</button>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm">{label}</p>
-        <p className="text-xs text-white/50 truncate">{description}</p>
-      </div>
-      <button onClick={onDisable} className="text-xs text-white/40 hover:text-error">Disable</button>
+
+      {expanded && (
+        <ServiceDrillDown
+          orgId={orgId}
+          service={service}
+          svcDef={svcDef}
+          disabledModuleSet={disabledModuleSet}
+          disabledFieldSet={disabledFieldSet}
+        />
+      )}
+    </div>
+  );
+}
+
+function ServiceDrillDown({ orgId, service, svcDef, disabledModuleSet, disabledFieldSet }: {
+  orgId: string;
+  service: import('../../types').OrganizationService;
+  svcDef: import('../../config/modules').ServiceDef;
+  disabledModuleSet: Set<string>;
+  disabledFieldSet: Set<string>;
+}) {
+  const qc = useQueryClient();
+
+  const toggleModule = useMutation({
+    mutationFn: async ({ moduleKey, enabled }: { moduleKey: string; enabled: boolean }) => {
+      const next = new Set(disabledModuleSet);
+      if (enabled) next.delete(moduleKey);
+      else next.add(moduleKey);
+      await setDisabledModuleKeys(orgId, service.serviceKey, Array.from(next));
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.orgServices(orgId) }),
+  });
+
+  const toggleField = useMutation({
+    mutationFn: async ({ fieldPath, enabled }: { fieldPath: string; enabled: boolean }) => {
+      const next = new Set(disabledFieldSet);
+      if (enabled) next.delete(fieldPath);
+      else next.add(fieldPath);
+      await setDisabledFieldKeys(orgId, service.serviceKey, Array.from(next));
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.orgServices(orgId) }),
+  });
+
+  return (
+    <div className="border-t border-border-subtle p-4 space-y-3 bg-bg/30">
+      <p className="text-[11px] uppercase tracking-wider text-white/40 font-semibold">Modules + fields</p>
+      {svcDef.modules.map(mod => {
+        const moduleEnabled = !disabledModuleSet.has(mod.key);
+        const fields = (mod.fields ?? []).filter(f => f.type !== 'info');
+        return (
+          <div key={mod.key} className="rounded-lg border border-border-subtle bg-bg-secondary/40">
+            <div className="flex items-center gap-3 px-3 py-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-orange"
+                checked={moduleEnabled}
+                disabled={toggleModule.isPending}
+                onChange={e => toggleModule.mutate({ moduleKey: mod.key, enabled: e.target.checked })}
+              />
+              <div className="flex-1 min-w-0">
+                <p className={cn('text-sm font-medium truncate', !moduleEnabled && 'line-through text-white/40')}>{mod.title}</p>
+                {fields.length > 0 && <p className="text-[11px] text-white/40">{fields.length} field{fields.length === 1 ? '' : 's'}</p>}
+              </div>
+            </div>
+            {moduleEnabled && fields.length > 0 && (
+              <div className="border-t border-border-subtle px-3 py-2 space-y-1">
+                {fields.map(f => {
+                  const fieldPath = `${mod.key}.${f.key}`;
+                  const fieldEnabled = !disabledFieldSet.has(fieldPath);
+                  return (
+                    <label key={f.key} className="flex items-center gap-2 text-xs cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 accent-orange"
+                        checked={fieldEnabled}
+                        disabled={toggleField.isPending}
+                        onChange={e => toggleField.mutate({ fieldPath, enabled: e.target.checked })}
+                      />
+                      <span className={cn('text-white/75 group-hover:text-white transition-colors flex-1 truncate', !fieldEnabled && 'line-through text-white/30')}>
+                        {f.label ?? f.key}
+                        {f.required && fieldEnabled && <span className="text-orange ml-1">*</span>}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
