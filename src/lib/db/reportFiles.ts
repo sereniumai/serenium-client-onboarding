@@ -2,6 +2,8 @@ import { supabase } from '../supabase';
 import type { ReportFile } from '../../types';
 
 const BUCKET = 'uploads';
+const MAX_REPORT_BYTES = 25 * 1024 * 1024; // monthly reports can be larger than onboarding uploads
+const ALLOWED_REPORT_MIME = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
 
 /** Upload a report attachment. Returns the metadata entry to append to monthly_reports.files. */
 export async function uploadReportFile(args: {
@@ -9,7 +11,20 @@ export async function uploadReportFile(args: {
   reportId: string;
   file: File;
 }): Promise<ReportFile> {
-  const safeName = args.file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  if (args.file.size > MAX_REPORT_BYTES) {
+    throw new Error(`File "${args.file.name}" is too large. Max is ${Math.round(MAX_REPORT_BYTES / 1024 / 1024)}MB.`);
+  }
+  if (args.file.size === 0) {
+    throw new Error(`File "${args.file.name}" is empty.`);
+  }
+  const mime = args.file.type || 'application/pdf';
+  if (!ALLOWED_REPORT_MIME.includes(mime)) {
+    throw new Error(`File type "${mime}" not supported. Upload PDFs or images.`);
+  }
+  const safeName = args.file.name
+    .replace(/[^a-zA-Z0-9.\-_]/g, '_')
+    .replace(/\.\.+/g, '_')
+    .slice(0, 120);
   const storagePath = `reports/${args.organizationId}/${args.reportId}/${Date.now()}-${safeName}`;
 
   const { error: storageErr } = await supabase.storage
