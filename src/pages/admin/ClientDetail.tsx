@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Users, Trash2, Copy, Mail, AlertTriangle, Loader2 } from 'lucide-react';
+import { ChevronLeft, Users, Trash2, Copy, Mail, AlertTriangle, Loader2, MessageCircle as MessageCircleIcon } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
@@ -22,7 +23,7 @@ import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey, OrgStatus, Upload } from '../../types';
 import { cn } from '../../lib/cn';
 
-type Tab = 'overview' | 'services' | 'submissions' | 'progress' | 'users';
+type Tab = 'overview' | 'services' | 'submissions' | 'progress' | 'users' | 'ai';
 
 export function ClientDetail() {
   const { orgSlug } = useParams();
@@ -77,6 +78,7 @@ export function ClientDetail() {
             <TabBtn active={tab === 'services'} onClick={() => setTab('services')}>Services</TabBtn>
             <TabBtn active={tab === 'submissions'} onClick={() => setTab('submissions')}>Submitted info</TabBtn>
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')}>Progress</TabBtn>
+            <TabBtn active={tab === 'ai'} onClick={() => setTab('ai')}>AI chats</TabBtn>
             <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>Users</TabBtn>
           </div>
 
@@ -84,6 +86,7 @@ export function ClientDetail() {
           {tab === 'services' && <ServicesTab orgId={org.id} />}
           {tab === 'submissions' && <SubmissionsTab orgId={org.id} />}
           {tab === 'progress' && <ProgressTab orgId={org.id} />}
+          {tab === 'ai' && <AiChatsTab orgId={org.id} />}
           {tab === 'users' && <UsersTab orgId={org.id} />}
 
           <div className="mt-8 text-xs text-white/30">
@@ -698,6 +701,54 @@ function ProgressTab({ orgId }: { orgId: string }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── AI chats tab (per-client) ───────────────────────────────────────────
+function AiChatsTab({ orgId }: { orgId: string }) {
+  const { data: messages = [], isLoading } = useQuery({
+    queryKey: ['ai-chat', 'org', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ai_chat_messages')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  if (isLoading) return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading chats…</div>;
+  if (messages.length === 0) {
+    return (
+      <div className="card text-center py-16">
+        <MessageCircleIcon className="h-8 w-8 text-white/30 mx-auto mb-3" />
+        <p className="text-white/50">No AI conversations from this client yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="eyebrow">Conversation history</p>
+        <span className="text-xs text-white/40">{messages.length} messages</span>
+      </div>
+      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+        {(messages as Array<{ id: string; role: string; content: string; context: string | null; created_at: string }>).map(m => (
+          <div key={m.id} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+            <div className={cn(
+              'max-w-[85%] rounded-2xl px-3 py-2 text-sm',
+              m.role === 'user' ? 'bg-orange text-white rounded-br-md' : 'bg-bg-tertiary text-white/90 rounded-bl-md',
+            )}>
+              <span className="whitespace-pre-wrap">{m.content}</span>
+              {m.context && <p className="text-[10px] opacity-60 mt-1">at {m.context}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
