@@ -116,6 +116,7 @@ function buildSections({
       },
       {
         items: [
+          { to: '/admin/diagnostics', label: 'Diagnostics', icon: LifeBuoy },
           { to: '/admin/whats-new', label: "What's new", icon: Bell, dot: hasUnreadWhatsNew },
         ],
       },
