@@ -1,11 +1,7 @@
 import { supabase } from '../supabase';
 
-const BUCKET = 'uploads';
-
 export interface WelcomeVideoMeta {
-  fileName: string | null;
-  storagePath: string | null;
-  mimeType: string | null;
+  videoUrl: string | null;
   updatedAt: string;
 }
 
@@ -19,31 +15,21 @@ export async function getWelcomeVideo(): Promise<WelcomeVideoMeta | null> {
   if (!data) return null;
   const r = data as Record<string, unknown>;
   return {
-    fileName:    (r.file_name as string | null) ?? null,
-    storagePath: (r.storage_path as string | null) ?? null,
-    mimeType:    (r.mime_type as string | null) ?? null,
-    updatedAt:   r.updated_at as string,
+    videoUrl:  (r.video_url as string | null) ?? null,
+    updatedAt: r.updated_at as string,
   };
 }
 
-export async function uploadWelcomeVideo(file: File): Promise<WelcomeVideoMeta> {
-  // Store under a stable path so old videos auto-overwrite, easier to clean up.
-  const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-  const storagePath = `welcome/${Date.now()}-${safeName}`;
-  const { error: storageErr } = await supabase.storage.from(BUCKET).upload(storagePath, file, {
-    cacheControl: '3600',
-    upsert: false,
-    contentType: file.type,
-  });
-  if (storageErr) throw storageErr;
-
+export async function setWelcomeVideoUrl(url: string): Promise<WelcomeVideoMeta> {
   const { data, error } = await supabase
     .from('welcome_video')
     .upsert({
       id: 1,
-      file_name: file.name,
-      storage_path: storagePath,
-      mime_type: file.type,
+      video_url: url.trim() || null,
+      // Clear the legacy file-based columns if any rows still reference them.
+      file_name: null,
+      storage_path: null,
+      mime_type: null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' })
     .select('*')
@@ -51,32 +37,20 @@ export async function uploadWelcomeVideo(file: File): Promise<WelcomeVideoMeta> 
   if (error) throw error;
   const r = data as Record<string, unknown>;
   return {
-    fileName:    r.file_name as string,
-    storagePath: r.storage_path as string,
-    mimeType:    r.mime_type as string,
-    updatedAt:   r.updated_at as string,
+    videoUrl:  (r.video_url as string | null) ?? null,
+    updatedAt: r.updated_at as string,
   };
 }
 
 export async function clearWelcomeVideo(): Promise<void> {
-  const current = await getWelcomeVideo();
-  if (current?.storagePath) {
-    await supabase.storage.from(BUCKET).remove([current.storagePath]).catch(() => {});
-  }
   const { error } = await supabase.from('welcome_video').update({
+    video_url: null,
     file_name: null,
     storage_path: null,
     mime_type: null,
     updated_at: new Date().toISOString(),
   }).eq('id', 1);
   if (error) throw error;
-}
-
-export async function getWelcomeVideoSignedUrl(storagePath: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(storagePath, 3600);
-  if (error) throw error;
-  if (!data?.signedUrl) throw new Error('No signed URL returned');
-  return data.signedUrl;
 }
 
 // Track which users have seen the welcome video (dismissal state).

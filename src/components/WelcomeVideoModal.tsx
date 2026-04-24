@@ -1,16 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { getWelcomeVideo, getWelcomeVideoSignedUrl, hasSeenWelcome, markWelcomeSeen } from '../lib/db/welcomeVideo';
+import { getWelcomeVideo, hasSeenWelcome, markWelcomeSeen } from '../lib/db/welcomeVideo';
+import { videoEmbedUrl } from '../lib/videoEmbed';
 import { useModal } from '../hooks/useModal';
 
 export function WelcomeVideoModal() {
   const { user } = useAuth();
   const [show, setShow] = useState(false);
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   const { data: video } = useQuery({
     queryKey: ['welcome_video'],
@@ -24,24 +23,26 @@ export function WelcomeVideoModal() {
     enabled: !!user && user.role === 'client',
   });
 
+  const embed = useMemo(
+    () => (video?.videoUrl ? videoEmbedUrl(video.videoUrl) : null),
+    [video?.videoUrl],
+  );
+
   useEffect(() => {
     if (!user || user.role !== 'client') return;
-    if (!video?.storagePath || seen === undefined || seen) return;
-    getWelcomeVideoSignedUrl(video.storagePath)
-      .then(url => { setSignedUrl(url); setShow(true); })
-      .catch(() => {/* silently skip */});
-  }, [user, video?.storagePath, seen]);
+    if (!embed || seen === undefined || seen) return;
+    setShow(true);
+  }, [user, embed, seen]);
 
   const dismiss = () => {
     setShow(false);
-    if (videoRef.current) videoRef.current.pause();
     if (user) markWelcomeSeen(user.id).catch(() => {});
   };
   const modalRef = useModal(show, dismiss);
 
   return (
     <AnimatePresence>
-      {show && signedUrl && (
+      {show && embed && (
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -65,15 +66,15 @@ export function WelcomeVideoModal() {
                 <X className="h-4 w-4" /> Close
               </button>
               <div className="rounded-2xl overflow-hidden border border-border-subtle bg-black shadow-2xl">
-                <video
-                  ref={videoRef}
-                  src={signedUrl}
-                  controls
-                  autoPlay
+                <iframe
+                  src={embed}
                   className="w-full aspect-video"
+                  title="Welcome"
+                  allow="fullscreen; clipboard-write; autoplay"
+                  allowFullScreen
                 />
               </div>
-              <p className="text-center text-xs text-white/40 mt-3">You'll only see this once. Close anytime.</p>
+              <p className="text-center text-xs text-white/55 mt-3">You'll only see this once. Close anytime.</p>
             </div>
           </motion.div>
         </>

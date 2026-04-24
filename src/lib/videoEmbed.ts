@@ -1,5 +1,22 @@
 import { loomEmbedUrl } from './loom';
 
+export function vimeoIdFromUrl(input: string): string | null {
+  if (!input) return null;
+  try {
+    const u = new URL(input.trim());
+    const host = u.hostname.replace(/^www\./, '');
+    if (host !== 'vimeo.com' && host !== 'player.vimeo.com') return null;
+    // vimeo.com/123456789, vimeo.com/123/hash, player.vimeo.com/video/123
+    const m = u.pathname.match(/\/(?:video\/)?(\d+)/);
+    return m?.[1] ?? null;
+  } catch { return null; }
+}
+
+export function vimeoEmbedUrl(input: string): string | null {
+  const id = vimeoIdFromUrl(input);
+  return id ? `https://player.vimeo.com/video/${id}` : null;
+}
+
 export function youtubeIdFromUrl(input: string): string | null {
   if (!input) return null;
   const s = input.trim();
@@ -23,7 +40,7 @@ export function youtubeEmbedUrl(input: string): string | null {
 
 export function videoEmbedUrl(input: string): string | null {
   if (!input) return null;
-  return loomEmbedUrl(input) ?? youtubeEmbedUrl(input);
+  return loomEmbedUrl(input) ?? youtubeEmbedUrl(input) ?? vimeoEmbedUrl(input);
 }
 
 export function isVideoUrl(input: string): boolean {

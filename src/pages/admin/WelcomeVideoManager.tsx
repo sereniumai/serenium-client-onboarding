@@ -1,58 +1,36 @@
-import { useState, useEffect } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Trash2, Film } from 'lucide-react';
-import { LoadingState } from '../../components/LoadingState';
+import { Film, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
-import {
-  getWelcomeVideo, uploadWelcomeVideo, clearWelcomeVideo, getWelcomeVideoSignedUrl,
-} from '../../lib/db/welcomeVideo';
-import { cn } from '../../lib/cn';
+import { LoadingState } from '../../components/LoadingState';
+import { getWelcomeVideo, setWelcomeVideoUrl, clearWelcomeVideo } from '../../lib/db/welcomeVideo';
+import { videoEmbedUrl } from '../../lib/videoEmbed';
 
 const QK = ['welcome_video'] as const;
 
 export function WelcomeVideoManager() {
   const qc = useQueryClient();
   const { data: video, isLoading } = useQuery({ queryKey: QK, queryFn: getWelcomeVideo });
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (video?.storagePath) {
-      getWelcomeVideoSignedUrl(video.storagePath).then(setSignedUrl).catch(() => setSignedUrl(null));
-    } else {
-      setSignedUrl(null);
-    }
-  }, [video?.storagePath]);
+  const [url, setUrl] = useState('');
+  useEffect(() => { if (video?.videoUrl) setUrl(video.videoUrl); }, [video?.videoUrl]);
 
-  const upload = useMutation({
-    mutationFn: (file: File) => uploadWelcomeVideo(file),
+  const save = useMutation({
+    mutationFn: (next: string) => setWelcomeVideoUrl(next),
     onSuccess: () => { qc.invalidateQueries({ queryKey: QK }); toast.success('Welcome video saved'); },
-    onError: (err: Error) => toast.error('Upload failed', { description: err.message }),
+    onError: (err: Error) => toast.error('Save failed', { description: err.message }),
   });
   const clear = useMutation({
     mutationFn: clearWelcomeVideo,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: QK }); toast.success('Welcome video removed'); },
+    onSuccess: () => { setUrl(''); qc.invalidateQueries({ queryKey: QK }); toast.success('Welcome video removed'); },
   });
 
-  const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    accept: { 'video/*': [] },
-    maxFiles: 1,
-    maxSize: MAX_BYTES,
-    onDrop: (files, rejections) => {
-      if (rejections.length > 0) {
-        const r = rejections[0];
-        const reason = r.errors[0]?.code === 'file-too-large'
-          ? `Max size is ${Math.round(MAX_BYTES / 1024 / 1024)} MB. Trim or re-encode the video.`
-          : r.errors[0]?.message ?? 'File rejected';
-        toast.error("Can't upload that", { description: reason });
-        return;
-      }
-      if (files[0]) upload.mutate(files[0]);
-    },
-  });
+  const trimmed = url.trim();
+  const embed = trimmed ? videoEmbedUrl(trimmed) : null;
+  const dirty = trimmed !== (video?.videoUrl ?? '');
+  const canSave = dirty && trimmed.length > 0;
 
   return (
     <AppShell>
@@ -62,43 +40,70 @@ export function WelcomeVideoManager() {
           <div className="mb-8">
             <p className="eyebrow mb-2">Content</p>
             <h1 className="font-display font-black text-[clamp(1.75rem,5vw,2.5rem)] leading-[1.05] tracking-[-0.025em] mb-2">Welcome video</h1>
-            <p className="text-white/60 text-sm max-w-xl">Upload a short video played in a modal the first time a client logs in. They can dismiss it and never see it again.</p>
+            <p className="text-white/60 text-sm max-w-xl">
+              Paste a Vimeo, Loom, or YouTube link. The video plays in a modal the first time a client logs in. Clients can dismiss and never see it again.
+            </p>
           </div>
 
           {isLoading ? (
             <LoadingState />
-          ) : video?.storagePath ? (
-            <div className="card space-y-4">
-              <p className="eyebrow">Current</p>
-              {signedUrl ? (
-                <video src={signedUrl} controls className="w-full rounded-lg border border-border-subtle bg-black" />
-              ) : (
-                <div className="aspect-video rounded-lg border border-border-subtle bg-bg-tertiary flex items-center justify-center">
-                  <LoadingState variant="inline" label="Preparing preview…" />
-                </div>
-              )}
-              <div className="flex items-center justify-between pt-2">
-                <div className="text-xs text-white/50">
-                  <p className="truncate"><Film className="h-3.5 w-3.5 inline-block mr-1.5" />{video.fileName}</p>
-                </div>
-                <button onClick={() => clear.mutate()} disabled={clear.isPending} className="inline-flex items-center gap-2 text-sm text-error hover:underline disabled:opacity-50">
-                  <Trash2 className="h-4 w-4" /> {clear.isPending ? 'Removing…' : 'Remove'}
-                </button>
-              </div>
-            </div>
           ) : (
-            <div
-              {...getRootProps()}
-              className={cn(
-                'card border-2 border-dashed cursor-pointer text-center py-14 transition-colors',
-                isDragActive ? 'border-orange bg-orange/5' : 'border-border-subtle hover:border-border-emphasis',
-                upload.isPending && 'opacity-60 cursor-wait',
+            <div className="card space-y-4">
+              <div>
+                <label className="label" htmlFor="welcome-video-url">Video URL</label>
+                <input
+                  id="welcome-video-url"
+                  type="url"
+                  className="input"
+                  placeholder="https://vimeo.com/…  ·  https://loom.com/share/…  ·  https://youtu.be/…"
+                  value={url}
+                  onChange={e => setUrl(e.target.value)}
+                />
+                <p className="text-xs text-white/55 mt-1.5">Make sure the link is publicly viewable (no login required).</p>
+              </div>
+
+              {trimmed && !embed && (
+                <p className="text-xs text-error">This doesn't look like a Vimeo, Loom, or YouTube URL. Double-check and try again.</p>
               )}
-            >
-              <input {...getInputProps()} />
-              <Upload className="h-10 w-10 text-orange mx-auto mb-3" />
-              <p className="font-semibold mb-1">{upload.isPending ? 'Uploading…' : 'Drop a video here'}</p>
-              <p className="text-xs text-white/50">MP4, MOV, WebM · max ~50 MB</p>
+
+              {embed && (
+                <div>
+                  <p className="eyebrow mb-2">Preview</p>
+                  <div className="aspect-video rounded-lg overflow-hidden border border-border-subtle bg-black">
+                    <iframe
+                      src={embed}
+                      className="w-full h-full"
+                      title="Welcome video preview"
+                      allow="fullscreen; clipboard-write; autoplay"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
+                <div className="text-xs text-white/50">
+                  {video?.videoUrl ? (
+                    <span className="inline-flex items-center gap-1.5"><Film className="h-3.5 w-3.5" /> Live</span>
+                  ) : (
+                    <span>Not set</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {video?.videoUrl && (
+                    <button onClick={() => clear.mutate()} disabled={clear.isPending} className="inline-flex items-center gap-2 text-sm text-error hover:underline disabled:opacity-50">
+                      <Trash2 className="h-4 w-4" /> {clear.isPending ? 'Removing…' : 'Remove'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => save.mutate(trimmed)}
+                    disabled={!canSave || save.isPending}
+                    className="btn-primary"
+                  >
+                    <Save className="h-4 w-4" /> {save.isPending ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
