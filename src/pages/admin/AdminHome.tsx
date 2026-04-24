@@ -4,6 +4,7 @@ import { Users, Plus, Activity, Rocket, Search, ArrowUp, ArrowDown, ArrowUpDown,
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { StatusPill as SystemStatusPill } from '../../components/StatusPill';
+import { OrgStatusPill } from '../../components/OrgStatusPill';
 import { useAllOrgs } from '../../hooks/useOrgs';
 import { cn } from '../../lib/cn';
 
@@ -140,7 +141,7 @@ export function AdminHome() {
                       {org.plan && <PlanBadge plan={org.plan} />}
                     </td>
                     <td className="px-6 py-4 text-sm text-white/60">{org.primaryContactName ?? '—'}</td>
-                    <td className="px-6 py-4"><StatusPill status={org.status} /></td>
+                    <td className="px-6 py-4"><OrgStatusPill status={org.status} /></td>
                     <td className="px-6 py-4 text-right">
                       <Link to={`/admin/clients/${org.slug}`} className="text-sm text-orange hover:text-orange-hover font-medium">
                         View →
@@ -206,19 +207,6 @@ function StatCard({ icon: Icon, label, value, active, onClick }: {
   );
 }
 
-function StatusPill({ status }: { status: 'onboarding' | 'live' | 'paused' | 'churned' }) {
-  const styles: Record<typeof status, string> = {
-    onboarding: 'bg-orange/10 text-orange',
-    live:       'bg-success/10 text-success',
-    paused:     'bg-warning/10 text-warning',
-    churned:    'bg-white/10 text-white/50',
-  };
-  return (
-    <span className={cn('inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize', styles[status])}>
-      {status}
-    </span>
-  );
-}
 
 function PlanBadge({ plan }: { plan: 'starter' | 'pro' | 'custom' }) {
   const styles: Record<typeof plan, string> = {

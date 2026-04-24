@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Users, Trash2, Copy, Mail, AlertTriangle, MessageCircle as MessageCircleIcon, Eye, Plus } from 'lucide-react';
+import { ChevronLeft, Trash2, Copy, Mail, AlertTriangle, MessageCircle as MessageCircleIcon, Eye, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
@@ -8,6 +8,7 @@ import { HeroGlow } from '../../components/HeroGlow';
 import { Markdown } from '../../components/Markdown';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { LoadingState } from '../../components/LoadingState';
+import { OrgStatusPill, ModuleStatusPill } from '../../components/OrgStatusPill';
 import { useOrgBySlug, useOrgMembers, useOrgServices, useUpdateOrg, useDeleteOrg } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
 import { useAuth } from '../../auth/AuthContext';
@@ -85,7 +86,7 @@ export function ClientDetail() {
               >
                 <Eye className="h-4 w-4" /> View as client
               </Link>
-              <StatusBadge status={org.status} />
+              <OrgStatusPill status={org.status} size="md" />
             </div>
           </div>
 
@@ -868,7 +869,7 @@ function ProgressTab({ orgId }: { orgId: string }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold">{m.title}</p>
-                        <StatusDot status={modStatus} />
+                        <ModuleStatusPill status={modStatus} />
                       </div>
                       {m.description && <p className="text-xs text-white/50 mt-0.5">{m.description}</p>}
                     </div>
@@ -1435,31 +1436,3 @@ function AiChatsTab({ orgId }: { orgId: string }) {
   );
 }
 
-function StatusDot({ status }: { status: 'not_started' | 'in_progress' | 'complete' }) {
-  const styles: Record<typeof status, string> = {
-    not_started: 'bg-white/10 text-white/50',
-    in_progress: 'bg-orange/15 text-orange',
-    complete:    'bg-success/15 text-success',
-  };
-  const labels: Record<typeof status, string> = {
-    not_started: 'Not started',
-    in_progress: 'In progress',
-    complete:    'Complete',
-  };
-  return <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider', styles[status])}>{labels[status]}</span>;
-}
-
-function StatusBadge({ status }: { status: OrgStatus }) {
-  const styles: Record<OrgStatus, string> = {
-    onboarding: 'bg-orange/10 text-orange border-orange/30',
-    live:       'bg-success/10 text-success border-success/30',
-    paused:     'bg-warning/10 text-warning border-warning/30',
-    churned:    'bg-white/10 text-white/50 border-white/20',
-  };
-  return (
-    <span className={cn('inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium capitalize border', styles[status])}>
-      <Users className="h-3.5 w-3.5" />
-      {status}
-    </span>
-  );
-}
