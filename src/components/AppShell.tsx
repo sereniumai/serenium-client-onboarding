@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, Briefcase, Globe, Bot, LifeBuoy, ChevronLeft } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { PHASES } from '../config/phases';
+import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, LifeBuoy, ChevronLeft } from 'lucide-react';
+import { SELECTABLE_SERVICES, getService } from '../config/modules';
+import { SERVICE_ICON } from '../config/serviceIcons';
 import { Sidebar, type SidebarSection } from './Sidebar';
 import { CurriculumSidebar } from './CurriculumSidebar';
 import { AiHelperChat } from './AiHelperChat';
@@ -81,12 +81,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-const PHASE_ICON: Record<string, LucideIcon> = {
-  business: Briefcase,
-  presence: Globe,
-  agents:   Bot,
-};
 
 function buildSections({
   userRole, orgSlug, onboardingDone, hasUnreadWhatsNew, progress, editingMode,
@@ -167,22 +161,22 @@ function buildSections({
     ];
   }
 
-  // During onboarding, show a phase-aware nav
-  const phaseItems = PHASES.map(phase => {
-    const phaseSummaries = progress
-      ? phase.services.flatMap(k => progress.perService[k] ?? [])
-      : [];
-    const visibleSummaries = phaseSummaries;
-    const done = visibleSummaries.filter(s => s.status === 'complete').length;
-    const total = visibleSummaries.length;
-    return {
-      to: `/onboarding/${orgSlug}#phase-${phase.key}`,
-      label: phaseLabel(phase.key),
-      icon: PHASE_ICON[phase.key] ?? Home,
-      badge: total > 0 ? `${done}/${total}` : undefined,
-      skip: total === 0,
-    };
-  });
+  // During onboarding, list each enabled service directly. No phase grouping, no
+  // module-level detail — clean and clickable.
+  const enabledServiceKeys = progress?.enabledServices ?? [];
+  const serviceItems = SELECTABLE_SERVICES
+    .filter(s => enabledServiceKeys.includes(s.key))
+    .map(s => {
+      const summaries = progress?.perService[s.key] ?? [];
+      const done = summaries.filter(x => x.status === 'complete').length;
+      const total = summaries.length;
+      return {
+        to: `/onboarding/${orgSlug}/services/${s.key}`,
+        label: getService(s.key)?.label ?? s.key,
+        icon: SERVICE_ICON[s.key] ?? Home,
+        badge: total > 0 ? `${done}/${total}` : undefined,
+      };
+    });
 
   return [
     {
@@ -195,7 +189,7 @@ function buildSections({
           end: true,
           badge: progress ? `${progress.overall}%` : undefined,
         },
-        ...phaseItems.filter(p => !p.skip).map(({ skip, ...rest }) => { void skip; return rest; }),
+        ...serviceItems,
       ],
     },
     {
@@ -205,15 +199,6 @@ function buildSections({
       ],
     },
   ];
-}
-
-function phaseLabel(key: string): string {
-  switch (key) {
-    case 'business': return 'Your business';
-    case 'presence': return 'Online presence';
-    case 'agents':   return 'AI team';
-    default: return key;
-  }
 }
 
 function openAiChat() {
