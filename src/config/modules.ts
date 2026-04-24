@@ -441,7 +441,7 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
 const AI_SMS: ServiceDef = {
   key: 'ai_sms',
   label: 'AI SMS',
-  description: 'An AI that texts your roofing leads back in seconds, asks the right questions, and books estimates straight into your calendar.',
+  description: 'Texts your roofing leads back in seconds, asks the right questions, and books estimates into your calendar.',
   modules: [
     {
       key: 'purpose_goal',
