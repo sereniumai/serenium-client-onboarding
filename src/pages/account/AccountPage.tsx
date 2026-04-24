@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { User, Mail, Lock, Save, ChevronLeft, Moon, Sun } from 'lucide-react';
+import { User, Mail, Lock, Save, ChevronLeft, Moon, Sun, ShieldOff } from 'lucide-react';
 import { getTheme, setTheme, type Theme } from '../../lib/theme';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
@@ -43,6 +43,7 @@ export function AccountPage() {
             />
             <PasswordCard />
             <AppearanceCard />
+            <SessionCard />
           </div>
         </div>
       </div>
@@ -241,6 +242,38 @@ function AppearanceCard() {
           </div>
         </button>
       </div>
+    </SettingsCard>
+  );
+}
+
+function SessionCard() {
+  const [signingOut, setSigningOut] = useState(false);
+  const navigate = useNavigate();
+
+  const signOutAll = async () => {
+    if (!confirm('Sign out of every device where you are currently logged in? You will need to log in again.')) return;
+    setSigningOut(true);
+    try {
+      // 'global' scope revokes all refresh tokens for this user across all devices.
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      if (error) throw error;
+      toast.success('Signed out everywhere');
+      navigate('/login', { replace: true });
+    } catch (err) {
+      toast.error('Could not sign out', { description: (err as Error).message });
+      setSigningOut(false);
+    }
+  };
+
+  return (
+    <SettingsCard icon={ShieldOff} title="Sessions" subtitle="Sign out of every device where you are logged in. Use this if you suspect your account is compromised.">
+      <button
+        onClick={signOutAll}
+        disabled={signingOut}
+        className="btn-secondary text-error border-error/30 hover:bg-error/10"
+      >
+        <ShieldOff className="h-4 w-4" /> {signingOut ? 'Signing out…' : 'Sign out everywhere'}
+      </button>
     </SettingsCard>
   );
 }
