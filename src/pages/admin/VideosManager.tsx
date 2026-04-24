@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Video, Check, X, Search, Loader2 } from 'lucide-react';
+import { Video, Check, X, Search, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
@@ -46,14 +46,14 @@ export function VideosManager() {
             <div className="text-center text-white/50 py-16"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading…</div>
           )}
 
-          <div className="space-y-6">
+          <div className="space-y-3">
             {SERVICES.map(svc => {
               const modules = svc.modules.filter(m =>
                 !q || svc.label.toLowerCase().includes(q) || m.title.toLowerCase().includes(q)
               );
               if (modules.length === 0) return null;
               return (
-                <ServiceBlock key={svc.key} service={svc} modules={modules} videosByKey={videosByKey} />
+                <ServiceBlock key={svc.key} service={svc} modules={modules} videosByKey={videosByKey} defaultOpen={!!q} />
               );
             })}
           </div>
@@ -63,27 +63,37 @@ export function VideosManager() {
   );
 }
 
-function ServiceBlock({ service, modules, videosByKey }: {
+function ServiceBlock({ service, modules, videosByKey, defaultOpen }: {
   service: ServiceDef;
   modules: ModuleDef[];
   videosByKey: Map<string, StepVideo>;
+  defaultOpen?: boolean;
 }) {
   const Icon = SERVICE_ICON[service.key];
   const setCount = modules.filter(m => videosByKey.has(`${service.key}.${m.key}`)).length;
+  const [open, setOpen] = useState(defaultOpen ?? false);
+
   return (
     <div className="card p-0 overflow-hidden">
-      <div className="px-5 py-4 flex items-center gap-3 border-b border-border-subtle">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-bg-tertiary/30 transition-colors"
+      >
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange/10 text-orange"><Icon className="h-5 w-5" /></div>
         <div className="flex-1 min-w-0">
           <h2 className="font-display font-bold text-lg">{service.label}</h2>
+          <p className="text-xs text-white/50">{modules.length} module{modules.length === 1 ? '' : 's'}</p>
         </div>
-        <span className="text-xs text-white/50 tabular-nums">{setCount}/{modules.length} set</span>
-      </div>
-      <div className="divide-y divide-border-subtle">
-        {modules.map(m => (
-          <VideoRow key={m.key} serviceKey={service.key} module={m} current={videosByKey.get(`${service.key}.${m.key}`)} />
-        ))}
-      </div>
+        <span className="text-xs text-white/50 tabular-nums shrink-0">{setCount}/{modules.length} set</span>
+        {open ? <ChevronDown className="h-4 w-4 text-white/40" /> : <ChevronRight className="h-4 w-4 text-white/40" />}
+      </button>
+      {open && (
+        <div className="divide-y divide-border-subtle border-t border-border-subtle">
+          {modules.map(m => (
+            <VideoRow key={m.key} serviceKey={service.key} module={m} current={videosByKey.get(`${service.key}.${m.key}`)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

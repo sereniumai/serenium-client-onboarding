@@ -329,20 +329,41 @@ export default async function handler(req: Request): Promise<Response> {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-20241022',
+        model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
         max_tokens: mode === 'analytics' ? 1200 : 800,
         system,
         messages,
       }),
     });
 
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.error('[ask-assistant] Anthropic error', resp.status, errText);
-      return json({ error: `Anthropic ${resp.status}: ${errText.slice(0, 300)}` }, 502);
+    // On 404 (model not available on this account) retry once with a known-good
+    // fallback so one bad default doesn't take the whole assistant offline.
+    let finalResp = resp;
+    if (resp.status === 404) {
+      console.warn('[ask-assistant] primary model 404, falling back to claude-3-haiku-20240307');
+      finalResp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: mode === 'analytics' ? 1200 : 800,
+          system,
+          messages,
+        }),
+      });
     }
 
-    const data = (await resp.json()) as { content?: Array<{ type: string; text: string }>; stop_reason?: string };
+    if (!finalResp.ok) {
+      const errText = await finalResp.text();
+      console.error('[ask-assistant] Anthropic error', finalResp.status, errText);
+      return json({ error: `Anthropic ${finalResp.status}: ${errText.slice(0, 300)}` }, 502);
+    }
+
+    const data = (await finalResp.json()) as { content?: Array<{ type: string; text: string }>; stop_reason?: string };
     let text = data.content?.filter(c => c.type === 'text').map(c => c.text).join('\n').trim() ?? '';
 
     if (!text) {
