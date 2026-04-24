@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { toActivityLog } from './mappers';
+import { impersonationMetadata } from '../impersonation';
 import type { ActivityLogEntry, ActivityAction } from '../../types';
 
 export async function listActivityForOrg(orgId: string, limit = 200): Promise<ActivityLogEntry[]> {
@@ -23,7 +24,7 @@ export async function logActivity(args: {
     organization_id: args.organizationId,
     user_id: args.userId ?? null,
     action: args.action,
-    metadata: args.metadata ?? {},
+    metadata: { ...impersonationMetadata(), ...(args.metadata ?? {}) },
   });
   if (error) throw error;
 }

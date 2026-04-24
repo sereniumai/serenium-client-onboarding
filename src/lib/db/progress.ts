@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { toModuleProgress, toTaskCompletion } from './mappers';
+import { impersonationMetadata } from '../impersonation';
 import type { ModuleProgress, TaskCompletion, ModuleStatus, ServiceKey } from '../../types';
 
 export async function listModuleProgress(orgId: string): Promise<ModuleProgress[]> {
@@ -41,7 +42,7 @@ export async function setModuleStatus(args: {
       organization_id: args.organizationId,
       user_id: args.userId ?? null,
       action: args.status === 'complete' ? 'step_completed' : 'step_reopened',
-      metadata: { service_key: args.serviceKey, module_key: args.moduleKey },
+      metadata: { ...impersonationMetadata(), service_key: args.serviceKey, module_key: args.moduleKey },
     });
   }
 }

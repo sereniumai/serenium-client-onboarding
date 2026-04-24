@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { toOrganizationService } from './mappers';
+import { impersonationMetadata } from '../impersonation';
 import type { OrganizationService, ServiceKey } from '../../types';
 
 export async function listServicesForOrg(orgId: string): Promise<OrganizationService[]> {
@@ -40,7 +41,7 @@ export async function enableService(orgId: string, serviceKey: ServiceKey): Prom
   await supabase.from('activity_log').insert({
     organization_id: orgId,
     action: 'service_enabled',
-    metadata: { service_key: serviceKey },
+    metadata: { ...impersonationMetadata(), service_key: serviceKey },
   });
 }
 
@@ -54,7 +55,7 @@ export async function disableService(orgId: string, serviceKey: ServiceKey): Pro
   await supabase.from('activity_log').insert({
     organization_id: orgId,
     action: 'service_disabled',
-    metadata: { service_key: serviceKey },
+    metadata: { ...impersonationMetadata(), service_key: serviceKey },
   });
 }
 

@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { toUpload } from './mappers';
+import { impersonationMetadata } from '../impersonation';
 import type { Upload } from '../../types';
 
 const BUCKET = 'uploads';
@@ -91,7 +92,7 @@ export async function uploadFile(args: {
     organization_id: args.organizationId,
     user_id: args.userId ?? null,
     action: 'file_uploaded',
-    metadata: { category: args.category, file_name: args.file.name, file_size: args.file.size },
+    metadata: { ...impersonationMetadata(), category: args.category, file_name: args.file.name, file_size: args.file.size },
   });
 
   return toUpload(data);
