@@ -14,7 +14,7 @@ export function ResetPasswordPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (pw.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (pw.length < 10) { setError('Password must be at least 10 characters.'); return; }
     if (pw !== pw2) { setError('Passwords do not match.'); return; }
     setSubmitting(true);
     try {
@@ -50,7 +50,7 @@ export function ResetPasswordPage() {
       <form onSubmit={onSubmit} className="space-y-5">
         <div>
           <label className="label" htmlFor="pw">New password</label>
-          <input id="pw" type="password" required minLength={8} value={pw} onChange={e => setPw(e.target.value)} className="input" placeholder="At least 8 characters" />
+          <input id="pw" type="password" required minLength={10} value={pw} onChange={e => setPw(e.target.value)} className="input" placeholder="At least 10 characters" />
         </div>
         <div>
           <label className="label" htmlFor="pw2">Confirm password</label>

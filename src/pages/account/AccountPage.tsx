@@ -188,7 +188,7 @@ function PasswordCard() {
           onChange={e => setPw2(e.target.value)}
           autoComplete="new-password"
         />
-        {tooShort && <p className="text-xs text-error">At least 8 characters.</p>}
+        {tooShort && <p className="text-xs text-error">At least 10 characters.</p>}
         {mismatch && <p className="text-xs text-error">Passwords don't match.</p>}
         {showHints && pw.length === 0 && <p className="text-xs text-white/40">Tip: longer passwords are stronger than complex ones. 16 random lowercase letters beats an 8-character "P@ssw0rd!".</p>}
       </div>
@@ -248,13 +248,13 @@ function AppearanceCard() {
 
 function SessionCard() {
   const [signingOut, setSigningOut] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const navigate = useNavigate();
 
   const signOutAll = async () => {
-    if (!confirm('Sign out of every device where you are currently logged in? You will need to log in again.')) return;
+    setConfirmOpen(false);
     setSigningOut(true);
     try {
-      // 'global' scope revokes all refresh tokens for this user across all devices.
       const { error } = await supabase.auth.signOut({ scope: 'global' });
       if (error) throw error;
       toast.success('Signed out everywhere');
@@ -268,12 +268,45 @@ function SessionCard() {
   return (
     <SettingsCard icon={ShieldOff} title="Sessions" subtitle="Sign out of every device where you are logged in. Use this if you suspect your account is compromised.">
       <button
-        onClick={signOutAll}
+        onClick={() => setConfirmOpen(true)}
         disabled={signingOut}
         className="btn-secondary text-error border-error/30 hover:bg-error/10"
       >
         <ShieldOff className="h-4 w-4" /> {signingOut ? 'Signing out…' : 'Sign out everywhere'}
       </button>
+      {confirmOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="signout-all-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setConfirmOpen(false)}
+          onKeyDown={e => { if (e.key === 'Escape') setConfirmOpen(false); }}
+        >
+          <div
+            className="card max-w-md w-full space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0">
+                <ShieldOff className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 id="signout-all-title" className="font-display font-bold text-lg tracking-[-0.01em]">Sign out everywhere?</h3>
+                <p className="text-xs text-white/60 leading-relaxed mt-1">
+                  You'll be signed out of every device where you're currently logged in, including this one. You'll need to log in again.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={() => setConfirmOpen(false)} className="btn-secondary">Cancel</button>
+              <button onClick={signOutAll} className="btn-primary text-error border-error/30 bg-error/10 hover:bg-error/20">
+                <ShieldOff className="h-4 w-4" /> Yes, sign out everywhere
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </SettingsCard>
   );
 }

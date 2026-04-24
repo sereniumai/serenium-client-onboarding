@@ -107,7 +107,7 @@ export default async function handler(req: Request): Promise<Response> {
     console.error('[send-invitation] Resend error', resp.status, txt);
     captureEdgeError(new Error(`Resend ${resp.status}`), {
       endpoint: 'send-invitation',
-      extra: { status: resp.status, body: txt.slice(0, 500), invitationId: b.invitationId },
+      extra: { status: resp.status, body: txt.slice(0, 500) },
     });
     return json({ error: 'Email send failed. Try again in a moment.' }, 502);
   }
