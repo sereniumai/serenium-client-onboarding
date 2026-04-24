@@ -277,7 +277,7 @@ const BUSINESS_PROFILE: ServiceDef = {
 const FACEBOOK_ADS: ServiceDef = {
   key: 'facebook_ads',
   label: 'Facebook Ads',
-  description: 'Partnership access to your Meta ad account, Page, Instagram, and Pixel',
+  description: 'Partner access to your Meta Business Manager so Serenium can run Facebook + Instagram ads on your behalf, no password sharing needed.',
   modules: [
     {
       key: 'prerequisites',
@@ -441,7 +441,7 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
 const AI_SMS: ServiceDef = {
   key: 'ai_sms',
   label: 'AI SMS',
-  description: 'Automated lead qualification via GoHighLevel + Appointwise',
+  description: 'An AI that texts your roofing leads back in seconds, asks the right questions, and books estimates straight into your calendar.',
   modules: [
     {
       key: 'purpose_goal',
@@ -653,7 +653,7 @@ const AI_SMS: ServiceDef = {
 const AI_RECEPTIONIST: ServiceDef = {
   key: 'ai_receptionist',
   label: 'AI Receptionist',
-  description: 'Inbound call AI, captures info and emails you a summary. Does not book appointments.',
+  description: 'A phone AI that picks up every inbound call, qualifies the caller, and emails you a full summary. Never miss a lead while you\'re on a roof.',
   modules: [
     {
       key: 'purpose_goal',

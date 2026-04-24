@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useParams, Navigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, PlayCircle, ArrowRight, Clock } from 'lucide-react';
+import { CheckCircle2, PlayCircle, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { CircleProgress } from '../../components/CircleProgress';
@@ -84,19 +84,6 @@ export function OnboardingDashboard() {
   const reports: Array<never> = [];
   const latestReport = undefined;
 
-  // Find next service with unfinished steps (top-level section, not individual module)
-  let nextService: { svcKey: ServiceKey; label: string; hasStarted: boolean } | null = null;
-  for (const svcKey of progress.enabledServices) {
-    const summaries = progress.perService[svcKey];
-    const anyIncomplete = summaries.some(s => s.status !== 'complete');
-    if (!anyIncomplete) continue;
-    const anyInProgress = summaries.some(s => s.status !== 'not_started');
-    const svc = getService(svcKey)!;
-    nextService = { svcKey, label: svc.label, hasStarted: anyInProgress };
-    break;
-  }
-
-
   return (
     <AppShell>
       <WelcomeVideoModal />
@@ -105,54 +92,26 @@ export function OnboardingDashboard() {
 
         {/* HERO */}
         <section className="relative mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-14 pb-6 md:pb-8">
-          <div className="grid lg:grid-cols-[1fr,auto] gap-8 lg:gap-16 items-start">
-            <div>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-10">
+            <div className="flex-1 min-w-0">
               <p className="eyebrow mb-4">Onboarding · {org.businessName}</p>
               <h1 className="font-display font-black text-[clamp(2rem,6vw,3.75rem)] leading-[1.02] tracking-[-0.03em] mb-4">
                 {timeOfDayGreeting()}, <span className="text-orange">{firstName}</span>.
               </h1>
               <p className="text-white/60 text-lg max-w-xl">{motivation(progress.overall, reports.length > 0)}</p>
-
-              {nextService && !onboardingDone && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-8"
-                >
-                  <Link
-                    to={`/onboarding/${org.slug}/services/${nextService.svcKey}`}
-                    className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-orange hover:bg-orange-hover text-white font-semibold text-sm shadow-orange-glow transition-colors"
-                  >
-                    <PlayCircle className="h-4 w-4" />
-                    {nextService.hasStarted ? 'Continue' : 'Start'} {nextService.label}
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </motion.div>
-              )}
             </div>
 
-            <div className="shrink-0 w-full lg:w-auto">
-              <div className="card p-6 md:p-8 text-center w-full lg:min-w-[260px]">
-                <CircleProgress value={progress.overall} size={140} strokeWidth={8}>
-                  <div>
-                    <p className="font-display font-black text-3xl tracking-tight">
-                      <AnimatedNumber value={progress.overall} /><span className="text-lg text-white/40">%</span>
-                    </p>
-                    <p className="text-[10px] uppercase tracking-wider text-white/40 mt-0.5">Complete</p>
-                  </div>
-                </CircleProgress>
-                {onboardingDone && (
-                  <div className="mt-6 pt-6 border-t border-border-subtle text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Steps complete</p>
-                    <p className="font-display font-black text-xl tabular-nums">
-                      {progress.completeModules}<span className="text-white/30 text-sm">/{progress.totalModules}</span>
-                    </p>
-                  </div>
-                )}
-              </div>
+            <div className="shrink-0 self-start md:self-center">
+              <CircleProgress value={progress.overall} size={128} strokeWidth={7}>
+                <div className="text-center">
+                  <p className="font-display font-black text-2xl tracking-tight leading-none">
+                    <AnimatedNumber value={progress.overall} /><span className="text-sm text-white/40">%</span>
+                  </p>
+                  <p className="text-[9px] uppercase tracking-wider text-white/40 mt-1">Complete</p>
+                </div>
+              </CircleProgress>
             </div>
           </div>
-
         </section>
 
         {/* Resume where you left off */}
@@ -172,10 +131,9 @@ export function OnboardingDashboard() {
                   <div className="flex-1 min-w-0">
                     <p className="eyebrow mb-1">Pick up where you left off</p>
                     <p className="font-display font-bold text-base md:text-lg truncate">{resume.serviceLabel} · {resume.moduleTitle}</p>
-                    <p className="text-xs text-white/55 mt-0.5 inline-flex items-center gap-3">
-                      <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> ~{resume.estimatedMinutes} min</span>
-                      {resume.lastTouchedAt && <span>Last edited {relativeTime(resume.lastTouchedAt)}</span>}
-                    </p>
+                    {resume.lastTouchedAt && (
+                      <p className="text-xs text-white/55 mt-0.5">Last edited {relativeTime(resume.lastTouchedAt)}</p>
+                    )}
                   </div>
                   <ArrowRight className="h-5 w-5 text-orange shrink-0 group-hover:translate-x-1 transition-transform" />
                 </div>

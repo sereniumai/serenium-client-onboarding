@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Clock, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, ArrowRight } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { AppShell } from '../../components/AppShell';
 import { TaskCheckbox } from '../../components/TaskCheckbox';
@@ -175,9 +175,6 @@ export function ModulePage() {
               <p className="text-white/60 text-lg">{mod.description}</p>
 
               <div className="flex flex-wrap items-center gap-3 mt-6">
-                <span className="inline-flex items-center gap-1.5 text-xs text-white/60 px-2.5 py-1.5 rounded-full border border-border-subtle">
-                  <Clock className="h-3 w-3" /> ~{mod.estimatedMinutes} min
-                </span>
                 {totalTasks > 0 && (
                   <span className="inline-flex items-center gap-1.5 text-xs text-white/60 px-2.5 py-1.5 rounded-full border border-border-subtle tabular-nums">
                     <CheckCircle2 className="h-3 w-3" /> {totalTasksDone}/{totalTasks} steps

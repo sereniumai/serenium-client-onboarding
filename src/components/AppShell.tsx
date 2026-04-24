@@ -155,7 +155,7 @@ function buildSections({
       {
         title: 'Support',
         items: [
-          { to: `/onboarding/${orgSlug}`, label: 'Ask Rob or Adam', icon: LifeBuoy, onClick: openAiChat },
+          { to: `/onboarding/${orgSlug}`, label: 'Ask Aria', icon: LifeBuoy, onClick: openAiChat },
         ],
       },
     ];
@@ -195,7 +195,7 @@ function buildSections({
     {
       title: 'Support',
       items: [
-        { to: `/onboarding/${orgSlug}`, label: 'Ask Rob or Adam', icon: LifeBuoy, onClick: openAiChat },
+        { to: `/onboarding/${orgSlug}`, label: 'Ask Aria', icon: LifeBuoy, onClick: openAiChat },
       ],
     },
   ];

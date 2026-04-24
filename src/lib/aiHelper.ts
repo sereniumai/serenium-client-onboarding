@@ -31,21 +31,33 @@ export interface AskOptions {
 }
 
 export async function askAssistant(question: string, opts: AskOptions = {}): Promise<string> {
-  const res = await fetch('/api/ask-assistant', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      question,
-      mode: opts.mode ?? 'onboarding',
-      persona: opts.persona,
-      context: opts.context ?? null,
-      userContext: opts.userContext ?? null,
-      history: opts.history ?? [],
-      attachments: opts.attachments ?? [],
-    }),
-  });
-  const data = await res.json() as { reply?: string; error?: string };
-  if (!res.ok) throw new Error(data.error ?? `Assistant error (${res.status})`);
+  let res: Response;
+  try {
+    res = await fetch('/api/ask-assistant', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        question,
+        mode: opts.mode ?? 'onboarding',
+        persona: opts.persona,
+        context: opts.context ?? null,
+        userContext: opts.userContext ?? null,
+        history: opts.history ?? [],
+        attachments: opts.attachments ?? [],
+      }),
+    });
+  } catch (err) {
+    throw new Error(`Network error, couldn't reach the assistant endpoint (${(err as Error).message}).`);
+  }
+
+  const raw = await res.text();
+  let data: { reply?: string; error?: string } = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch { /* non-JSON response, use raw below */ }
+
+  if (!res.ok) {
+    const specific = data.error || raw || `HTTP ${res.status}`;
+    throw new Error(`${specific} (status ${res.status})`);
+  }
   return data.reply ?? '';
 }
 

@@ -1,4 +1,4 @@
-import { Building2, Megaphone, Target, MapPin, MessageSquare, Headphones, Globe, type LucideIcon } from 'lucide-react';
+import { Building2, Megaphone, Target, MapPin, MessageSquare, Phone, Globe, type LucideIcon } from 'lucide-react';
 import type { ServiceKey } from '../types';
 
 export const SERVICE_ICON: Record<ServiceKey, LucideIcon> = {
@@ -7,6 +7,6 @@ export const SERVICE_ICON: Record<ServiceKey, LucideIcon> = {
   google_ads: Target,
   google_business_profile: MapPin,
   ai_sms: MessageSquare,
-  ai_receptionist: Headphones,
+  ai_receptionist: Phone,
   website: Globe,
 };
