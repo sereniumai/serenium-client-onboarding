@@ -7,6 +7,7 @@ import { db } from '../lib/mockDb';
 import type { Field } from '../config/modules';
 import { evaluate } from '../lib/condition';
 import { Markdown } from './Markdown';
+import { FieldTooltip } from './FieldTooltip';
 import { cn } from '../lib/cn';
 
 interface Props {
@@ -44,10 +45,13 @@ export function FieldRenderer({ field, organizationId, fieldKey, userId, onStatu
   return (
     <div>
       {field.label && (
-        <label className="label" htmlFor={fieldKey}>
-          {field.label}
-          {field.required && <span className="text-orange ml-1">*</span>}
-        </label>
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <label className="label !mb-0" htmlFor={fieldKey}>
+            {field.label}
+            {field.required && <span className="text-orange ml-1">*</span>}
+          </label>
+          {field.tooltip && <FieldTooltip text={field.tooltip} />}
+        </div>
       )}
       <FieldInput field={field} organizationId={organizationId} fieldKey={fieldKey} userId={userId} onStatusChange={onStatusChange} />
       <FieldValidationMessage field={field} organizationId={organizationId} fieldKey={fieldKey} />

@@ -140,7 +140,7 @@ export function OnboardingDashboard() {
                 {onboardingDone ? 'Onboarding summary' : 'What we need from you'}
               </h2>
               <p className="text-sm text-white/60 mt-1">
-                {onboardingDone ? 'Everything you submitted. Open any step to review or update.' : 'Three phases. Go in any order you like.'}
+                {onboardingDone ? 'Everything you submitted. Open any step to review or update.' : 'Tackle these in any order. We autosave as you go.'}
               </p>
             </div>
           </div>
@@ -151,10 +151,16 @@ export function OnboardingDashboard() {
             </div>
           )}
 
+          {(() => {
+            const visiblePhases = PHASES
+              .map(p => ({ ...p, services: p.services.filter(k => progress.enabledServices.includes(k)) }))
+              .filter(p => p.services.length > 0);
+            return (
           <div className="space-y-10">
-            {PHASES.map((phase, phaseIdx) => {
-              const phaseServices = phase.services.filter(k => progress.enabledServices.includes(k));
-              if (phaseServices.length === 0) return null;
+            {visiblePhases.map((phase, phaseIdx) => {
+              const phaseServices = phase.services;
+              const displayNumber = phaseIdx + 1;
+              const showPhaseChrome = visiblePhases.length > 1;
 
               // Roll up phase progress across its services.
               const phaseSummaries = phaseServices.flatMap(k => progress.perService[k] ?? []);
@@ -171,28 +177,30 @@ export function OnboardingDashboard() {
                   transition={{ delay: phaseIdx * 0.08 }}
                 >
                   {/* Phase header */}
-                  <div className="flex items-start gap-4 mb-5 md:mb-6">
-                    <div className={cn(
-                      'flex h-12 w-12 items-center justify-center rounded-2xl font-display font-black text-lg shrink-0 tabular-nums',
-                      phaseDone ? 'bg-success text-white' : 'bg-orange/10 text-orange',
-                    )}>
-                      {phaseDone ? <CheckCircle2 className="h-6 w-6" /> : phase.number}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-semibold mb-1">Phase {phase.number}</p>
-                      <h3 className="font-display font-black text-2xl md:text-3xl tracking-[-0.02em]">{phase.title}</h3>
-                      <p className="text-sm text-white/60 mt-1">{phase.subtitle}</p>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-3 shrink-0 text-right">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-white/40">Progress</p>
-                        <p className="font-display font-black text-xl tabular-nums">{phasePct}<span className="text-white/30 text-sm">%</span></p>
+                  {showPhaseChrome && (
+                    <div className="flex items-start gap-4 mb-5 md:mb-6">
+                      <div className={cn(
+                        'flex h-12 w-12 items-center justify-center rounded-2xl font-display font-black text-lg shrink-0 tabular-nums',
+                        phaseDone ? 'bg-success text-white' : 'bg-orange/10 text-orange',
+                      )}>
+                        {phaseDone ? <CheckCircle2 className="h-6 w-6" /> : displayNumber}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-semibold mb-1">Phase {displayNumber}</p>
+                        <h3 className="font-display font-black text-2xl md:text-3xl tracking-[-0.02em]">{phase.title}</h3>
+                        <p className="text-sm text-white/60 mt-1">{phase.subtitle}</p>
+                      </div>
+                      <div className="hidden sm:flex items-center gap-3 shrink-0 text-right">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-white/40">Progress</p>
+                          <p className="font-display font-black text-xl tabular-nums">{phasePct}<span className="text-white/30 text-sm">%</span></p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Services inside the phase */}
-                  <div className="space-y-4 pl-0 md:pl-16">
+                  <div className={cn('space-y-4', showPhaseChrome ? 'pl-0 md:pl-16' : 'pl-0')}>
                     {phaseServices.map(svcKey => {
                       const svc = getService(svcKey)!;
                       const enabledMods = getEnabledModulesForService(org.id, svcKey);
@@ -251,6 +259,8 @@ export function OnboardingDashboard() {
               );
             })}
           </div>
+            );
+          })()}
         </section>
       </div>
     </AppShell>

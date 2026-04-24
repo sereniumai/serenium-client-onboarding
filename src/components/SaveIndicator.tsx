@@ -4,18 +4,20 @@ import { cn } from '../lib/cn';
 type Status = 'idle' | 'saving' | 'saved' | 'error';
 
 export function SaveIndicator({ status }: { status: Status }) {
-  if (status === 'idle') return null;
+  const display = status === 'idle' ? 'saved' : status;
   return (
     <div className={cn(
-      'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full',
-      status === 'saving' && 'text-orange bg-orange/10',
-      status === 'saved' && 'text-success bg-success/10',
-      status === 'error' && 'text-error bg-error/10',
+      'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-colors',
+      display === 'saving' && 'text-orange bg-orange/10',
+      display === 'saved' && 'text-white/50 bg-white/5',
+      display === 'error' && 'text-error bg-error/10',
     )}>
-      {status === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}
-      {status === 'saved' && <Check className="h-3 w-3" />}
-      {status === 'error' && <AlertCircle className="h-3 w-3" />}
-      <span>{status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : 'Save failed'}</span>
+      {display === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}
+      {display === 'saved' && <Check className="h-3 w-3" />}
+      {display === 'error' && <AlertCircle className="h-3 w-3" />}
+      <span>
+        {display === 'saving' ? 'Saving…' : display === 'saved' ? 'All changes saved' : 'Save failed'}
+      </span>
     </div>
   );
 }

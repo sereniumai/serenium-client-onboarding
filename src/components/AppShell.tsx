@@ -140,7 +140,29 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </ErrorBoundary>
       </main>
+      <AppFooter isClient={user?.role === 'client'} onboardingDone={onboardingDone} />
       <AiHelperChat />
     </div>
+  );
+}
+
+function AppFooter({ isClient, onboardingDone }: { isClient: boolean; onboardingDone: boolean }) {
+  const tagline = !isClient
+    ? 'Built for the Serenium team.'
+    : onboardingDone
+      ? 'You\'re live. Welcome to a new era of roofing marketing.'
+      : 'You\'ve joined a new era of roofing marketing.';
+
+  return (
+    <footer className="mt-8 border-t border-border-subtle bg-bg/60">
+      <div className="mx-auto max-w-7xl px-4 md:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">
+        <p>{tagline}</p>
+        <div className="flex items-center gap-2">
+          <span>Powered by</span>
+          <Logo className="h-4 w-auto opacity-60" />
+          <span className="text-white/30">· © {new Date().getFullYear()} Serenium AI</span>
+        </div>
+      </div>
+    </footer>
   );
 }

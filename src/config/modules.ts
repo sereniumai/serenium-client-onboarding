@@ -57,6 +57,8 @@ export interface Field {
   placeholder?: string;
   options?: string[];
   helpText?: string;
+  /** Short "What does this mean?" explanation shown in a ? tooltip next to the label. Keep it under ~140 chars. */
+  tooltip?: string;
   accept?: string;
   conditional?: Condition;
   /** For type='info', static content shown as guidance */
@@ -160,7 +162,7 @@ const BUSINESS_PROFILE: ServiceDef = {
       fields: [
         { key: 'certifications', label: 'Certifications (GAF, IKO, CRCA, etc.)', type: 'repeatable' },
         { key: 'awards', label: 'Awards and "Best of" lists', type: 'repeatable' },
-        { key: 'warranty', label: 'Warranty terms (workmanship and materials)', type: 'textarea' },
+        { key: 'warranty', label: 'Warranty terms (workmanship and materials)', type: 'textarea', tooltip: 'Plain language is fine. Example: "10-year workmanship, lifetime manufacturer on GAF shingles." Used in ads, on site, and when the AI answers warranty questions.' },
         { key: 'insurance', label: 'Insurance you carry (liability, WCB, bonding)', type: 'textarea' },
       ],
     },
@@ -169,7 +171,7 @@ const BUSINESS_PROFILE: ServiceDef = {
       title: 'Financing options',
       estimatedMinutes: 2,
       fields: [
-        { key: 'financing_offered', label: 'Do you offer financing?', type: 'select', options: ['Yes', 'No'], required: true },
+        { key: 'financing_offered', label: 'Do you offer financing?', type: 'select', options: ['Yes', 'No'], required: true, tooltip: 'If Yes, your AI will mention financing when price comes up, a common conversion booster for bigger roof jobs.' },
         { key: 'financing_partners', label: 'Partners (Hearth, GreenSky, etc.)', type: 'repeatable', conditional: { field: 'financing_offered', op: 'eq', value: 'Yes' } },
       ],
     },
@@ -178,7 +180,7 @@ const BUSINESS_PROFILE: ServiceDef = {
       title: 'Emergency service',
       estimatedMinutes: 5,
       fields: [
-        { key: 'emergency_offered', label: 'Do you offer emergency service?', type: 'select', options: ['Yes', 'No'], required: true },
+        { key: 'emergency_offered', label: 'Do you offer emergency service?', type: 'select', options: ['Yes', 'No'], required: true, tooltip: 'Answer Yes to unlock emergency handling inside your AI SMS and AI Receptionist flows. We use this to decide how urgent leaks and storm damage get routed.' },
         { key: 'emergency_services_list', label: 'What emergency services (storm damage, leaks, tarping, etc.)', type: 'textarea', conditional: { field: 'emergency_offered', op: 'eq', value: 'Yes' } },
         { key: 'emergency_hours', label: 'Hours of emergency availability', type: 'select', options: ['24/7', 'After-hours only', 'Specific hours'], conditional: { field: 'emergency_offered', op: 'eq', value: 'Yes' } },
         { key: 'emergency_phone', label: 'Emergency contact phone (if different from main)', type: 'phone', conditional: { field: 'emergency_offered', op: 'eq', value: 'Yes' } },
@@ -321,7 +323,7 @@ const GOOGLE_ADS: ServiceDef = {
       title: 'Account state',
       estimatedMinutes: 2,
       fields: [
-        { key: 'google_ads_account_exists', label: 'Do you already have a Google Ads account?', type: 'select', required: true, options: ['Yes', 'No', 'Not sure'] },
+        { key: 'google_ads_account_exists', label: 'Do you already have a Google Ads account?', type: 'select', required: true, options: ['Yes', 'No', 'Not sure'], tooltip: 'Pick "Not sure" if you ran ads years ago but can\'t remember. We\'ll look it up before creating a new one, old accounts keep valuable history.' },
         { key: 'google_ads_no_info', type: 'info',
           conditional: { field: 'google_ads_account_exists', op: 'eq', value: 'No' },
           content: "No problem, Serenium will create a new account linked to our Manager Account. No action needed from you, skip the rest of this service." },
@@ -459,7 +461,7 @@ const AI_SMS: ServiceDef = {
           options: ['Share ranges', 'Share specifics', 'Always punt to human'],
           helpText: 'Most roofers pick "punt to human".',
         },
-        { key: 'sms_ai_never_say', label: 'Guardrails, things the AI should NEVER say', type: 'textarea', required: true },
+        { key: 'sms_ai_never_say', label: 'Guardrails, things the AI should NEVER say', type: 'textarea', required: true, tooltip: 'Hard limits. Examples: never guarantee a price, never commit to a specific date without checking the calendar, never discuss competitors by name.' },
       ],
     },
     {
@@ -475,7 +477,7 @@ const AI_SMS: ServiceDef = {
           helpText: 'Speed-to-lead is the biggest conversion lever. Lower = better.',
         },
         { key: 'sms_disqualification_criteria', label: 'When the AI politely ends the chat', type: 'textarea', helpText: 'e.g. outside service area, wrong service, too-small job.' },
-        { key: 'sms_human_handoff_enabled', label: 'Allow handoff to a human?', type: 'select', required: true, options: ['Yes', 'No'] },
+        { key: 'sms_human_handoff_enabled', label: 'Allow handoff to a human?', type: 'select', required: true, options: ['Yes', 'No'], tooltip: 'If Yes, the AI forwards the conversation to a real person when the lead asks or gets stuck. Recommended, catches edge cases the AI can\'t resolve.' },
         { key: 'sms_human_handoff_triggers', label: 'What triggers a handoff?', type: 'textarea', required: true, conditional: { field: 'sms_human_handoff_enabled', op: 'eq', value: 'Yes' } },
         {
           key: 'sms_human_handoff_recipient',
@@ -722,6 +724,7 @@ const AI_RECEPTIONIST: ServiceDef = {
             "Option A, Use Serenium's AI phone number directly",
             'Option B, Keep existing number, forward to AI',
           ],
+          tooltip: 'Option A is simpler but you advertise a new number. Option B keeps your existing number, calls forward to the AI (needs a quick setup on your phone).',
         },
         {
           key: 'retell_phone_option_a_info',

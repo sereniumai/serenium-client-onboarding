@@ -131,6 +131,13 @@ export function ModulePage() {
       });
     } else {
       sfx.submit();
+      confetti({
+        particleCount: 40,
+        spread: 60,
+        origin: { y: 0.4 },
+        colors: ['#FF6B1F', '#FF7A35', '#FFD4BA', '#ffffff'],
+        zIndex: 9999,
+      });
       toast.success('Submitted', { description: mod.title });
     }
     setShowComplete(true);
