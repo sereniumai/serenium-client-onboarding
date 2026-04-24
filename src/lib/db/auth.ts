@@ -15,9 +15,6 @@ import type { Profile } from '../../types';
  * Throws on any failure (invalid credentials, network error, etc.).
  */
 export async function signIn(email: string, password: string): Promise<Profile> {
-  const t0 = performance.now();
-  console.log('[auth] signIn, starting');
-
   // Clear any stale session on disk. Don't block on it.
   try {
     const { data: { session: existing } } = await supabase.auth.getSession();
@@ -28,11 +25,8 @@ export async function signIn(email: string, password: string): Promise<Profile> 
       ]);
     }
   } catch {}
-  console.log(`[auth] cleanup done in ${Math.round(performance.now() - t0)}ms`);
 
-  const t1 = performance.now();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  console.log(`[auth] signInWithPassword resolved in ${Math.round(performance.now() - t1)}ms`);
   if (error) throw error;
   if (!data.user) throw new Error('Sign-in returned no user');
 
@@ -40,13 +34,11 @@ export async function signIn(email: string, password: string): Promise<Profile> 
   // fall back to a stub profile derived from the JWT metadata so the user
   // gets navigated into the app. AuthContext's listener will finish hydrating
   // the full profile in the background.
-  const t2 = performance.now();
   try {
     const profile = await Promise.race([
       loadProfile(data.user.id),
       new Promise<Profile>((_, reject) => setTimeout(() => reject(new Error('slow')), 3000)),
     ]);
-    console.log(`[auth] loadProfile done in ${Math.round(performance.now() - t2)}ms`);
     return profile;
   } catch (err) {
     console.warn('[auth] loadProfile slow or failed, using JWT stub', err);

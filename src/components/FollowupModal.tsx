@@ -7,6 +7,7 @@ import { getFollowupSettings, sendFollowup, listFollowupsSent } from '../lib/db/
 import { useAuth } from '../auth/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/cn';
+import { useModal } from '../hooks/useModal';
 
 interface Props {
   orgId: string;
@@ -66,10 +67,12 @@ export function FollowupModal({ orgId, primaryContactEmail, onClose }: Props) {
     }
   };
 
+  const modalRef = useModal(true, onClose);
+
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-        <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-2xl bg-bg-secondary border border-border-subtle rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label="Send follow-up">
+        <motion.div ref={modalRef} initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-2xl bg-bg-secondary border border-border-subtle rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
           <div className="px-5 py-4 border-b border-border-subtle flex items-center justify-between">
             <div>
               <p className="eyebrow">Send follow-up</p>

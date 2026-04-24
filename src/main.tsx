@@ -44,7 +44,6 @@ if (sentryDsn && vercelEnv === 'production') {
   });
   // Expose for manual testing from the console: window.Sentry.captureMessage('...')
   (window as unknown as { Sentry: typeof Sentry }).Sentry = Sentry;
-  console.log('[sentry] initialized');
 } else if (!sentryDsn && vercelEnv === 'production') {
   console.warn('[sentry] DSN missing in production, error reporting disabled');
 }

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Rocket, ArrowRight, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useModal } from '../hooks/useModal';
 
 interface Props {
   show: boolean;
@@ -37,6 +38,7 @@ function fireBigCelebration() {
 
 export function FinalCelebration({ show, businessName, firstName, onContinue }: Props) {
   useEffect(() => { if (show) fireBigCelebration(); }, [show]);
+  const modalRef = useModal(show, onContinue);
 
   return (
     <AnimatePresence>
@@ -44,8 +46,12 @@ export function FinalCelebration({ show, businessName, firstName, onContinue }: 
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-[1000] bg-bg/90 backdrop-blur-md flex items-center justify-center p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="final-celebration-title"
         >
           <motion.div
+            ref={modalRef}
             initial={{ scale: 0.9, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0 }}
@@ -74,6 +80,7 @@ export function FinalCelebration({ show, businessName, firstName, onContinue }: 
               </motion.p>
 
               <motion.h2
+                id="final-celebration-title"
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
                 className="font-display font-black text-4xl md:text-5xl tracking-[-0.03em] mb-4 leading-[1.02]"
               >

@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ArrowRight } from 'lucide-react';
 import { useEffect } from 'react';
 import { fireCompletionConfetti } from '../lib/confetti';
+import { useModal } from '../hooks/useModal';
 
 interface Props {
   show: boolean;
@@ -17,6 +18,7 @@ export function CompletionOverlay({ show, title, subtitle, primaryLabel, onPrima
   useEffect(() => {
     if (show) fireCompletionConfetti();
   }, [show]);
+  const modalRef = useModal(show, onPrimary);
 
   return (
     <AnimatePresence>
@@ -26,8 +28,12 @@ export function CompletionOverlay({ show, title, subtitle, primaryLabel, onPrima
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[1000] bg-bg/80 backdrop-blur-md flex items-center justify-center p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="completion-title"
         >
           <motion.div
+            ref={modalRef}
             initial={{ scale: 0.92, y: 12 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0 }}
@@ -44,7 +50,7 @@ export function CompletionOverlay({ show, title, subtitle, primaryLabel, onPrima
               >
                 <Check className="h-10 w-10 text-white" strokeWidth={3} />
               </motion.div>
-              <h2 className="font-display font-black text-3xl tracking-[-0.025em] mb-2">{title}</h2>
+              <h2 id="completion-title" className="font-display font-black text-3xl tracking-[-0.025em] mb-2">{title}</h2>
               <p className="text-white/60 mb-8">{subtitle}</p>
               <div className="flex flex-col gap-2">
                 <button onClick={onPrimary} className="btn-primary">

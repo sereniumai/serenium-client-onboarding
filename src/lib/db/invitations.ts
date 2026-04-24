@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+import * as Sentry from '@sentry/react';
 import { supabase } from '../supabase';
 import { toInvitation } from './mappers';
 import type { Invitation, MemberRole } from '../../types';
@@ -51,10 +53,18 @@ export async function createInvitation(args: {
     if (logErr) console.warn('[activity] admin_invitation_sent log failed', logErr);
   });
 
-  // Fire-and-forget email delivery. Failures don't block invitation creation,
-  // admin still has a copyable link in the UI.
+  // Fire-and-forget email delivery. Failures don't block invitation creation
+  // (admin still has a copyable link in the UI) but we do want the admin to
+  // know so they can copy-paste the link into another channel.
   if (args.sendEmail !== false) {
-    sendInvitationEmail(inv.id).catch(err => console.warn('[invitation email] failed', err));
+    sendInvitationEmail(inv.id).catch(err => {
+      console.warn('[invitation email] failed', err);
+      Sentry.captureException(err, { extra: { invitationId: inv.id, email: inv.email } });
+      toast.error("Couldn't send the invite email", {
+        description: `Copy the invite link instead and send it to ${inv.email} yourself.`,
+        duration: 8000,
+      });
+    });
   }
   return inv;
 }
