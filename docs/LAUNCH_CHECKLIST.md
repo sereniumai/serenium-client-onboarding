@@ -35,10 +35,9 @@ Vercel should be live with commits through `0b1ba0c`. Verify:
 
 - **Ex-admin role change** — demoted admin keeps admin UI for up to 1hr until JWT refresh. Low risk at 5 clients.
 - **Autosave optimistic concurrency** — two tabs editing same field can last-write-wins. Unlikely at our scale.
-- **Impersonation writes not tagged** — edits made while impersonating look like client edits in activity log. Session-level audit exists in `admin_impersonation_audit` so forensic path is there.
 - **Supabase Pro upgrade + PITR** — $25/mo, gives 7-day point-in-time recovery. Needed before meaningful client data.
 - **Stranded uploaded files** — clients who uploaded to the now-removed file fields have orphan files in Supabase Storage. Safe to delete manually.
-- **3 `setState-in-effect` lint warnings** — not bugs, just non-ideal patterns. Can rewrite later.
+- **2 remaining `setState-in-effect` lint warnings** — in FollowupModal (reasonable pattern, just flagged). Not bugs.
 - **5 `any` types in edge functions** — cosmetic, functions work fine.
 
 ---
@@ -74,6 +73,12 @@ Vercel should be live with commits through `0b1ba0c`. Verify:
 - Client-side system-health pill with live tooltip
 - Admin direct-URL `/onboarding/X` bounces to `/admin/clients/X`
 - Required file fields no longer block module completion
+
+### Polish sweep 3
+- Impersonation write tagging: every activity_log row now has
+  `metadata.impersonating: true|false`. Queryable for forensics.
+- setState-in-effect removed from AdminSubNav (useMemo instead).
+- Simplified impersonation context to always-fresh reads.
 
 ### Polish sweep 2
 - Wizard rollback: createClient now deletes the org if any post-createOrg step fails. No more zombie orgs.
