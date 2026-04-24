@@ -52,6 +52,6 @@ export async function sendFollowup(args: {
     const { error } = await res.json().catch(() => ({ error: 'Unknown' }));
     throw new Error(error ?? `HTTP ${res.status}`);
   }
-  const { record } = (await res.json()) as { record: Record<string, unknown> };
+  const { record } = (await res.json()) as { record: unknown };
   return toFollowupSent(record as Parameters<typeof toFollowupSent>[0]);
 }
