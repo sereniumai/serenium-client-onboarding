@@ -270,7 +270,7 @@ function SessionCard() {
       <button
         onClick={() => setConfirmOpen(true)}
         disabled={signingOut}
-        className="btn-secondary text-error border-error/30 hover:bg-error/10"
+        className="btn-danger"
       >
         <ShieldOff className="h-4 w-4" /> {signingOut ? 'Signing out…' : 'Sign out everywhere'}
       </button>

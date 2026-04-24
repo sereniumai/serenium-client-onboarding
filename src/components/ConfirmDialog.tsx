@@ -32,9 +32,7 @@ export function ConfirmDialog({
   const modalRef = useModal(open, onCancel);
   if (!open) return null;
 
-  const confirmClass = tone === 'destructive'
-    ? 'btn-primary !bg-error/15 !text-error !border-error/30 hover:!bg-error/25'
-    : 'btn-primary';
+  const confirmClass = tone === 'destructive' ? 'btn-danger' : 'btn-primary';
 
   return (
     <div

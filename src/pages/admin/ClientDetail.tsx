@@ -235,7 +235,7 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
       <div className="card border-error/30">
         <p className="eyebrow text-error mb-2">Danger zone</p>
         <p className="text-sm text-white/60 mb-4">Permanently delete this client and all their data. This cannot be undone.</p>
-        <button onClick={() => setShowDeleteConfirm(true)} disabled={deleteOrg.isPending} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-error border border-error/40 hover:bg-error/10 transition-colors disabled:opacity-50">
+        <button onClick={() => setShowDeleteConfirm(true)} disabled={deleteOrg.isPending} className="btn-danger !py-2 !px-4">
           <Trash2 className="h-4 w-4" /> {deleteOrg.isPending ? 'Deleting…' : 'Delete client'}
         </button>
       </div>
