@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { loadProfile, signIn as authSignIn, signOut as authSignOut } from '../lib/db/auth';
 import { queryClient } from '../lib/queryClient';
@@ -17,6 +17,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const userRef = useRef<Profile | null>(null);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   useEffect(() => {
     let mounted = true;
@@ -58,8 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         try {
-          const profile = await loadProfile(session.user.id);
-          if (mounted) setUser(profile);
+          // Skip redundant DB fetch if signIn() already populated the same user.
+          const cached = userRef.current;
+          let profile = cached && cached.id === session.user.id ? cached : null;
+          if (!profile) {
+            profile = await loadProfile(session.user.id);
+            if (mounted) setUser(profile);
+          }
 
           // Fire first-login team notification for clients. Deduped server-side.
           if (event === 'SIGNED_IN' && profile.role === 'client') {

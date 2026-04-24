@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,10 +18,14 @@ export function LoginPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [params] = useSearchParams();
+  const invitedNotice = params.get('invited') === '1';
+  const prefillEmail = params.get('email') ?? '';
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { email: prefillEmail },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -58,6 +62,11 @@ export function LoginPage() {
       subtitle="Sign in to pick up where you left off."
       footer={<>Need help? <a href="mailto:contact@sereniumai.com" className="text-orange hover:text-orange-hover">contact@sereniumai.com</a></>}
     >
+      {invitedNotice && (
+        <div className="mb-4 rounded-lg border border-orange/30 bg-orange/10 p-3 text-sm text-orange">
+          You're already signed up. Log in below to continue.
+        </div>
+      )}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
         <div>
           <label className="label" htmlFor="email">Email</label>

@@ -18,12 +18,17 @@ export async function signIn(email: string, password: string): Promise<Profile> 
   const t0 = performance.now();
   console.log('[auth] signIn, starting');
 
-  // Step 1, clear any stale session state that might be blocking a fresh sign-in.
+  // Step 1, only clear session state if one actually exists. Unconditional
+  // signOut fires a SIGNED_OUT event that clears queryClient for no reason on
+  // a clean first-time login.
   try {
-    await Promise.race([
-      supabase.auth.signOut({ scope: 'local' }),
-      new Promise(r => setTimeout(r, 500)),
-    ]);
+    const { data: { session: existing } } = await supabase.auth.getSession();
+    if (existing) {
+      await Promise.race([
+        supabase.auth.signOut({ scope: 'local' }),
+        new Promise(r => setTimeout(r, 500)),
+      ]);
+    }
   } catch {
     // Ignore, just being defensive.
   }

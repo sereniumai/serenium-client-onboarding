@@ -50,7 +50,7 @@ export function RegisterPage() {
     setStage('submitting');
 
     try {
-      const { error: signUpErr } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
         email: invitation.email,
         password,
         options: {
@@ -58,27 +58,35 @@ export function RegisterPage() {
         },
       });
       if (signUpErr) {
-        // If user already exists with this email, try signing them in instead (covers the "clicked invite twice" case).
+        // If the account already exists, their password might not match.
+        // Safer to bounce them to /login with a banner than silently retrying signIn.
         if (signUpErr.message.toLowerCase().includes('already')) {
-          const { error: signInErr } = await supabase.auth.signInWithPassword({ email: invitation.email, password });
-          if (signInErr) throw signInErr;
-        } else {
-          throw signUpErr;
+          navigate(`/login?invited=1&email=${encodeURIComponent(invitation.email)}`, { replace: true });
+          return;
         }
+        throw signUpErr;
       }
 
-      // If we still don't have a session (e.g. email-confirmation on), bail with a clear message.
-      const { data: sess } = await supabase.auth.getSession();
-      if (!sess.session) {
+      // Prefer the session returned by signUp directly, getSession() races
+      // against localStorage persistence on some browsers.
+      let session = signUpData?.session ?? null;
+      if (!session) {
+        const { data: sess } = await supabase.auth.getSession();
+        session = sess.session;
+      }
+      if (!session) {
         setErrorMsg('Account created. Please check your email to confirm it, then sign in.');
         setStage('ready');
         return;
       }
 
       await acceptInvitation(token);
+      // Force a token refresh so the new organization_members row is reflected
+      // in the JWT before we query org membership.
+      await supabase.auth.refreshSession().catch(() => {});
       await refresh();
 
-      const profile = await loadProfile(sess.session.user.id);
+      const profile = await loadProfile(session.user.id);
       const orgs = await listOrgsForUser(profile.id);
       if (orgs[0]) navigate(`/onboarding/${orgs[0].slug}`, { replace: true });
       else navigate('/', { replace: true });

@@ -374,7 +374,7 @@ export default async function handler(req: Request): Promise<Response> {
     // Safety net: strip em dashes in case Claude slips one in.
     text = text.replace(/\s—\s/g, ', ').replace(/—/g, ', ');
 
-    return json({ answer: text || "Sorry, I didn't get a response. Try again?" });
+    return json({ reply: text || "Sorry, I didn't get a response. Try again?" });
   } catch (err) {
     console.error('[ask-assistant] fetch threw', err);
     return json({ error: 'Assistant is unreachable right now. Please try again.' }, 502);
