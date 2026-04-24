@@ -39,6 +39,16 @@ export async function signOut(): Promise<void> {
   if (error) throw error;
 }
 
+export async function signInWithGoogle(redirectTo?: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: redirectTo ?? (typeof window !== 'undefined' ? `${window.location.origin}/` : undefined),
+    },
+  });
+  if (error) throw error;
+}
+
 export async function requestPasswordReset(email: string): Promise<void> {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/reset-password`,
