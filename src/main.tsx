@@ -11,10 +11,13 @@ initTheme();
 // Error tracking. Only active in production, disabled in dev so local
 // crashes don't spam the prod project.
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
-if (sentryDsn && import.meta.env.PROD) {
+const vercelEnv = (import.meta.env.VITE_VERCEL_ENV as string | undefined) ?? 'development';
+// Only send to Sentry from real production deploys. Preview + dev are noisy
+// and would pollute the production issue feed.
+if (sentryDsn && vercelEnv === 'production') {
   Sentry.init({
     dsn: sentryDsn,
-    environment: 'production',
+    environment: vercelEnv,
     release: (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA as string | undefined)?.slice(0, 7) ?? 'local',
     tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0,
@@ -42,8 +45,8 @@ if (sentryDsn && import.meta.env.PROD) {
   // Expose for manual testing from the console: window.Sentry.captureMessage('...')
   (window as unknown as { Sentry: typeof Sentry }).Sentry = Sentry;
   console.log('[sentry] initialized');
-} else if (!sentryDsn && import.meta.env.PROD) {
-  console.warn('[sentry] DSN missing, error reporting disabled');
+} else if (!sentryDsn && vercelEnv === 'production') {
+  console.warn('[sentry] DSN missing in production, error reporting disabled');
 }
 
 // After a new deploy, code-split chunks the browser remembers may no longer
