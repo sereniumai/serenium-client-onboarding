@@ -8,6 +8,7 @@ import { useUploadsForOrg } from '../hooks/useUploads';
 import { uploadFile, removeUpload } from '../lib/db/uploads';
 import type { Field } from '../config/modules';
 import { evaluate } from '../lib/condition';
+import { videoEmbedUrl } from '../lib/videoEmbed';
 import { useQueryClient } from '@tanstack/react-query';
 import { qk } from '../lib/queryClient';
 import { Markdown } from './Markdown';
@@ -31,14 +32,33 @@ export function FieldRenderer({ field, organizationId, fieldKey, userId, onStatu
   }
 
   if (field.type === 'info') {
-    // Retell number interpolation returns in Phase 6 (retell_numbers port).
     const interpolated = field.content
       ? field.content.replace(/\[forwarding number\]/g, '[your Serenium forwarding number]')
       : '';
+    const embed = field.videoUrl ? videoEmbedUrl(field.videoUrl) : null;
     return (
-      <div className="rounded-lg border border-orange/30 bg-orange/5 p-4 text-sm text-white/80">
-        {field.label && <p className="font-semibold text-white mb-2">{field.label}</p>}
+      <div className="rounded-lg border border-orange/30 bg-orange/5 p-4 text-sm text-white/80 space-y-3">
+        {field.label && <p className="font-semibold text-white">{field.label}</p>}
         {interpolated && <Markdown>{interpolated}</Markdown>}
+        {embed && (
+          <div className="aspect-video rounded-lg border border-border-subtle overflow-hidden bg-black">
+            <iframe src={embed} className="w-full h-full" title={field.label ?? 'Walkthrough'} allow="fullscreen; clipboard-write" />
+          </div>
+        )}
+        {field.videoUrl && !embed && (
+          <a href={field.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-orange hover:text-orange-hover">
+            → Open walkthrough
+          </a>
+        )}
+        {field.docLinks && field.docLinks.length > 0 && (
+          <div className="space-y-1.5">
+            {field.docLinks.map(({ label, url }) => (
+              <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-orange hover:text-orange-hover">
+                → {label}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

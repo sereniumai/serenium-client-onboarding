@@ -63,6 +63,10 @@ export interface Field {
   conditional?: Condition;
   /** For type='info', static content shown as guidance */
   content?: string;
+  /** For type='info', optional YouTube / Loom URL embedded below the content. */
+  videoUrl?: string;
+  /** For type='info', optional list of external doc links rendered as link cards. */
+  docLinks?: Array<{ label: string; url: string }>;
   /** For repeatable fields, minimum entries required */
   minItems?: number;
   /** For type='structured', sub-field schema (e.g. street/city/postal). */
@@ -298,13 +302,42 @@ const FACEBOOK_ADS: ServiceDef = {
       key: 'grant_access',
       title: 'Grant Serenium partner access',
       estimatedMinutes: 5,
-      instructions: `Add Serenium as a partner in your Business Manager, then share these 4 assets with us. Our BM ID: **1304001774825587**`,
+      instructions: `Add Serenium as a partner in your Business Manager, then share these assets with us. Our BM ID: **1304001774825587**
+
+Only the checkboxes that apply to your setup will show. If you don't have a Business Manager or Page yet, create them first on the previous step, then come back here.`,
       fields: [
-        { key: 'fb_partner_added',     label: 'Added Serenium as a partner in my Business Manager (BM ID 1304001774825587)', type: 'checkbox', required: true },
-        { key: 'fb_shared_page',       label: 'Shared my Facebook Page with Serenium',                                       type: 'checkbox', required: true },
-        { key: 'fb_shared_instagram',  label: 'Shared my Instagram account with Serenium',                                   type: 'checkbox', required: true },
-        { key: 'fb_shared_dataset',    label: 'Shared my Dataset (Pixel) with Serenium',                                     type: 'checkbox', required: true },
-        { key: 'fb_shared_ad_account', label: 'Shared my Ad Account with Serenium',                                          type: 'checkbox', required: true },
+        { key: 'fb_prereq_warning', type: 'info',
+          conditional: { all: [
+            { path: 'facebook_ads.prerequisites.fb_business_manager_exists', op: 'neq', value: 'Yes' },
+            { path: 'facebook_ads.prerequisites.fb_page_exists', op: 'neq', value: 'Yes' },
+          ]},
+          content: "You haven't confirmed a Business Manager or a Facebook Page on the previous step, so there's nothing to share yet. Head back, set those up, and this module will open up for you.",
+        },
+        { key: 'fb_partner_added',
+          label: 'Added Serenium as a partner in my Business Manager (BM ID 1304001774825587)',
+          type: 'checkbox', required: true,
+          conditional: { path: 'facebook_ads.prerequisites.fb_business_manager_exists', op: 'eq', value: 'Yes' },
+        },
+        { key: 'fb_shared_page',
+          label: 'Shared my Facebook Page with Serenium',
+          type: 'checkbox', required: true,
+          conditional: { path: 'facebook_ads.prerequisites.fb_page_exists', op: 'eq', value: 'Yes' },
+        },
+        { key: 'fb_shared_instagram',
+          label: 'Shared my Instagram account with Serenium (optional if no IG)',
+          type: 'checkbox',
+          conditional: { path: 'facebook_ads.prerequisites.fb_page_exists', op: 'eq', value: 'Yes' },
+        },
+        { key: 'fb_shared_dataset',
+          label: 'Shared my Dataset (Pixel) with Serenium',
+          type: 'checkbox', required: true,
+          conditional: { path: 'facebook_ads.prerequisites.fb_business_manager_exists', op: 'eq', value: 'Yes' },
+        },
+        { key: 'fb_shared_ad_account',
+          label: 'Shared my Ad Account with Serenium',
+          type: 'checkbox', required: true,
+          conditional: { path: 'facebook_ads.prerequisites.fb_business_manager_exists', op: 'eq', value: 'Yes' },
+        },
       ],
     },
   ],
@@ -929,15 +962,48 @@ const WEBSITE: ServiceDef = {
       key: 'analytics_and_search_console',
       title: 'Analytics & Search Console',
       estimatedMinutes: 7,
-      instructions: `Add **contact@sereniumai.com** to both services below at the permission levels listed.`,
+      instructions: `Two quick checks. If you already have these set up, you'll add **contact@sereniumai.com** with the permissions shown. If you don't have them yet, Serenium sets them up as part of your site build.`,
       fields: [
-        { key: 'google_analytics_access_granted', label: 'Added contact@sereniumai.com to Google Analytics as Administrator', type: 'checkbox', required: true },
-        { key: 'search_console_access_granted', label: 'Added contact@sereniumai.com to Google Search Console as Owner', type: 'checkbox', required: true },
+        // Google Analytics branch
+        { key: 'has_ga', label: 'Do you have Google Analytics set up?', type: 'select', required: true, options: ['Yes', 'No', 'Not sure'] },
+        { key: 'ga_help_yes', type: 'info',
+          conditional: { field: 'has_ga', op: 'eq', value: 'Yes' },
+          label: 'Add Serenium as an Administrator',
+          content: "Walk through how to add `contact@sereniumai.com` as an **Administrator** on your Google Analytics property:",
+          videoUrl: 'https://www.youtube.com/watch?v=jKDykqKDMLI',
+        },
+        { key: 'ga_help_no', type: 'info',
+          conditional: { field: 'has_ga', op: 'eq', value: 'No' },
+          content: "No Google Analytics yet? No problem, Serenium sets one up for you as part of the site build. Skip to Search Console below.",
+        },
+        { key: 'ga_help_not_sure', type: 'info',
+          conditional: { field: 'has_ga', op: 'eq', value: 'Not sure' },
+          content: "Log into [analytics.google.com](https://analytics.google.com) with your main Google account. If you see properties listed, you have Analytics, change your answer above to Yes. If not, change to No and we'll handle it.",
+        },
+        { key: 'google_analytics_access_granted', label: "I've added contact@sereniumai.com as Administrator in Google Analytics", type: 'checkbox', required: true,
+          conditional: { field: 'has_ga', op: 'eq', value: 'Yes' },
+        },
+
+        // Google Search Console branch
+        { key: 'has_gsc', label: 'Do you have Google Search Console set up?', type: 'select', required: true, options: ['Yes', 'No', 'Not sure'] },
+        { key: 'gsc_help_yes', type: 'info',
+          conditional: { field: 'has_gsc', op: 'eq', value: 'Yes' },
+          label: 'Add Serenium as an Owner',
+          content: "Follow Google's official guide to add `contact@sereniumai.com` as an **Owner**:",
+          docLinks: [{ label: 'Google Search Console, add an Owner', url: 'https://support.google.com/webmasters/answer/7687615' }],
+        },
+        { key: 'gsc_help_no', type: 'info',
+          conditional: { field: 'has_gsc', op: 'eq', value: 'No' },
+          content: "No Search Console yet? Serenium sets it up and verifies your site as part of the build.",
+        },
+        { key: 'gsc_help_not_sure', type: 'info',
+          conditional: { field: 'has_gsc', op: 'eq', value: 'Not sure' },
+          content: "Log into [search.google.com/search-console](https://search.google.com/search-console) with your Google account. If you see verified properties, you have it set up.",
+        },
+        { key: 'search_console_access_granted', label: "I've added contact@sereniumai.com as Owner in Google Search Console", type: 'checkbox', required: true,
+          conditional: { field: 'has_gsc', op: 'eq', value: 'Yes' },
+        },
       ],
-      links: {
-        'Google Analytics (Administrator)': 'https://www.youtube.com/watch?v=jKDykqKDMLI',
-        'Google Search Console (Owner)': 'https://support.google.com/webmasters/answer/7687615',
-      },
     },
   ],
 };
