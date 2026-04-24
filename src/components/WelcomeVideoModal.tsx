@@ -7,9 +7,24 @@ import { getWelcomeVideo, hasSeenWelcome, markWelcomeSeen } from '../lib/db/welc
 import { videoEmbedUrl } from '../lib/videoEmbed';
 import { useModal } from '../hooks/useModal';
 
+/**
+ * Event name the sidebar (or any other trigger) dispatches to re-open the
+ * welcome video on demand. Keeps the modal globally-mounted and avoids a
+ * full context/provider for a single trigger.
+ */
+export const WELCOME_VIDEO_EVENT = 'serenium:open-welcome-video';
+
+/** Call this from anywhere to open the welcome video modal. */
+export function openWelcomeVideo() {
+  window.dispatchEvent(new CustomEvent(WELCOME_VIDEO_EVENT));
+}
+
 export function WelcomeVideoModal() {
   const { user } = useAuth();
   const [show, setShow] = useState(false);
+  // Track whether this open is "first login" (should mark seen on dismiss)
+  // or "manual rewatch" (don't touch seen-state — they've already seen it).
+  const [manuallyOpened, setManuallyOpened] = useState(false);
 
   const { data: video } = useQuery({
     queryKey: ['welcome_video'],
@@ -28,15 +43,33 @@ export function WelcomeVideoModal() {
     [video?.videoUrl],
   );
 
+  // Auto-open on first login: client role + video exists + not yet seen.
   useEffect(() => {
     if (!user || user.role !== 'client') return;
     if (!embed || seen === undefined || seen) return;
+    setManuallyOpened(false);
     setShow(true);
   }, [user, embed, seen]);
 
+  // Manual open via sidebar / event dispatch. Always shows regardless of
+  // seen-state. Doesn't re-mark as unseen; doesn't re-mark as seen either.
+  useEffect(() => {
+    const handler = () => {
+      if (!embed) return;
+      setManuallyOpened(true);
+      setShow(true);
+    };
+    window.addEventListener(WELCOME_VIDEO_EVENT, handler);
+    return () => window.removeEventListener(WELCOME_VIDEO_EVENT, handler);
+  }, [embed]);
+
   const dismiss = () => {
     setShow(false);
-    if (user) markWelcomeSeen(user.id).catch(() => {});
+    // Only mark seen on the first-login auto-open path. Manual rewatches
+    // shouldn't change persisted state.
+    if (!manuallyOpened && user) {
+      markWelcomeSeen(user.id).catch(() => {});
+    }
   };
   const modalRef = useModal(show, dismiss);
 
@@ -74,7 +107,9 @@ export function WelcomeVideoModal() {
                   allowFullScreen
                 />
               </div>
-              <p className="text-center text-xs text-white/55 mt-3">You'll only see this once. Close anytime.</p>
+              {!manuallyOpened && (
+                <p className="text-center text-xs text-white/55 mt-3">You'll only see this once. Close anytime.</p>
+              )}
             </div>
           </motion.div>
         </>

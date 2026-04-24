@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, LifeBuoy, ChevronLeft } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, LifeBuoy, ChevronLeft, PlayCircle } from 'lucide-react';
 import { SELECTABLE_SERVICES, getService } from '../config/modules';
 import { SERVICE_ICON } from '../config/serviceIcons';
 import { Sidebar, type SidebarSection } from './Sidebar';
@@ -8,11 +9,13 @@ import { CurriculumSidebar } from './CurriculumSidebar';
 import { AiHelperChat } from './AiHelperChat';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ImpersonationBanner } from './ImpersonationBanner';
+import { WelcomeVideoModal, openWelcomeVideo } from './WelcomeVideoModal';
 import { useAuth } from '../auth/AuthContext';
 import { useOrgsForUser } from '../hooks/useOrgs';
 import { useOrgSnapshot } from '../hooks/useOnboarding';
 import { getOrgProgress } from '../lib/progress';
 import { hasUnreadChangelog } from '../lib/changelog';
+import { getWelcomeVideo } from '../lib/db/welcomeVideo';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -29,6 +32,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isClientInsideOnboarding = !!(user?.role === 'client' && org
     && location.pathname.startsWith(`/onboarding/${org.slug}/services`));
 
+  // Fetch whether a welcome video is set — drives a "Welcome video" sidebar
+  // entry for clients. Cached with the same queryKey as the modal so both
+  // share one request.
+  const { data: welcomeVideo } = useQuery({
+    queryKey: ['welcome_video'],
+    queryFn: getWelcomeVideo,
+    enabled: user?.role === 'client',
+  });
+  const hasWelcomeVideo = !!welcomeVideo?.videoUrl;
+
   const sections = buildSections({
     userRole: user?.role,
     orgSlug,
@@ -36,6 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     hasUnreadWhatsNew: user?.role === 'admin' ? hasUnreadChangelog() : false,
     progress,
     editingMode: isClientInsideOnboarding,
+    hasWelcomeVideo,
   });
 
   // Auth / public routes render without the shell chrome
@@ -78,12 +92,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       {showAiChat && <AiHelperChat />}
+      {user.role === 'client' && <WelcomeVideoModal />}
     </div>
   );
 }
 
 function buildSections({
-  userRole, orgSlug, onboardingDone, hasUnreadWhatsNew, progress, editingMode,
+  userRole, orgSlug, onboardingDone, hasUnreadWhatsNew, progress, editingMode, hasWelcomeVideo,
 }: {
   userRole: 'admin' | 'client' | undefined;
   orgSlug: string | null;
@@ -91,6 +106,7 @@ function buildSections({
   hasUnreadWhatsNew: boolean;
   progress: ReturnType<typeof getOrgProgress> | null;
   editingMode: boolean;
+  hasWelcomeVideo: boolean;
 }): SidebarSection[] {
   if (userRole === 'admin') {
     return [
@@ -157,6 +173,9 @@ function buildSections({
         title: 'Support',
         items: [
           { to: `/onboarding/${orgSlug}`, label: 'Ask Aria', icon: LifeBuoy, onClick: openAiChat },
+          ...(hasWelcomeVideo
+            ? [{ label: 'Welcome video', icon: PlayCircle, onClick: openWelcomeVideo }]
+            : []),
         ],
       },
     ];
@@ -197,6 +216,9 @@ function buildSections({
       title: 'Support',
       items: [
         { to: `/onboarding/${orgSlug}`, label: 'Ask Aria', icon: LifeBuoy, onClick: openAiChat },
+        ...(hasWelcomeVideo
+          ? [{ label: 'Welcome video', icon: PlayCircle, onClick: openWelcomeVideo }]
+          : []),
       ],
     },
   ];

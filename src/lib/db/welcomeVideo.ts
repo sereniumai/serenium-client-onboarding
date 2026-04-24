@@ -62,6 +62,23 @@ export async function markWelcomeSeen(userId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Wipe all "I've seen the welcome video" records. Next login for every
+ * client re-opens the modal. Useful while testing the video copy with
+ * real staff before launch — admin can re-trigger the first-login
+ * experience without creating fresh accounts.
+ */
+export async function resetAllWelcomeSeen(): Promise<number> {
+  // `.gte('seen_at', '1970-01-01')` forces a matches-all predicate to pass
+  // RLS safety; .delete() without a filter is blocked by Supabase defaults.
+  const { error, count } = await supabase
+    .from('welcomed_users')
+    .delete({ count: 'exact' })
+    .gte('seen_at', '1970-01-01');
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function hasSeenWelcome(userId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('welcomed_users')

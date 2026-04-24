@@ -5,7 +5,9 @@ import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { LoadingState } from '../../components/LoadingState';
-import { getWelcomeVideo, setWelcomeVideoUrl, clearWelcomeVideo } from '../../lib/db/welcomeVideo';
+import { getWelcomeVideo, setWelcomeVideoUrl, clearWelcomeVideo, resetAllWelcomeSeen } from '../../lib/db/welcomeVideo';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { RefreshCw } from 'lucide-react';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
 import { useModal } from '../../hooks/useModal';
 
@@ -34,6 +36,15 @@ export function WelcomeVideoManager() {
   const canSave = dirty && trimmed.length > 0;
 
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const reset = useMutation({
+    mutationFn: resetAllWelcomeSeen,
+    onSuccess: (n) => {
+      setResetOpen(false);
+      toast.success(n === 0 ? 'No clients had seen it yet' : `Reset for ${n} user${n === 1 ? '' : 's'}`);
+    },
+    onError: (err: Error) => { setResetOpen(false); toast.error('Reset failed', { description: err.message }); },
+  });
 
   return (
     <AppShell>
@@ -118,9 +129,36 @@ export function WelcomeVideoManager() {
             </div>
           )}
 
+          {video?.videoUrl && (
+            <div className="card mt-6">
+              <p className="eyebrow mb-2">Testing</p>
+              <p className="text-sm text-white/60 mb-4">
+                Clients only see the welcome video once. While testing the video with staff, click here to wipe the "already seen" flag — every client sees it again on their next login.
+              </p>
+              <button
+                onClick={() => setResetOpen(true)}
+                disabled={reset.isPending}
+                className="btn-secondary"
+              >
+                <RefreshCw className={reset.isPending ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+                {reset.isPending ? 'Resetting…' : 'Reset for all clients'}
+              </button>
+            </div>
+          )}
+
           {previewOpen && embed && (
             <ClientPreviewModal embed={embed} onClose={() => setPreviewOpen(false)} />
           )}
+
+          <ConfirmDialog
+            open={resetOpen}
+            title="Reset welcome video for all clients?"
+            body="Every client currently logged in or who logs in next sees the welcome modal again on their next page load. Safe to run anytime; use when you're iterating on the video."
+            confirmLabel="Yes, reset everyone"
+            cancelLabel="Cancel"
+            onConfirm={() => reset.mutate()}
+            onCancel={() => setResetOpen(false)}
+          />
         </div>
       </div>
     </AppShell>

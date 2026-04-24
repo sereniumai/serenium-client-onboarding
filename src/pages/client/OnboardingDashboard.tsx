@@ -5,7 +5,6 @@ import { CheckCircle2, PlayCircle, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { CircleProgress } from '../../components/CircleProgress';
-import { WelcomeVideoModal } from '../../components/WelcomeVideoModal';
 import { LatestReportHero } from '../../components/LatestReportHero';
 import { CompleteBanner } from '../../components/CompleteBanner';
 import { PendingReview } from '../../components/PendingReview';
@@ -115,7 +114,6 @@ export function OnboardingDashboard() {
 
   return (
     <AppShell>
-      <WelcomeVideoModal />
       <div className="relative">
         <HeroGlow />
 
