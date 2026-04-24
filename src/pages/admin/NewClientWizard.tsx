@@ -224,11 +224,27 @@ export function NewClientWizard() {
               {/* Summary */}
               <div className="pt-5 mt-5 border-t border-border-subtle">
                 <p className="eyebrow mb-3">Review</p>
-                <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <div className="grid sm:grid-cols-2 gap-3 text-sm mb-4">
                   <SummaryRow label="Business" value={businessName || '—'} />
                   <SummaryRow label="Primary contact" value={primaryName || '—'} />
-                  <SummaryRow label="Services" value={services.length === 0 ? '—' : services.map(k => SELECTABLE_SERVICES.find(o => o.key === k)?.label).filter(Boolean).join(', ')} />
                   <SummaryRow label="Total steps" value={totalSteps(services, disabledModules).toString()} />
+                  <SummaryRow label="Users invited" value={(users.filter(u => u.email.trim()).length || 1).toString()} />
+                </div>
+                <div>
+                  <span className="text-[11px] uppercase tracking-wider text-white/40 font-semibold">Services enabled</span>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {services.length === 0 ? (
+                      <span className="text-white/50 text-sm">None</span>
+                    ) : services.map(k => {
+                      const svc = SELECTABLE_SERVICES.find(o => o.key === k);
+                      if (!svc) return null;
+                      return (
+                        <span key={k} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange/10 text-orange border border-orange/20">
+                          {svc.label}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
