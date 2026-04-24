@@ -5,6 +5,7 @@ import { Sidebar, type SidebarSection } from './Sidebar';
 import { CurriculumSidebar } from './CurriculumSidebar';
 import { AiHelperChat } from './AiHelperChat';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ImpersonationBanner } from './ImpersonationBanner';
 import { useAuth } from '../auth/AuthContext';
 import { useOrgsForUser } from '../hooks/useOrgs';
 import { useOrgSnapshot } from '../hooks/useOnboarding';
@@ -62,6 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </Sidebar>
       <div className="flex-1 md:ml-[260px] min-w-0 flex flex-col">
+        <ImpersonationBanner />
         <main className="flex-1">
           <ErrorBoundary variant="inline" resetKey={location.pathname}>
             {children}

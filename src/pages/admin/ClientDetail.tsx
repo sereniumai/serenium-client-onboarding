@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Users, Trash2, Copy, Mail, AlertTriangle, Loader2, MessageCircle as MessageCircleIcon } from 'lucide-react';
+import { ChevronLeft, Users, Trash2, Copy, Mail, AlertTriangle, Loader2, MessageCircle as MessageCircleIcon, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
@@ -70,7 +70,15 @@ export function ClientDetail() {
               <h1 className="font-display font-black text-[clamp(1.75rem,5vw,2.75rem)] leading-[1.05] tracking-[-0.025em]">{org.businessName}</h1>
               <p className="text-white/50 text-sm mt-1">/{org.slug}</p>
             </div>
-            <StatusBadge status={org.status} />
+            <div className="flex items-center gap-3">
+              <Link
+                to={`/onboarding/${org.slug}?impersonate=1`}
+                className="btn-secondary"
+              >
+                <Eye className="h-4 w-4" /> View as client
+              </Link>
+              <StatusBadge status={org.status} />
+            </div>
           </div>
 
           <div className="border-b border-border-subtle mb-6 flex gap-1 overflow-x-auto">
