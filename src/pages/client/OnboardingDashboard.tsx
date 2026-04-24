@@ -16,7 +16,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot } from '../../hooks/useOnboarding';
 import { getOrgProgress } from '../../lib/progress';
-import { getService } from '../../config/modules';
+import { getService, SELECTABLE_SERVICES } from '../../config/modules';
 import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey } from '../../types';
 import { cn } from '../../lib/cn';
@@ -242,6 +242,46 @@ export function OnboardingDashboard() {
                 </motion.div>
               );
             })}
+
+            {/* Services not currently part of this client's package, shown
+                disabled so they know what else Serenium can do. */}
+            {SELECTABLE_SERVICES
+              .filter(svc => !progress.enabledServices.includes(svc.key))
+              .map((svc, i) => {
+                const Icon = SERVICE_ICON[svc.key];
+                return (
+                  <motion.div
+                    key={svc.key}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: (progress.enabledServices.length + i) * 0.04 }}
+                  >
+                    <div
+                      className="card block relative border-dashed border-white/10 bg-bg-secondary/30 opacity-60 cursor-not-allowed"
+                      aria-disabled="true"
+                    >
+                      <span className="absolute top-3 right-3 text-[10px] uppercase tracking-wider font-semibold text-white/40 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                        Not in your plan
+                      </span>
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-white/30">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0 pr-20">
+                          <h4 className="font-display font-bold text-lg tracking-[-0.01em] truncate text-white/50">{svc.label}</h4>
+                          <p className="text-xs text-white/35 leading-relaxed mt-0.5">{svc.description}</p>
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-white/5">
+                        <p className="text-xs text-white/40">
+                          Interested? <a href="mailto:contact@sereniumai.com?subject=Adding a service to my Serenium plan" className="text-orange hover:text-orange-hover pointer-events-auto">Email us</a> to add it.
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            }
           </div>
         </section>
       </div>
