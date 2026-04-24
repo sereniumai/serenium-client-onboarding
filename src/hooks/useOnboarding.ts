@@ -51,7 +51,26 @@ export function useSetModuleStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: prog.setModuleStatus,
-    onSuccess: (_, vars) => { qc.invalidateQueries({ queryKey: qk.moduleProgress(vars.organizationId) }); },
+    onSuccess: async (_, vars) => {
+      // Snapshot progress before invalidation to detect completion crossings.
+      const previous = qc.getQueryData<Array<{ serviceKey: string; moduleKey: string; status: string }>>(qk.moduleProgress(vars.organizationId)) ?? [];
+      qc.invalidateQueries({ queryKey: qk.moduleProgress(vars.organizationId) });
+      qc.invalidateQueries({ queryKey: qk.activity(vars.organizationId) });
+
+      if (vars.status !== 'complete') return;
+      // Build a "next" snapshot with this module marked complete.
+      const withUpdate = previous.some(p => p.serviceKey === vars.serviceKey && p.moduleKey === vars.moduleKey)
+        ? previous.map(p => p.serviceKey === vars.serviceKey && p.moduleKey === vars.moduleKey ? { ...p, status: 'complete' } : p)
+        : [...previous, { serviceKey: vars.serviceKey, moduleKey: vars.moduleKey, status: 'complete' }];
+
+      const { fireTeamNotifications } = await import('../lib/teamNotifications');
+      fireTeamNotifications({
+        organizationId: vars.organizationId,
+        previousProgress: previous as import('../types').ModuleProgress[],
+        nextProgress: withUpdate as import('../types').ModuleProgress[],
+        justCompleted: { serviceKey: vars.serviceKey, moduleKey: vars.moduleKey },
+      }).catch(err => console.warn('[team-notif]', err));
+    },
   });
 }
 

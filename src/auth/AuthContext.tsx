@@ -47,6 +47,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const profile = await loadProfile(session.user.id);
           if (mounted) setUser(profile);
+
+          // Fire first-login team notification for clients. Deduped server-side.
+          if (event === 'SIGNED_IN' && profile.role === 'client') {
+            const { supabase: sb } = await import('../lib/supabase');
+            const { data } = await sb
+              .from('organization_members')
+              .select('organization_id')
+              .eq('user_id', profile.id)
+              .limit(1)
+              .maybeSingle();
+            const orgId = (data as { organization_id: string } | null)?.organization_id;
+            if (orgId) {
+              const { fireFirstLoginNotification } = await import('../lib/teamNotifications');
+              fireFirstLoginNotification(orgId).catch(() => {});
+            }
+          }
         } catch (err) {
           console.error('[auth] profile load failed', err);
         }
