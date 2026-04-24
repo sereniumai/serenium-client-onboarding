@@ -19,6 +19,20 @@ export function FollowupSettingsPage() {
 
   useEffect(() => { if (loaded) { setSettings(loaded); setDirty(false); } }, [loaded]);
 
+  // Warn before the browser unloads with unsaved changes. This covers refresh,
+  // tab close, and external navigation. Doesn't cover in-app <Link> clicks
+  // (React Router needs its own blocker for that — not added here since most
+  // admin work happens in this tab at a time).
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
+
   const save = useMutation({
     mutationFn: (s: FollowupSettings) => saveFollowupSettings(s),
     onSuccess: () => { qc.invalidateQueries({ queryKey: QK }); setDirty(false); toast.success('Follow-up settings saved'); },

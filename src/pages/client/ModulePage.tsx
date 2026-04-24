@@ -83,6 +83,9 @@ export function ModulePage() {
   const taskCompletions = snapshot.taskCompletions;
   const mp = snapshot.moduleProgress.find(p => p.serviceKey === svc.key && p.moduleKey === mod.key);
   const complete = mp?.status === 'complete';
+  const disabledFieldSet = new Set(
+    snapshot.services.find(s => s.serviceKey === svc.key)?.disabledFieldKeys ?? []
+  );
 
   const svcIndex = svc.modules.findIndex(m => m.key === mod.key);
 
@@ -285,15 +288,18 @@ export function ModulePage() {
               </section>
             )}
 
-            {/* FORM */}
-            {mod.fields && mod.fields.length > 0 && (
+            {/* FORM. Hide any fields the admin has disabled for this client
+                 (disabledFieldKeys). Same rule ServicePage applies — without
+                 this check, module-level drill-ins would expose fields that
+                 the list-level view hides. */}
+            {mod.fields && mod.fields.filter(f => !disabledFieldSet.has(`${mod.key}.${f.key}`)).length > 0 && (
               <section className="mb-10">
                 <div className="flex items-end justify-between mb-4">
                   <h2 className="font-display font-bold text-xl">Details</h2>
                   <span className="text-xs text-white/40">Autosaves as you type</span>
                 </div>
                 <div className="card space-y-6">
-                  {mod.fields.map(f => (
+                  {mod.fields.filter(f => !disabledFieldSet.has(`${mod.key}.${f.key}`)).map(f => (
                     <FieldRenderer
                       key={f.key}
                       field={f}
