@@ -1,11 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Upload as UploadIcon, X, Check } from 'lucide-react';
+import { toast } from 'sonner';
+import * as Sentry from '@sentry/react';
 import { useAutosave } from '../hooks/useAutosave';
 import { useSubmissions } from '../hooks/useOnboarding';
 import { useUploadsForOrg } from '../hooks/useUploads';
-import { uploadFile, removeUpload } from '../lib/db/uploads';
+import { uploadFile, removeUpload, getUploadSignedUrl } from '../lib/db/uploads';
 import type { Field } from '../config/modules';
 import { evaluate } from '../lib/condition';
 import { videoEmbedUrl } from '../lib/videoEmbed';
@@ -327,7 +329,13 @@ function FileField({ field, organizationId, fieldKey, userId }: Props) {
 
   const onDrop = async (files: File[]) => {
     for (const f of files) {
-      await uploadFile({ organizationId, category, file: f, userId });
+      try {
+        await uploadFile({ organizationId, category, file: f, userId });
+      } catch (err) {
+        Sentry.captureException(err, { extra: { fieldKey, fileName: f.name } });
+        toast.error(`Couldn't upload "${f.name}"`, { description: (err as Error).message });
+        return;
+      }
     }
     qc.invalidateQueries({ queryKey: qk.uploads(organizationId, category) });
   };
@@ -341,8 +349,13 @@ function FileField({ field, organizationId, fieldKey, userId }: Props) {
   const remove = async (id: string) => {
     const u = existing.find(x => x.id === id);
     if (!u) return;
-    await removeUpload(u);
-    qc.invalidateQueries({ queryKey: qk.uploads(organizationId, category) });
+    try {
+      await removeUpload(u);
+      qc.invalidateQueries({ queryKey: qk.uploads(organizationId, category) });
+    } catch (err) {
+      Sentry.captureException(err, { extra: { fieldKey, uploadId: id } });
+      toast.error("Couldn't remove file", { description: (err as Error).message });
+    }
   };
 
   return (
@@ -367,7 +380,7 @@ function FileField({ field, organizationId, fieldKey, userId }: Props) {
           {existing.map(u => (
             <div key={u.id} className="relative group rounded-lg border border-border-subtle bg-bg-tertiary overflow-hidden">
               {u.mimeType.startsWith('image/') ? (
-                <img src={u.fileUrl} alt={u.fileName} className="aspect-video w-full object-cover" />
+                <SignedImg storagePath={u.storagePath} alt={u.fileName} className="aspect-video w-full object-cover" />
               ) : (
                 <div className="aspect-video w-full flex items-center justify-center text-xs text-white/50 px-2 text-center">{u.fileName}</div>
               )}
@@ -486,7 +499,13 @@ function LogoPickerField({ field, organizationId, fieldKey, userId, onStatusChan
     accept: { 'image/*': [], 'application/pdf': [], 'application/postscript': [] },
     onDrop: async (files) => {
       for (const f of files) {
-        await uploadFile({ organizationId, category: fieldKey, file: f, userId });
+        try {
+          await uploadFile({ organizationId, category: fieldKey, file: f, userId });
+        } catch (err) {
+          Sentry.captureException(err, { extra: { fieldKey, fileName: f.name } });
+          toast.error(`Couldn't upload "${f.name}"`, { description: (err as Error).message });
+          return;
+        }
       }
       qc.invalidateQueries({ queryKey: qk.uploads(organizationId, fieldKey) });
       setValue({ mode: 'upload' });
@@ -518,7 +537,7 @@ function LogoPickerField({ field, organizationId, fieldKey, userId, onStatusChan
               {reuseUploads.map(u => (
                 <div key={u.id} className="h-20 w-20 rounded-lg border border-border-subtle bg-bg overflow-hidden flex items-center justify-center">
                   {u.mimeType.startsWith('image/')
-                    ? <img src={u.fileUrl} alt={u.fileName} className="max-h-full max-w-full object-contain" />
+                    ? <SignedImg storagePath={u.storagePath} alt={u.fileName} className="max-h-full max-w-full object-contain" />
                     : <span className="text-[10px] text-white/50 p-1 text-center break-words">{u.fileName}</span>}
                 </div>
               ))}
@@ -550,7 +569,10 @@ function LogoPickerField({ field, organizationId, fieldKey, userId, onStatusChan
                 {uploads.map(u => (
                   <div key={u.id} className="flex items-center justify-between text-xs text-white/70 bg-bg/60 rounded px-2 py-1.5">
                     <span className="truncate">{u.fileName}</span>
-                    <button type="button" onClick={async () => { await removeUpload(u); qc.invalidateQueries({ queryKey: qk.uploads(organizationId, fieldKey) }); }} className="text-white/40 hover:text-error ml-2">
+                    <button type="button" onClick={async () => {
+                      try { await removeUpload(u); qc.invalidateQueries({ queryKey: qk.uploads(organizationId, fieldKey) }); }
+                      catch (err) { Sentry.captureException(err); toast.error("Couldn't remove file", { description: (err as Error).message }); }
+                    }} className="text-white/40 hover:text-error ml-2">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -586,4 +608,16 @@ function FieldValidationMessage({ field, organizationId, fieldKey }: { field: Fi
   const err = field.validate(value);
   if (!err) return null;
   return <p className="mt-1.5 text-xs text-error">{err}</p>;
+}
+
+function SignedImg({ storagePath, alt, className }: { storagePath?: string; alt: string; className?: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!storagePath) return;
+    getUploadSignedUrl(storagePath).then(u => { if (!cancelled) setUrl(u); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [storagePath]);
+  if (!url) return <div className={cn('bg-bg-tertiary animate-pulse', className)} />;
+  return <img src={url} alt={alt} className={className} />;
 }
