@@ -104,10 +104,39 @@ export async function updateOrg(id: string, patch: UpdateOrgInput): Promise<Orga
     .select('*')
     .single();
   if (error) throw error;
+
+  // Audit: mark-live is the highest-stakes status change, log it.
+  if (patch.status === 'live') {
+    const { data: { user } } = await supabase.auth.getUser();
+    supabase.from('activity_log').insert({
+      organization_id: id,
+      user_id: user?.id ?? null,
+      action: 'admin_marked_live',
+      metadata: { previous_status: 'onboarding' },
+    }).then(({ error: logErr }) => {
+      if (logErr) console.warn('[activity] admin_marked_live log failed', logErr);
+    });
+  }
   return toOrganization(data);
 }
 
 export async function deleteOrg(id: string): Promise<void> {
+  // Audit BEFORE delete, the row is about to be gone.
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: org } = await supabase.from('organizations').select('business_name, slug').eq('id', id).maybeSingle();
+  if (org) {
+    // Insert into a surviving audit row. Use activity_log with a marker that
+    // the org is now gone, so retrospectives still work.
+    supabase.from('activity_log').insert({
+      organization_id: id,
+      user_id: user?.id ?? null,
+      action: 'admin_client_deleted',
+      metadata: org as Record<string, unknown>,
+    }).then(({ error: logErr }) => {
+      if (logErr) console.warn('[activity] admin_client_deleted log failed', logErr);
+    });
+  }
+
   const { error } = await supabase.from('organizations').delete().eq('id', id);
   if (error) throw error;
 }

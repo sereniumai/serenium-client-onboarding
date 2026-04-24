@@ -144,7 +144,20 @@ export type ActivityAction =
   | 'service_disabled'
   | 'member_joined'
   | 'followup_sent'
-  | 'help_requested';
+  | 'help_requested'
+  // Admin audit actions, require migration 20260424000005_admin_audit.
+  | 'admin_invitation_sent'
+  | 'admin_viewed_as_client'
+  | 'admin_marked_live'
+  | 'admin_enabled_module'
+  | 'admin_disabled_module'
+  | 'admin_enabled_service'
+  | 'admin_disabled_service'
+  | 'admin_note_added'
+  | 'admin_note_updated'
+  | 'admin_note_deleted'
+  | 'admin_config_changed'
+  | 'admin_client_deleted';
 
 export interface ActivityLogEntry {
   id: string;

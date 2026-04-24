@@ -40,6 +40,17 @@ export async function createInvitation(args: {
   if (error) throw error;
   const inv = toInvitation(data);
 
+  // Audit: who invited whom. Best-effort.
+  const { data: { user } } = await supabase.auth.getUser();
+  supabase.from('activity_log').insert({
+    organization_id: args.organizationId,
+    user_id: user?.id ?? null,
+    action: 'admin_invitation_sent',
+    metadata: { invitee_email: inv.email, invitation_id: inv.id },
+  }).then(({ error: logErr }) => {
+    if (logErr) console.warn('[activity] admin_invitation_sent log failed', logErr);
+  });
+
   // Fire-and-forget email delivery. Failures don't block invitation creation,
   // admin still has a copyable link in the UI.
   if (args.sendEmail !== false) {
