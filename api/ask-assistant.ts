@@ -9,7 +9,8 @@
 // Key (ANTHROPIC_API_KEY) lives as a Vercel env var — server-side only.
 // ============================================================================
 
-// Vite + Vercel auto-detects this file as an API route at /api/ask-assistant.
+// Runs on Vercel's Edge runtime — supports native Fetch API and has fast cold starts.
+export const config = { runtime: 'edge' };
 
 interface ChatHistoryItem {
   role: 'user' | 'assistant';
