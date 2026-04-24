@@ -411,6 +411,11 @@ function ServiceDrillDown({ orgId, service, svcDef, disabledModuleSet, disabledF
       if (enabled) next.delete(moduleKey);
       else next.add(moduleKey);
       await setDisabledModuleKeys(orgId, service.serviceKey, Array.from(next));
+      supabase.from('activity_log').insert({
+        organization_id: orgId,
+        action: enabled ? 'admin_enabled_module' : 'admin_disabled_module',
+        metadata: { service_key: service.serviceKey, module_key: moduleKey },
+      }).then(({ error }) => { if (error) console.warn('[activity] toggle module log failed', error); });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.orgServices(orgId) }),
   });
@@ -1258,18 +1263,30 @@ function ActivityTab({ orgId }: { orgId: string }) {
 
 function ActivityRow({ action, metadata, createdAt }: { action: string; metadata: Record<string, unknown>; createdAt: string }) {
   const labels: Record<string, { verb: string; tone: string }> = {
-    step_completed:   { verb: 'Completed a module',         tone: 'text-success' },
-    step_reopened:    { verb: 'Re-opened a module',         tone: 'text-orange' },
-    file_uploaded:    { verb: 'Uploaded a file',            tone: 'text-orange' },
-    field_submitted:  { verb: 'Updated a field',            tone: 'text-white/60' },
-    service_enabled:  { verb: 'Service enabled',            tone: 'text-success' },
-    service_disabled: { verb: 'Service disabled',           tone: 'text-white/50' },
-    member_joined:    { verb: 'Member joined',              tone: 'text-orange' },
-    followup_sent:    { verb: 'Follow-up email sent',       tone: 'text-orange' },
-    help_requested:   { verb: 'Requested help from team',   tone: 'text-orange' },
-    report_published: { verb: 'Report published',           tone: 'text-success' },
-    report_updated:   { verb: 'Report updated',             tone: 'text-white/60' },
-    report_deleted:   { verb: 'Report deleted',             tone: 'text-error' },
+    step_completed:         { verb: 'Completed a module',         tone: 'text-success' },
+    step_reopened:          { verb: 'Re-opened a module',         tone: 'text-orange' },
+    file_uploaded:          { verb: 'Uploaded a file',            tone: 'text-orange' },
+    field_submitted:        { verb: 'Updated a field',            tone: 'text-white/60' },
+    service_enabled:        { verb: 'Service enabled',            tone: 'text-success' },
+    service_disabled:       { verb: 'Service disabled',           tone: 'text-white/50' },
+    member_joined:          { verb: 'Member joined',              tone: 'text-orange' },
+    followup_sent:          { verb: 'Follow-up email sent',       tone: 'text-orange' },
+    help_requested:         { verb: 'Requested help from team',   tone: 'text-orange' },
+    report_published:       { verb: 'Report published',           tone: 'text-success' },
+    report_updated:         { verb: 'Report updated',             tone: 'text-white/60' },
+    report_deleted:         { verb: 'Report deleted',             tone: 'text-error' },
+    admin_invitation_sent:  { verb: 'Admin sent an invitation',   tone: 'text-orange' },
+    admin_viewed_as_client: { verb: 'Admin viewed as client',     tone: 'text-white/60' },
+    admin_marked_live:      { verb: 'Admin marked client live',   tone: 'text-success' },
+    admin_enabled_module:   { verb: 'Admin enabled module',       tone: 'text-success' },
+    admin_disabled_module:  { verb: 'Admin disabled module',      tone: 'text-white/50' },
+    admin_enabled_service:  { verb: 'Admin enabled service',      tone: 'text-success' },
+    admin_disabled_service: { verb: 'Admin disabled service',     tone: 'text-white/50' },
+    admin_note_added:       { verb: 'Admin added a note',         tone: 'text-white/60' },
+    admin_note_updated:     { verb: 'Admin updated a note',       tone: 'text-white/60' },
+    admin_note_deleted:     { verb: 'Admin deleted a note',       tone: 'text-error' },
+    admin_config_changed:   { verb: 'Admin changed config',       tone: 'text-white/60' },
+    admin_client_deleted:   { verb: 'Admin deleted client',       tone: 'text-error' },
   };
   const entry = labels[action] ?? { verb: action, tone: 'text-white/60' };
   const detail = describeMeta(action, metadata);
@@ -1293,7 +1310,16 @@ function describeMeta(action: string, meta: Record<string, unknown>): string | n
       return `${meta.file_name ?? ''}${meta.category ? ' in ' + meta.category : ''}`;
     case 'service_enabled':
     case 'service_disabled':
+    case 'admin_enabled_service':
+    case 'admin_disabled_service':
       return String(meta.service_key ?? '');
+    case 'admin_enabled_module':
+    case 'admin_disabled_module':
+      return `${meta.service_key ?? ''} · ${meta.module_key ?? ''}`;
+    case 'admin_invitation_sent':
+      return String(meta.invitee_email ?? '');
+    case 'admin_client_deleted':
+      return String(meta.business_name ?? '');
     default:
       return Object.keys(meta).length ? JSON.stringify(meta) : null;
   }
