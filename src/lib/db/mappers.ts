@@ -44,11 +44,12 @@ export const toOrganizationMember = (r: Row<'organization_members'>): Organizati
   acceptedAt: r.accepted_at ?? undefined,
 });
 
-export const toOrganizationService = (r: Row<'organization_services'>): OrganizationService => ({
+export const toOrganizationService = (r: Row<'organization_services'> & { display_order?: number }): OrganizationService => ({
   organizationId: r.organization_id,
   serviceKey: r.service_key as OrganizationService['serviceKey'],
   enabled: r.enabled,
   enabledAt: r.enabled_at,
+  displayOrder: r.display_order ?? 0,
   disabledModuleKeys: r.disabled_module_keys ?? [],
   disabledFieldKeys: r.disabled_field_keys ?? [],
 });

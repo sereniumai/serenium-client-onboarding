@@ -33,11 +33,12 @@ export async function createClient(input: CreateClientInput): Promise<Organizati
 
   // Business Profile is always enabled. Other selected services come next.
   const allServices: ServiceKey[] = ['business_profile', ...input.services.filter(s => s !== 'business_profile')];
-  const serviceRows = allServices.map(sk => ({
+  const serviceRows = allServices.map((sk, i) => ({
     organization_id: org.id,
     service_key: sk,
     enabled: true,
     enabled_at: new Date().toISOString(),
+    display_order: i,
     disabled_module_keys: input.serviceModules?.[sk] ?? [],
     disabled_field_keys: [],
   }));

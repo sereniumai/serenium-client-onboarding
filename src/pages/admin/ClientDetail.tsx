@@ -10,7 +10,11 @@ import { useAuth } from '../../auth/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../lib/queryClient';
 import { listInvitationsForOrg, createInvitation, revokeInvitation, buildInviteUrl } from '../../lib/db/invitations';
-import { enableService, disableService } from '../../lib/db/services';
+import { enableService, disableService, reorderServices } from '../../lib/db/services';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 import { getUploadSignedUrl } from '../../lib/db/uploads';
 import { getEnabledModulesForService } from '../../lib/progress';
 import { SELECTABLE_SERVICES, getService, type Field } from '../../config/modules';
@@ -176,6 +180,8 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
 function ServicesTab({ orgId }: { orgId: string }) {
   const { data: services = [], isLoading } = useOrgServices(orgId);
   const qc = useQueryClient();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
   const toggle = useMutation({
     mutationFn: async ({ key, enabled }: { key: ServiceKey; enabled: boolean }) => {
       if (enabled) await enableService(orgId, key);
@@ -184,38 +190,110 @@ function ServicesTab({ orgId }: { orgId: string }) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: qk.orgServices(orgId) }); },
   });
 
-  const enabledKeys = new Set(services.map(s => s.serviceKey));
+  const reorder = useMutation({
+    mutationFn: (keys: ServiceKey[]) => reorderServices(orgId, keys),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.orgServices(orgId) }); },
+    onError: (err: Error) => toast.error('Reorder failed', { description: err.message }),
+  });
+
+  const enabledKeys = services.map(s => s.serviceKey);
+  const enabledSet = new Set(enabledKeys);
+  const disabledServices = SELECTABLE_SERVICES.filter(s => !enabledSet.has(s.key));
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = enabledKeys.indexOf(active.id as ServiceKey);
+    const newIdx = enabledKeys.indexOf(over.id as ServiceKey);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const next = arrayMove(enabledKeys, oldIdx, newIdx);
+    reorder.mutate(next);
+  };
 
   if (isLoading) return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading services…</div>;
 
   return (
-    <div className="card space-y-3">
-      <p className="eyebrow mb-2">Services enabled for this client</p>
-      {SELECTABLE_SERVICES.map(svc => {
-        const Icon = SERVICE_ICON[svc.key];
-        const enabled = enabledKeys.has(svc.key);
-        return (
-          <div key={svc.key} className="flex items-center gap-4 p-4 rounded-xl border border-border-subtle hover:border-border-emphasis transition-colors">
-            <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg shrink-0', enabled ? 'bg-orange/10 text-orange' : 'bg-white/5 text-white/40')}>
-              <Icon className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold">{svc.label}</p>
-              <p className="text-xs text-white/50 truncate">{svc.description}</p>
-            </div>
-            <button
-              onClick={() => toggle.mutate({ key: svc.key, enabled: !enabled })}
-              disabled={toggle.isPending}
-              className={cn(
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                enabled ? 'bg-orange' : 'bg-bg-tertiary',
-              )}
-            >
-              <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white transition-transform', enabled ? 'translate-x-6' : 'translate-x-1')} />
-            </button>
-          </div>
-        );
-      })}
+    <div className="space-y-6">
+      <div className="card">
+        <div className="flex items-center justify-between mb-3">
+          <p className="eyebrow">Enabled services, drag to reorder</p>
+          <span className="text-xs text-white/40">{enabledKeys.length} active</span>
+        </div>
+        {enabledKeys.length === 0 ? (
+          <p className="text-sm text-white/50">No services enabled. Pick some from below.</p>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={enabledKeys} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {enabledKeys.map(key => {
+                  const svc = SELECTABLE_SERVICES.find(s => s.key === key);
+                  if (!svc) return null;
+                  return (
+                    <SortableServiceRow
+                      key={key}
+                      svcKey={svc.key}
+                      label={svc.label}
+                      description={svc.description}
+                      onDisable={() => toggle.mutate({ key: svc.key, enabled: false })}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </div>
+
+      {disabledServices.length > 0 && (
+        <div className="card space-y-2">
+          <p className="eyebrow mb-3">Available to enable</p>
+          {disabledServices.map(svc => {
+            const Icon = SERVICE_ICON[svc.key];
+            return (
+              <div key={svc.key} className="flex items-center gap-4 p-3 rounded-xl border border-border-subtle opacity-70 hover:opacity-100 hover:border-border-emphasis transition">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-white/40 shrink-0"><Icon className="h-4 w-4" /></div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{svc.label}</p>
+                  <p className="text-xs text-white/50 truncate">{svc.description}</p>
+                </div>
+                <button onClick={() => toggle.mutate({ key: svc.key, enabled: true })} disabled={toggle.isPending} className="btn-secondary !py-1.5 !px-3 text-xs">
+                  Enable
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SortableServiceRow({ svcKey, label, description, onDisable }: {
+  svcKey: ServiceKey; label: string; description: string; onDisable: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: svcKey });
+  const Icon = SERVICE_ICON[svcKey];
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'flex items-center gap-3 p-3 rounded-xl border border-border-subtle bg-bg-secondary/40',
+        isDragging && 'shadow-lg border-orange/40 z-10',
+      )}
+    >
+      <button {...attributes} {...listeners} className="text-white/30 hover:text-white cursor-grab active:cursor-grabbing" title="Drag to reorder">
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange/10 text-orange shrink-0">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm">{label}</p>
+        <p className="text-xs text-white/50 truncate">{description}</p>
+      </div>
+      <button onClick={onDisable} className="text-xs text-white/40 hover:text-error">Disable</button>
     </div>
   );
 }

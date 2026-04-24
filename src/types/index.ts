@@ -36,6 +36,11 @@ export interface OrganizationService {
   enabled: boolean;
   enabledAt: string;
   /**
+   * Display order on the client's dashboard (ascending). Admin can reorder.
+   * Fall back to insertion order if two rows share the same value.
+   */
+  displayOrder: number;
+  /**
    * Module keys explicitly HIDDEN from this client. Undefined/empty = all modules visible.
    * Using an opt-out list so new modules added later are auto-included.
    */
