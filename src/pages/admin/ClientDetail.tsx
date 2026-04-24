@@ -10,7 +10,7 @@ import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../
 import { useAuth } from '../../auth/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../lib/queryClient';
-import { listInvitationsForOrg, createInvitation, revokeInvitation, buildInviteUrl } from '../../lib/db/invitations';
+import { listInvitationsForOrg, createInvitation, revokeInvitation, buildInviteUrl, sendInvitationEmail } from '../../lib/db/invitations';
 import { enableService, disableService, reorderServices } from '../../lib/db/services';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
@@ -386,6 +386,13 @@ function UsersTab({ orgId }: { orgId: string }) {
                   <p className="text-sm truncate">{inv.email}</p>
                   {inv.fullName && <p className="text-xs text-white/50 truncate">{inv.fullName}</p>}
                 </div>
+                <button
+                  onClick={() => sendInvitationEmail(inv.id).then(() => toast.success('Invite email sent')).catch(err => toast.error('Email failed', { description: err.message }))}
+                  className="btn-secondary !py-1.5 !text-xs"
+                  title="Resend invitation email"
+                >
+                  <Mail className="h-3 w-3" /> Send email
+                </button>
                 <button onClick={() => copyInviteLink(inv.token)} className="btn-secondary !py-1.5 !text-xs">
                   <Copy className="h-3 w-3" /> Copy link
                 </button>
@@ -406,7 +413,7 @@ function UsersTab({ orgId }: { orgId: string }) {
               {invite.isPending ? 'Sending…' : 'Invite'}
             </button>
           </div>
-          <p className="text-xs text-white/40">Creates the invitation record. Email delivery (Resend) wires up in a later phase. For now, copy the invite link from the list above.</p>
+          <p className="text-xs text-white/40">Creates the invitation and emails the invite link automatically. You can also copy the link from the list above or resend the email at any time.</p>
         </div>
       </div>
     </div>

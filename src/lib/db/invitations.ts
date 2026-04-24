@@ -20,6 +20,7 @@ export async function createInvitation(args: {
   fullName?: string;
   role?: MemberRole;
   ttlDays?: number;
+  sendEmail?: boolean;
 }): Promise<Invitation> {
   const ttlDays = args.ttlDays ?? 14;
   const token = crypto.randomUUID();
@@ -37,7 +38,34 @@ export async function createInvitation(args: {
     .select('*')
     .single();
   if (error) throw error;
-  return toInvitation(data);
+  const inv = toInvitation(data);
+
+  // Fire-and-forget email delivery. Failures don't block invitation creation,
+  // admin still has a copyable link in the UI.
+  if (args.sendEmail !== false) {
+    sendInvitationEmail(inv.id).catch(err => console.warn('[invitation email] failed', err));
+  }
+  return inv;
+}
+
+export async function sendInvitationEmail(invitationId: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not authenticated');
+  const res = await fetch('/api/send-invitation', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      invitationId,
+      portalUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+    }),
+  });
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({ error: 'Unknown' }));
+    throw new Error(error ?? `HTTP ${res.status}`);
+  }
 }
 
 export async function revokeInvitation(id: string): Promise<void> {
