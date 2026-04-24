@@ -140,9 +140,9 @@ function PasswordCard() {
   const [saving, setSaving] = useState(false);
 
   const strength = calcStrength(pw);
-  const tooShort = pw.length > 0 && pw.length < 8;
+  const tooShort = pw.length > 0 && pw.length < 10;
   const mismatch = pw2.length > 0 && pw !== pw2;
-  const canSave = pw.length >= 8 && pw === pw2 && !saving;
+  const canSave = pw.length >= 10 && pw === pw2 && !saving;
 
   const save = async () => {
     if (!canSave) return;
@@ -160,7 +160,7 @@ function PasswordCard() {
   };
 
   return (
-    <SettingsCard icon={Lock} title="Password" subtitle="Pick at least 8 characters. We recommend mixing letters and numbers.">
+    <SettingsCard icon={Lock} title="Password" subtitle="Pick at least 10 characters. Longer is better than complex.">
       <div className="space-y-3">
         <input
           type="password"

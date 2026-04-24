@@ -9,6 +9,19 @@ import { useAuth } from '../../auth/AuthContext';
 
 type Stage = 'loading' | 'ready' | 'submitting' | 'error' | 'already-accepted' | 'expired' | 'invalid';
 
+// Top weak-password list, deliberately short but catches the worst offenders.
+// Grows the min-length to 10 in combination. For full breach-checking use the
+// HaveIBeenPwned k-Anonymity API (Tier 3 checklist item).
+const WEAK_PASSWORDS = new Set([
+  'password', 'password1', 'password123', 'password1234',
+  '12345678', '123456789', '1234567890',
+  'qwerty123', 'qwertyuiop',
+  'welcome1', 'welcome123', 'letmein123',
+  'admin1234', 'administrator',
+  'serenium', 'serenium1', 'serenium123',
+  'sereniumai', 'sereniumai1', 'sereniumai123',
+]);
+
 export function RegisterPage() {
   const [params] = useSearchParams();
   const token = params.get('invite') ?? params.get('token');
@@ -45,8 +58,13 @@ export function RegisterPage() {
     e.preventDefault();
     if (!invitation || !token) return;
     setErrorMsg(null);
-    if (password.length < 8) { setErrorMsg('Password must be at least 8 characters.'); return; }
+    if (password.length < 10) { setErrorMsg('Password must be at least 10 characters.'); return; }
     if (password !== password2) { setErrorMsg('Passwords do not match.'); return; }
+    if (WEAK_PASSWORDS.has(password.toLowerCase())) {
+      setErrorMsg("That's a very common password. Choose something harder to guess.");
+      return;
+    }
+    if (fullName.trim().length < 2) { setErrorMsg('Enter your full name.'); return; }
     setStage('submitting');
 
     try {
@@ -162,7 +180,7 @@ export function RegisterPage() {
         </div>
         <div>
           <label className="label" htmlFor="pw">Password</label>
-          <input id="pw" type="password" required minLength={8} className="input" placeholder="At least 8 characters" value={password} onChange={e => setPassword(e.target.value)} />
+          <input id="pw" type="password" required minLength={10} className="input" placeholder="At least 10 characters" value={password} onChange={e => setPassword(e.target.value)} />
         </div>
         <div>
           <label className="label" htmlFor="pw2">Confirm password</label>
