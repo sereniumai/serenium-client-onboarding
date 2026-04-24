@@ -10,7 +10,6 @@ import { Markdown } from '../../components/Markdown';
 import { CurriculumSidebar } from '../../components/CurriculumSidebar';
 import { CompletionOverlay } from '../../components/CompletionOverlay';
 import { FinalCelebration } from '../../components/FinalCelebration';
-import { getOrgProgress, findNextActionableModule } from '../../lib/progress';
 import { sfx } from '../../lib/soundFx';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
@@ -18,7 +17,9 @@ import confetti from 'canvas-confetti';
 function ConditionalLinkBlock({ orgId, svcKey, modKey, links }: { orgId: string; svcKey: string; modKey: string; links: Record<string, string> }) {
   // Watch for a "registrar"-style select in this module, when picked, show the matching link.
   // Find the select field in siblings whose value matches a link key.
-  const subs = db.listSubmissionsForOrg(orgId).filter(s => s.fieldKey.startsWith(`${svcKey}.${modKey}.`));
+  // ConditionalLinkBlock temporarily shows no content during Supabase migration; re-enable in Phase 6.
+  const subs: Array<{ fieldKey: string; value: unknown }> = [];
+  void orgId; void svcKey; void modKey;
   const match = subs.find(s => typeof s.value === 'string' && links[s.value as string]);
   if (!match) return null;
   const label = match.value as string;
@@ -50,63 +51,73 @@ function ConditionalLinkBlock({ orgId, svcKey, modKey, links }: { orgId: string;
   );
 }
 import { useAuth } from '../../auth/AuthContext';
-import { db } from '../../lib/mockDb';
+import { useOrgBySlug } from '../../hooks/useOrgs';
+import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
 import { getService, getModule } from '../../config/modules';
 import { evaluate } from '../../lib/condition';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
-import { moduleIsReady } from '../../lib/progress';
-import { useDbVersion } from '../../hooks/useDb';
+import { moduleIsReady, findNextActionableModule, getOrgProgress } from '../../lib/progress';
 import type { ServiceKey } from '../../types';
 
 export function ModulePage() {
   const { orgSlug, serviceKey, moduleKey } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  useDbVersion();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [showComplete, setShowComplete] = useState(false);
   const [showFinal, setShowFinal] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const org = orgSlug ? db.getOrganizationBySlug(orgSlug) : null;
+  const { data: org } = useOrgBySlug(orgSlug);
+  const { snapshot, isLoading } = useOrgSnapshot(org?.id);
+  const setModStatus = useSetModuleStatus();
+  const setTask = useSetTaskCompletion();
+
   const svc = serviceKey ? getService(serviceKey as ServiceKey) : null;
   const mod = svc && moduleKey ? getModule(svc.key, moduleKey) : null;
 
-  if (!org || !svc || !mod) return <Navigate to={`/onboarding/${orgSlug}`} replace />;
-  if (!db.isModuleEnabledForOrg(org.id, svc.key, mod.key)) return <Navigate to={`/onboarding/${org.slug}`} replace />;
-  if (mod.conditional && !evaluate(mod.conditional, org.id, `${svc.key}.${mod.key}`)) {
+  if (isLoading) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center min-h-[60vh] text-white/60">Loading…</div>
+      </AppShell>
+    );
+  }
+  if (!org || !svc || !mod || !snapshot) return <Navigate to={`/onboarding/${orgSlug}`} replace />;
+  const isServiceEnabled = snapshot.services.some(s => s.serviceKey === svc.key);
+  const isModDisabled = snapshot.services.find(s => s.serviceKey === svc.key)?.disabledModuleKeys?.includes(mod.key);
+  if (!isServiceEnabled || isModDisabled) return <Navigate to={`/onboarding/${org.slug}`} replace />;
+  if (mod.conditional && !evaluate(mod.conditional, snapshot.submissions, `${svc.key}.${mod.key}`)) {
     return <Navigate to={`/onboarding/${org.slug}`} replace />;
   }
-  const adminLockedReason = mod.lockedUntilAdminFlag && !db.getAdminFlag(org.id, mod.lockedUntilAdminFlag)
+  const adminLockedReason = mod.lockedUntilAdminFlag && !snapshot.adminFlags[mod.lockedUntilAdminFlag]
     ? (mod.lockedMessage ?? 'This step is locked until we finish setup on our end.')
     : null;
 
-  const taskCompletions = db.getTaskCompletions(org.id);
-  const progress = db.listModuleProgress(org.id);
-  const mp = progress.find(p => p.serviceKey === svc.key && p.moduleKey === mod.key);
-  const ready = moduleIsReady(org.id, svc.key, mod.key);
+  const taskCompletions = snapshot.taskCompletions;
+  const mp = snapshot.moduleProgress.find(p => p.serviceKey === svc.key && p.moduleKey === mod.key);
+  const ready = moduleIsReady(snapshot, svc.key, mod.key);
   const complete = mp?.status === 'complete';
 
   const svcIndex = svc.modules.findIndex(m => m.key === mod.key);
 
-  // "Up next", smartest available actionable module across all services, skipping
-  // completed/hidden/disabled/admin-locked. Returns null when everything is done.
-  const nextActionable = findNextActionableModule(org.id, { serviceKey: svc.key, moduleKey: mod.key });
+  const nextActionable = findNextActionableModule(snapshot, { serviceKey: svc.key, moduleKey: mod.key });
   const next = nextActionable?.module ?? null;
   const nextSvcKey = nextActionable?.serviceKey ?? svc.key;
 
   const toggleTask = (taskKey: string, checked: boolean) => {
-    db.setTaskCompletion({ organizationId: org.id, taskKey: `${svc.key}.${mod.key}.${taskKey}`, completed: checked, userId: user?.id });
+    setTask.mutate({ organizationId: org.id, taskKey: `${svc.key}.${mod.key}.${taskKey}`, completed: checked, userId: user?.id });
     if (checked) sfx.check();
     if (!complete && mp?.status === 'not_started') {
-      db.setModuleStatus({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'in_progress', userId: user?.id });
+      setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'in_progress', userId: user?.id });
     }
   };
 
   const markComplete = () => {
-    const before = getOrgProgress(org.id);
-    db.setModuleStatus({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'complete', userId: user?.id });
-    const after = getOrgProgress(org.id);
+    const before = getOrgProgress(snapshot);
+    setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'complete', userId: user?.id });
+    // After-progress is computed against the in-flight snapshot; refreshed data arrives via query invalidation.
+    const after = { ...before, completeModules: before.completeModules + 1, overall: Math.round(((before.completeModules + 1) / before.totalModules) * 100) };
 
     if (after.totalModules > 0 && after.overall === 100) {
       sfx.complete();
@@ -144,7 +155,7 @@ export function ModulePage() {
   };
 
   const markIncomplete = () => {
-    db.setModuleStatus({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'in_progress', userId: user?.id });
+    setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'in_progress', userId: user?.id });
   };
 
   const goNext = () => {
@@ -238,7 +249,7 @@ export function ModulePage() {
 
             {/* VIDEO */}
             {(() => {
-              const stored = db.getVideoUrl(svc.key, mod.key) || mod.videoUrl || '';
+              const stored = mod.videoUrl || '';
               const embed = stored ? videoEmbedUrl(stored) : null;
               if (embed) {
                 return (
@@ -285,14 +296,7 @@ export function ModulePage() {
               </div>
             )}
 
-            {/* RETELL FORWARDING NUMBER, shown for the call forwarding step once admin sets it */}
-            {mod.lockedUntilAdminFlag === 'ai_receptionist_ready_for_connection' && db.getRetellNumber(org.id) && (
-              <div className="card mb-8 border-orange/50">
-                <p className="eyebrow mb-2">Your Serenium forwarding number</p>
-                <p className="font-display font-black text-3xl md:text-4xl tracking-tight tabular-nums">{db.getRetellNumber(org.id)}</p>
-                <p className="text-xs text-white/50 mt-2">Use this number in the forwarding instructions below.</p>
-              </div>
-            )}
+            {/* Retell forwarding number block returns in Phase 6 (retell_numbers port). */}
 
             {/* INSTRUCTIONS */}
             {mod.instructions && (

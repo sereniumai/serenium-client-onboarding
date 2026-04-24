@@ -1,4 +1,4 @@
-import { db } from './mockDb';
+import type { Submission } from '../types';
 
 // Structured conditional expression used for both fields and modules.
 // `field` = sibling within same module (requires a prefix resolved to "svc.mod")
@@ -12,20 +12,24 @@ export type Condition =
   | { all: Condition[] }
   | { any: Condition[] };
 
-/** Evaluate a condition against the org's saved submissions. `contextPrefix` is "svc.mod" for sibling refs. */
-export function evaluate(cond: Condition, orgId: string, contextPrefix?: string): boolean {
-  if ('all' in cond) return cond.all.every(c => evaluate(c, orgId, contextPrefix));
-  if ('any' in cond) return cond.any.some(c => evaluate(c, orgId, contextPrefix));
+/**
+ * Evaluate a condition against a set of submissions.
+ *
+ * Pass the caller's current submissions (usually via useSubmissions). Keeping
+ * this pure makes it trivial to memoize and testable in isolation.
+ */
+export function evaluate(cond: Condition, submissions: Submission[], contextPrefix?: string): boolean {
+  if ('all' in cond) return cond.all.every(c => evaluate(c, submissions, contextPrefix));
+  if ('any' in cond) return cond.any.some(c => evaluate(c, submissions, contextPrefix));
 
   let key: string;
   if ('field' in cond) {
     key = contextPrefix ? `${contextPrefix}.${cond.field}` : cond.field;
   } else {
-    // Full path, if it's just "field", prefix it; otherwise use as-is.
     key = cond.path.includes('.') ? cond.path : (contextPrefix ? `${contextPrefix}.${cond.path}` : cond.path);
   }
 
-  const sub = db.getSubmission(orgId, key);
+  const sub = submissions.find(s => s.fieldKey === key);
   const value = sub?.value;
   switch (cond.op) {
     case 'eq':       return value === cond.value;

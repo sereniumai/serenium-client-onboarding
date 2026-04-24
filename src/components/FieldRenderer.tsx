@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Upload as UploadIcon, X, Check } from 'lucide-react';
 import { useAutosave } from '../hooks/useAutosave';
-import { db } from '../lib/mockDb';
+import { useSubmissions } from '../hooks/useOnboarding';
+import { useUploadsForOrg } from '../hooks/useUploads';
+import { uploadFile, removeUpload } from '../lib/db/uploads';
 import type { Field } from '../config/modules';
 import { evaluate } from '../lib/condition';
+import { useQueryClient } from '@tanstack/react-query';
+import { qk } from '../lib/queryClient';
 import { Markdown } from './Markdown';
 import { FieldTooltip } from './FieldTooltip';
 import { cn } from '../lib/cn';
@@ -20,15 +24,16 @@ interface Props {
 
 export function FieldRenderer({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
   const prefix = fieldKey.split('.').slice(0, 2).join('.');
+  const { data: submissions = [] } = useSubmissions(organizationId);
 
-  if (field.conditional && !evaluate(field.conditional, organizationId, prefix)) {
+  if (field.conditional && !evaluate(field.conditional, submissions, prefix)) {
     return null;
   }
 
   if (field.type === 'info') {
-    const retell = db.getRetellNumber(organizationId);
+    // Retell number interpolation returns in Phase 6 (retell_numbers port).
     const interpolated = field.content
-      ? field.content.replace(/\[forwarding number\]/g, retell ?? '[your Serenium forwarding number]')
+      ? field.content.replace(/\[forwarding number\]/g, '[your Serenium forwarding number]')
       : '';
     return (
       <div className="rounded-lg border border-orange/30 bg-orange/5 p-4 text-sm text-white/80">
@@ -297,23 +302,14 @@ function RepeatableField({ field, organizationId, fieldKey, userId, onStatusChan
 
 function FileField({ field, organizationId, fieldKey, userId }: Props) {
   const category = fieldKey;
-  const [, bump] = useState(0);
-  const existing = db.listUploads(organizationId, category);
+  const qc = useQueryClient();
+  const { data: existing = [] } = useUploadsForOrg(organizationId, category);
 
   const onDrop = async (files: File[]) => {
     for (const f of files) {
-      const dataUrl = await new Promise<string>((resolve) => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result as string);
-        r.readAsDataURL(f);
-      });
-      db.addUpload({
-        organizationId, category,
-        fileName: f.name, fileUrl: dataUrl, fileSize: f.size, mimeType: f.type,
-        uploadedBy: userId,
-      });
+      await uploadFile({ organizationId, category, file: f, userId });
     }
-    bump(n => n + 1);
+    qc.invalidateQueries({ queryKey: qk.uploads(organizationId, category) });
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -322,7 +318,12 @@ function FileField({ field, organizationId, fieldKey, userId }: Props) {
     accept: field.accept ? { [field.accept]: [] } : undefined,
   });
 
-  const remove = (id: string) => { db.removeUpload(id); bump(n => n + 1); };
+  const remove = async (id: string) => {
+    const u = existing.find(x => x.id === id);
+    if (!u) return;
+    await removeUpload(u);
+    qc.invalidateQueries({ queryKey: qk.uploads(organizationId, category) });
+  };
 
   return (
     <div className="space-y-3">
@@ -456,25 +457,18 @@ function LogoPickerField({ field, organizationId, fieldKey, userId, onStatusChan
   const current = value ?? { mode: 'reuse' };
   useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
 
+  const qc = useQueryClient();
   const reuseKey = field.logoReuseFieldKey ?? 'business_profile.logo_files.logo_files';
-  const reuseUploads = db.listUploads(organizationId, reuseKey);
-  const uploads = db.listUploads(organizationId, fieldKey);
+  const { data: reuseUploads = [] } = useUploadsForOrg(organizationId, reuseKey);
+  const { data: uploads = [] } = useUploadsForOrg(organizationId, fieldKey);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'image/*': [], 'application/pdf': [], 'application/postscript': [] },
     onDrop: async (files) => {
       for (const f of files) {
-        const dataUrl = await new Promise<string>((res) => {
-          const r = new FileReader();
-          r.onload = () => res(r.result as string);
-          r.readAsDataURL(f);
-        });
-        db.addUpload({
-          organizationId, category: fieldKey,
-          fileName: f.name, fileUrl: dataUrl, fileSize: f.size, mimeType: f.type,
-          uploadedBy: userId,
-        });
+        await uploadFile({ organizationId, category: fieldKey, file: f, userId });
       }
+      qc.invalidateQueries({ queryKey: qk.uploads(organizationId, fieldKey) });
       setValue({ mode: 'upload' });
     },
   });
@@ -536,7 +530,7 @@ function LogoPickerField({ field, organizationId, fieldKey, userId, onStatusChan
                 {uploads.map(u => (
                   <div key={u.id} className="flex items-center justify-between text-xs text-white/70 bg-bg/60 rounded px-2 py-1.5">
                     <span className="truncate">{u.fileName}</span>
-                    <button type="button" onClick={() => db.removeUpload(u.id)} className="text-white/40 hover:text-error ml-2">
+                    <button type="button" onClick={async () => { await removeUpload(u); qc.invalidateQueries({ queryKey: qk.uploads(organizationId, fieldKey) }); }} className="text-white/40 hover:text-error ml-2">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -564,9 +558,10 @@ function LogoPickerField({ field, organizationId, fieldKey, userId, onStatusChan
 // FieldValidationMessage, runs field.validate on current value, shows error.
 // ─────────────────────────────────────────────────────────────────────────────
 function FieldValidationMessage({ field, organizationId, fieldKey }: { field: Field; organizationId: string; fieldKey: string }) {
+  const { data: submissions = [] } = useSubmissions(organizationId);
   if (!field.validate) return null;
-  const submission = db.getSubmission(organizationId, fieldKey);
-  const value = submission?.value;
+  const sub = submissions.find(s => s.fieldKey === fieldKey);
+  const value = sub?.value;
   if (value == null || value === '') return null;
   const err = field.validate(value);
   if (!err) return null;

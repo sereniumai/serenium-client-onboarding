@@ -5,12 +5,15 @@ import { CheckCircle2, Lock, PlayCircle, Circle, ChevronDown } from 'lucide-reac
 import { getService } from '../config/modules';
 import { SERVICE_ICON } from '../config/serviceIcons';
 import { getOrgProgress, getEnabledModulesForService } from '../lib/progress';
+import { useOrgSnapshot } from '../hooks/useOnboarding';
 import type { ServiceKey } from '../types';
 import { cn } from '../lib/cn';
 
 export function CurriculumSidebar({ organizationId, orgSlug }: { organizationId: string; orgSlug: string }) {
   const { serviceKey: activeSvc, moduleKey: activeMod } = useParams();
-  const progress = getOrgProgress(organizationId);
+  const { snapshot } = useOrgSnapshot(organizationId);
+  if (!snapshot) return null;
+  const progress = getOrgProgress(snapshot);
 
   return (
     <nav className="space-y-3">
@@ -33,7 +36,7 @@ export function CurriculumSidebar({ organizationId, orgSlug }: { organizationId:
       {progress.enabledServices.map(svcKey => {
         const svc = getService(svcKey)!;
         const summaries = progress.perService[svcKey];
-        const enabledMods = getEnabledModulesForService(organizationId, svcKey);
+        const enabledMods = getEnabledModulesForService(snapshot, svcKey);
         const svcActive = activeSvc === svcKey;
         const done = summaries.filter(s => s.status === 'complete').length;
         return (
