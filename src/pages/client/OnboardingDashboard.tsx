@@ -12,8 +12,9 @@ import { timeOfDayGreeting } from '../../lib/greeting';
 import { useAuth } from '../../auth/AuthContext';
 import { db } from '../../lib/mockDb';
 import { useDbVersion } from '../../hooks/useDb';
-import { getOrgProgress, getEnabledModulesForService } from '../../lib/progress';
+import { getOrgProgress, getEnabledModulesForService, estimatedMinutesRemaining, formatMinutes } from '../../lib/progress';
 import { getService } from '../../config/modules';
+import { PHASES } from '../../config/phases';
 import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey, ModuleStatus } from '../../types';
 import { cn } from '../../lib/cn';
@@ -108,8 +109,14 @@ export function OnboardingDashboard() {
                   </div>
                 </CircleProgress>
                 <div className="mt-6 pt-6 border-t border-border-subtle text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Steps</p>
-                  <p className="font-display font-black text-xl tabular-nums">{progress.completeModules}<span className="text-white/30 text-sm">/{progress.totalModules}</span></p>
+                  <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">
+                    {onboardingDone ? 'Steps complete' : 'Time left'}
+                  </p>
+                  <p className="font-display font-black text-xl tabular-nums">
+                    {onboardingDone
+                      ? <>{progress.completeModules}<span className="text-white/30 text-sm">/{progress.totalModules}</span></>
+                      : formatMinutes(estimatedMinutesRemaining(org.id))}
+                  </p>
                 </div>
               </div>
             </div>
@@ -125,7 +132,7 @@ export function OnboardingDashboard() {
           </section>
         )}
 
-        {/* ONBOARDING SECTIONS */}
+        {/* ONBOARDING, grouped by phase */}
         <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-16 md:pb-24 pt-6 md:pt-8">
           <div className="flex items-end justify-between mb-6">
             <div>
@@ -133,73 +140,110 @@ export function OnboardingDashboard() {
                 {onboardingDone ? 'Onboarding summary' : 'What we need from you'}
               </h2>
               <p className="text-sm text-white/60 mt-1">
-                {onboardingDone ? 'Everything you submitted. Open any step to review or update.' : 'Grouped by the services on your retainer. Go in any order.'}
+                {onboardingDone ? 'Everything you submitted. Open any step to review or update.' : 'Three phases. Go in any order you like.'}
               </p>
             </div>
-            <p className="text-sm text-white/40">{progress.enabledServices.length} {progress.enabledServices.length === 1 ? 'service' : 'services'}</p>
           </div>
 
-          <div className="space-y-5">
-            {progress.enabledServices.length === 0 && (
-              <div className="card text-center py-16">
-                <p className="text-white/60">No services enabled yet. Your Serenium team will set these up shortly.</p>
-              </div>
-            )}
+          {progress.enabledServices.length === 0 && (
+            <div className="card text-center py-16">
+              <p className="text-white/60">No services enabled yet. Your Serenium team will set these up shortly.</p>
+            </div>
+          )}
 
-            {progress.enabledServices.map((svcKey, svcIdx) => {
-              const svc = getService(svcKey)!;
-              const enabledMods = getEnabledModulesForService(org.id, svcKey);
-              const summaries = progress.perService[svcKey];
-              const Icon = SERVICE_ICON[svcKey];
-              const svcComplete = summaries.filter(s => s.status === 'complete').length;
-              const svcTotal = summaries.length;
-              const svcPct = svcTotal === 0 ? 0 : Math.round((svcComplete / svcTotal) * 100);
+          <div className="space-y-10">
+            {PHASES.map((phase, phaseIdx) => {
+              const phaseServices = phase.services.filter(k => progress.enabledServices.includes(k));
+              if (phaseServices.length === 0) return null;
+
+              // Roll up phase progress across its services.
+              const phaseSummaries = phaseServices.flatMap(k => progress.perService[k] ?? []);
+              const phaseComplete = phaseSummaries.filter(s => s.status === 'complete').length;
+              const phaseTotal = phaseSummaries.length;
+              const phasePct = phaseTotal === 0 ? 0 : Math.round((phaseComplete / phaseTotal) * 100);
+              const phaseDone = phaseTotal > 0 && phaseComplete === phaseTotal;
 
               return (
                 <motion.div
-                  key={svcKey}
+                  key={phase.key}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: svcIdx * 0.06 }}
-                  className="card overflow-hidden p-0"
+                  transition={{ delay: phaseIdx * 0.08 }}
                 >
-                  <div className="p-5 md:p-8 flex items-start gap-4 md:gap-6 border-b border-border-subtle">
-                    <div className="flex h-12 w-12 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-orange/10 text-orange shrink-0">
-                      <Icon className="h-6 w-6 md:h-7 md:w-7" />
+                  {/* Phase header */}
+                  <div className="flex items-start gap-4 mb-5 md:mb-6">
+                    <div className={cn(
+                      'flex h-12 w-12 items-center justify-center rounded-2xl font-display font-black text-lg shrink-0 tabular-nums',
+                      phaseDone ? 'bg-success text-white' : 'bg-orange/10 text-orange',
+                    )}>
+                      {phaseDone ? <CheckCircle2 className="h-6 w-6" /> : phase.number}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-semibold mb-1">Service {String(svcIdx + 1).padStart(2, '0')}</p>
-                      <h3 className="font-display font-black text-2xl tracking-[-0.02em] mb-1">{svc.label}</h3>
-                      <p className="text-sm text-white/60">{svc.description}</p>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-semibold mb-1">Phase {phase.number}</p>
+                      <h3 className="font-display font-black text-2xl md:text-3xl tracking-[-0.02em]">{phase.title}</h3>
+                      <p className="text-sm text-white/60 mt-1">{phase.subtitle}</p>
                     </div>
-                    <div className="shrink-0">
-                      <CircleProgress value={svcPct} size={64}>
-                        <span className="text-sm font-semibold">{svcComplete}<span className="text-white/40 text-xs">/{svcTotal}</span></span>
-                      </CircleProgress>
+                    <div className="hidden sm:flex items-center gap-3 shrink-0 text-right">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-white/40">Progress</p>
+                        <p className="font-display font-black text-xl tabular-nums">{phasePct}<span className="text-white/30 text-sm">%</span></p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="divide-y divide-border-subtle">
-                    {enabledMods.map((m, i) => {
-                      const summary = summaries[i];
-                      if (!summary) return null;
-                      const state = summary.status === 'complete' ? 'complete'
-                        : summary.status === 'in_progress' ? 'in_progress'
-                        : summary.canStart ? 'available'
-                        : 'locked';
+                  {/* Services inside the phase */}
+                  <div className="space-y-4 pl-0 md:pl-16">
+                    {phaseServices.map(svcKey => {
+                      const svc = getService(svcKey)!;
+                      const enabledMods = getEnabledModulesForService(org.id, svcKey);
+                      const summaries = progress.perService[svcKey];
+                      const Icon = SERVICE_ICON[svcKey];
+                      const svcComplete = summaries.filter(s => s.status === 'complete').length;
+                      const svcTotal = summaries.length;
+                      const svcPct = svcTotal === 0 ? 0 : Math.round((svcComplete / svcTotal) * 100);
+
                       return (
-                        <ModuleRow
-                          key={m.key}
-                          index={i + 1}
-                          orgSlug={org.slug}
-                          serviceKey={svcKey}
-                          moduleKey={m.key}
-                          title={m.title}
-                          description={m.description ?? ''}
-                          minutes={m.estimatedMinutes ?? 5}
-                          state={state}
-                          status={summary.status}
-                        />
+                        <div key={svcKey} className="card overflow-hidden p-0">
+                          <div className="p-4 md:p-5 flex items-start gap-3 md:gap-4 border-b border-border-subtle">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange/10 text-orange shrink-0">
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-display font-bold text-lg tracking-[-0.01em]">{svc.label}</h4>
+                              <p className="text-xs text-white/55">{svc.description}</p>
+                            </div>
+                            <div className="shrink-0">
+                              <CircleProgress value={svcPct} size={52}>
+                                <span className="text-xs font-semibold">{svcComplete}<span className="text-white/40">/{svcTotal}</span></span>
+                              </CircleProgress>
+                            </div>
+                          </div>
+
+                          <div className="divide-y divide-border-subtle">
+                            {enabledMods.map((m, i) => {
+                              const summary = summaries[i];
+                              if (!summary) return null;
+                              const state = summary.status === 'complete' ? 'complete'
+                                : summary.status === 'in_progress' ? 'in_progress'
+                                : summary.canStart ? 'available'
+                                : 'locked';
+                              return (
+                                <ModuleRow
+                                  key={m.key}
+                                  index={i + 1}
+                                  orgSlug={org.slug}
+                                  serviceKey={svcKey}
+                                  moduleKey={m.key}
+                                  title={m.title}
+                                  description={m.description ?? ''}
+                                  minutes={m.estimatedMinutes ?? 5}
+                                  state={state}
+                                  status={summary.status}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>

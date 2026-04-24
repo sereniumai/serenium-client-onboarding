@@ -153,23 +153,13 @@ const BUSINESS_PROFILE: ServiceDef = {
       fields: [{ key: 'usps', label: 'What makes you different from competitors?', type: 'textarea', required: true }],
     },
     {
-      key: 'certifications',
-      title: 'Certifications and credentials',
-      estimatedMinutes: 2,
-      fields: [{ key: 'certifications', label: 'Certifications (GAF, IKO, CRCA, etc.)', type: 'repeatable' }],
-    },
-    {
-      key: 'awards',
-      title: 'Awards or recognition',
-      estimatedMinutes: 2,
-      fields: [{ key: 'awards', label: 'Awards, Best of lists, recognition', type: 'repeatable' }],
-    },
-    {
-      key: 'warranty_and_insurance',
-      title: 'Warranty and insurance',
-      estimatedMinutes: 3,
-      instructions: 'Two short paragraphs. Used as trust signals on your website, in ads, and by the AI when prospects ask.',
+      key: 'credentials_and_trust',
+      title: 'Credentials and trust',
+      estimatedMinutes: 6,
+      instructions: 'All the things that make prospects trust you. We use these on your website hero, in ads, on your Google Business Profile, and when the AI answers questions about your credibility.',
       fields: [
+        { key: 'certifications', label: 'Certifications (GAF, IKO, CRCA, etc.)', type: 'repeatable' },
+        { key: 'awards', label: 'Awards and "Best of" lists', type: 'repeatable' },
         { key: 'warranty', label: 'Warranty terms (workmanship and materials)', type: 'textarea' },
         { key: 'insurance', label: 'Insurance you carry (liability, WCB, bonding)', type: 'textarea' },
       ],
@@ -430,7 +420,6 @@ const AI_SMS: ServiceDef = {
           required: true,
           options: ['Book a free estimate', 'Book a phone consultation / sales call', 'Qualify the lead and hand off to a human'],
         },
-        { key: 'sms_goal_details', label: 'Any other context, edge cases, or preferences', type: 'textarea' },
       ],
     },
     {
@@ -500,7 +489,6 @@ const AI_SMS: ServiceDef = {
             { key: 'email', label: 'Email', type: 'email', required: true },
           ],
         },
-        { key: 'sms_timezone', label: 'Timezone', type: 'select', options: ['America/St_Johns', 'America/Halifax', 'America/Toronto', 'America/Winnipeg', 'America/Regina', 'America/Edmonton', 'America/Vancouver'] },
       ],
     },
     {
@@ -836,8 +824,8 @@ const WEBSITE: ServiceDef = {
     },
     {
       key: 'brand_assets',
-      title: 'Brand assets',
-      estimatedMinutes: 4,
+      title: 'Brand assets and content',
+      estimatedMinutes: 10,
       fields: [
         {
           key: 'website_logo',
@@ -847,6 +835,7 @@ const WEBSITE: ServiceDef = {
           logoReuseFieldKey: 'business_profile.logo_files.logo_files',
           helpText: 'Pick one: reuse what you uploaded in Business Profile, upload something fresh, or share a Drive / Dropbox link.',
         },
+        { key: 'business_story', label: 'Business story (About page)', type: 'textarea', helpText: 'Origin, owner\'s story, values. Can be a voice-note reference too.' },
         {
           key: 'website_media_folder_link',
           label: 'Google Drive or Dropbox folder (photos, videos, other assets)',
@@ -854,14 +843,6 @@ const WEBSITE: ServiceDef = {
           required: true,
           helpText: 'Suggested subfolders: Completed Jobs · Team · Building · Drone Footage · Video Testimonials · Equipment',
         },
-      ],
-    },
-    {
-      key: 'content',
-      title: 'Content',
-      estimatedMinutes: 10,
-      fields: [
-        { key: 'business_story', label: 'Business story (for About page)', type: 'textarea', helpText: 'Origin, owner\'s story, values. Can be a voice-note reference too.' },
       ],
     },
     {

@@ -195,6 +195,38 @@ export function moduleIsReady(org: string, svcKey: ServiceKey, moduleKey: string
 export { SERVICES };
 
 /**
+ * Estimated minutes left on the org's onboarding. Sums estimatedMinutes on
+ * every enabled, not-yet-complete, not-hidden, not-admin-locked module.
+ */
+export function estimatedMinutesRemaining(organizationId: string): number {
+  const enabledSvcs = db.listServicesForOrganization(organizationId);
+  const moduleProgress = db.listModuleProgress(organizationId);
+  let mins = 0;
+  for (const svcEntry of enabledSvcs) {
+    const svc = getService(svcEntry.serviceKey);
+    if (!svc) continue;
+    const disabled = new Set(svcEntry.disabledModuleKeys ?? []);
+    for (const m of svc.modules) {
+      if (disabled.has(m.key)) continue;
+      if (moduleIsHidden(organizationId, svcEntry.serviceKey, m)) continue;
+      if (moduleIsAdminLocked(organizationId, m)) continue;
+      const status = moduleProgress.find(p => p.serviceKey === svcEntry.serviceKey && p.moduleKey === m.key)?.status;
+      if (status === 'complete') continue;
+      mins += m.estimatedMinutes ?? 3;
+    }
+  }
+  return mins;
+}
+
+/** Format a minute count as "~12 min" or "~1h 20m". */
+export function formatMinutes(mins: number): string {
+  if (mins < 60) return `~${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? `~${h}h` : `~${h}h ${m}m`;
+}
+
+/**
  * Find the next actionable module for a client, the next step they should tackle.
  * Skips: disabled services/modules, hidden (conditional-false) modules, admin-locked modules,
  * and already-completed modules. Walks services in dashboard order, wrapping around so that
