@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import * as Sentry from '@sentry/react';
 import { useAutosave } from '../hooks/useAutosave';
 import { useSubmissions } from '../hooks/useOnboarding';
+import { useOrgServices } from '../hooks/useOrgs';
 import { useUploadsForOrg } from '../hooks/useUploads';
 import { uploadFile, removeUpload, getUploadSignedUrl } from '../lib/db/uploads';
 import type { Field } from '../config/modules';
@@ -28,8 +29,9 @@ interface Props {
 export function FieldRenderer({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
   const prefix = fieldKey.split('.').slice(0, 2).join('.');
   const { data: submissions = [] } = useSubmissions(organizationId);
+  const { data: services = [] } = useOrgServices(organizationId);
 
-  if (field.conditional && !evaluate(field.conditional, submissions, prefix)) {
+  if (field.conditional && !evaluate(field.conditional, submissions, prefix, { services })) {
     return null;
   }
 

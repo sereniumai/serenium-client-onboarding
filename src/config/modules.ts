@@ -870,7 +870,8 @@ const WEBSITE: ServiceDef = {
           type: 'url',
           required: true,
           placeholder: 'https://drive.google.com/…',
-          helpText: 'Same folder from Business Profile is fine, or a fresh link. Anyone-with-the-link access.',
+          helpText: 'Anyone-with-the-link access.',
+          conditional: { serviceEnabled: 'business_profile', expected: false },
         },
         { key: 'business_story', label: 'Business story (About page)', type: 'textarea', helpText: 'Origin, owner\'s story, values. Can be a voice-note reference too.' },
         {

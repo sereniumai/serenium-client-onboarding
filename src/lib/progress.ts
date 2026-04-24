@@ -122,7 +122,12 @@ export function getOrgProgress(snap: OrgSnapshot) {
       ).length;
 
       const disabledFieldSet = new Set(svcEntry?.disabledFieldKeys ?? []);
-      const requiredFields = m.fields?.filter(f => f.required && !disabledFieldSet.has(`${m.key}.${f.key}`)) ?? [];
+      const requiredFields = m.fields?.filter(f => {
+    if (!f.required) return false;
+    if (disabledFieldSet.has(`${m.key}.${f.key}`)) return false;
+    if (f.conditional && !evaluate(f.conditional, snap.submissions, `${svcKey}.${m.key}`, { services: snap.services })) return false;
+    return true;
+  }) ?? [];
       const fieldTotal = requiredFields.length;
       const fieldDone = requiredFields.filter(f => {
         const fieldKey = `${svcKey}.${m.key}.${f.key}`;
@@ -180,7 +185,12 @@ export function moduleIsReady(snap: OrgSnapshot, svcKey: ServiceKey, moduleKey: 
     snap.taskCompletions.find(c => c.taskKey === `${svcKey}.${m.key}.${t.key}` && c.completed)
   );
 
-  const requiredFields = m.fields?.filter(f => f.required && !disabledFieldSet.has(`${m.key}.${f.key}`)) ?? [];
+  const requiredFields = m.fields?.filter(f => {
+    if (!f.required) return false;
+    if (disabledFieldSet.has(`${m.key}.${f.key}`)) return false;
+    if (f.conditional && !evaluate(f.conditional, snap.submissions, `${svcKey}.${m.key}`, { services: snap.services })) return false;
+    return true;
+  }) ?? [];
   const fieldsDone = requiredFields.every(f => {
     const fieldKey = `${svcKey}.${m.key}.${f.key}`;
     // File fields don't write to `submissions` — they write to `uploads`.
