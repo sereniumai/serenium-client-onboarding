@@ -48,7 +48,7 @@ export function AdminHome() {
         case 'contact':  cmp = (a.primaryContactName ?? '').localeCompare(b.primaryContactName ?? ''); break;
         case 'status': {
           // Sort by a curated order so admin sees live clients first, then
-          // those mid-onboarding, then paused, then churned — rather than
+          // those mid-onboarding, then paused, then churned - rather than
           // alphabetical order which puts "churned" before "live".
           const order: Record<string, number> = { live: 0, onboarding: 1, paused: 2, churned: 3 };
           cmp = (order[a.status] ?? 99) - (order[b.status] ?? 99);
@@ -140,7 +140,7 @@ export function AdminHome() {
                       <div className="font-medium">{org.businessName}</div>
                       {org.plan && <PlanBadge plan={org.plan} />}
                     </td>
-                    <td className="px-6 py-4 text-sm text-white/60">{org.primaryContactName ?? '—'}</td>
+                    <td className="px-6 py-4 text-sm text-white/60">{org.primaryContactName ?? '-'}</td>
                     <td className="px-6 py-4"><OrgStatusPill status={org.status} /></td>
                     <td className="px-6 py-4 text-right">
                       <Link to={`/admin/clients/${org.slug}`} className="text-sm text-orange hover:text-orange-hover font-medium">

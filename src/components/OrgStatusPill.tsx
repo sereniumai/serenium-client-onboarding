@@ -4,9 +4,9 @@ import type { OrgStatus, ModuleStatus } from '../types';
 
 /**
  * Unified status pill. Two flavours:
- *  - OrgStatusPill        — onboarding / live / paused / churned, used in the
+ *  - OrgStatusPill        - onboarding / live / paused / churned, used in the
  *                           admin client list + client detail header
- *  - ModuleStatusPill     — not_started / in_progress / complete, used in
+ *  - ModuleStatusPill     - not_started / in_progress / complete, used in
  *                           admin progress tabs and per-module rows
  *
  * Sizes: 'sm' (table rows, dense lists), 'md' (headers, detail surfaces).

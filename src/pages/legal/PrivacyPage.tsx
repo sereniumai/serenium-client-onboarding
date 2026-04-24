@@ -78,20 +78,20 @@ export function PrivacyPage() {
           provide their service to us and is contractually bound to appropriate safeguards:
         </p>
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-white/85">Supabase</strong> — hosted PostgreSQL database, authentication,
+          <li><strong className="text-white/85">Supabase</strong> - hosted PostgreSQL database, authentication,
             and file storage (data region: United States)</li>
-          <li><strong className="text-white/85">Vercel</strong> — web hosting and serverless edge functions
+          <li><strong className="text-white/85">Vercel</strong> - web hosting and serverless edge functions
             (global edge network)</li>
-          <li><strong className="text-white/85">Resend</strong> — transactional email delivery (United States)</li>
-          <li><strong className="text-white/85">Anthropic</strong> — Claude AI model powering the in-Portal
+          <li><strong className="text-white/85">Resend</strong> - transactional email delivery (United States)</li>
+          <li><strong className="text-white/85">Anthropic</strong> - Claude AI model powering the in-Portal
             assistant. Messages you send the assistant are transmitted to Anthropic and are not used to train
             their models per their Zero Data Retention / API Terms</li>
-          <li><strong className="text-white/85">Sentry</strong> — application error monitoring. Receives
+          <li><strong className="text-white/85">Sentry</strong> - application error monitoring. Receives
             stack traces, browser metadata, and a non-identifying user ID when errors occur. We strip cookies
             and IP addresses before sending. No form input or file content is transmitted (United States)</li>
-          <li><strong className="text-white/85">UptimeRobot</strong> — uptime monitoring. Polls a public health
+          <li><strong className="text-white/85">UptimeRobot</strong> - uptime monitoring. Polls a public health
             endpoint every few minutes; does not access any personal information</li>
-          <li><strong className="text-white/85">Google Fonts</strong> — typography delivery</li>
+          <li><strong className="text-white/85">Google Fonts</strong> - typography delivery</li>
         </ul>
         <p>
           We do not sell your personal information. We do not share it for behavioural advertising.
@@ -162,8 +162,8 @@ export function PrivacyPage() {
 
         <h3 className="text-white font-semibold text-base pt-4">13. Commercial electronic messages (CASL)</h3>
         <p>
-          We comply with Canada's Anti-Spam Legislation (CASL). The emails we send you — invitations, password
-          resets, onboarding progress updates, and occasional nudges when your account is inactive — are part of
+          We comply with Canada's Anti-Spam Legislation (CASL). The emails we send you - invitations, password
+          resets, onboarding progress updates, and occasional nudges when your account is inactive - are part of
           the service you signed up for when you accepted your Serenium invitation, and are sent under implied
           consent arising from our business relationship with your company. Every email identifies Serenium AI Inc.
           and includes a contact address. If you no longer wish to receive service-related emails, reply to any

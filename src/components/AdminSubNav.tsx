@@ -15,7 +15,7 @@ const ITEMS = [
 
 export function AdminSubNav() {
   const location = useLocation();
-  // Read the unread flag on every route change — hasUnreadChangelog is a
+  // Read the unread flag on every route change - hasUnreadChangelog is a
   // plain localStorage read, no need for state+effect round trip.
   const unread = useMemo(() => hasUnreadChangelog(), [location.pathname]);
 

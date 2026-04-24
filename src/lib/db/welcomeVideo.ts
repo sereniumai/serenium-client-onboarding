@@ -65,7 +65,7 @@ export async function markWelcomeSeen(userId: string): Promise<void> {
 /**
  * Wipe all "I've seen the welcome video" records. Next login for every
  * client re-opens the modal. Useful while testing the video copy with
- * real staff before launch — admin can re-trigger the first-login
+ * real staff before launch - admin can re-trigger the first-login
  * experience without creating fresh accounts.
  */
 export async function resetAllWelcomeSeen(): Promise<number> {

@@ -21,7 +21,7 @@ export function ForgotPasswordPage() {
       if (error) throw error;
       setSent(true);
     } catch (err) {
-      // Don't leak whether the account exists — show generic success UX anyway
+      // Don't leak whether the account exists - show generic success UX anyway
       // per security best-practice for password-reset endpoints.
       console.error('[forgot-password]', err);
       setSent(true);

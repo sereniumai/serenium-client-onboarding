@@ -264,7 +264,7 @@ function ServicesTab({ orgId }: { orgId: string }) {
       if (enabled) await enableService(orgId, key);
       else await disableService(orgId, key);
     },
-    // Force an immediate refetch (not just invalidate) — with our 30s staleTime
+    // Force an immediate refetch (not just invalidate) - with our 30s staleTime
     // an invalidate alone won't redraw child views that are actively mounted
     // with fresh cache, like the client dashboard if the admin flipped a
     // service via impersonation. refetchQueries bypasses staleTime.
@@ -759,7 +759,7 @@ function SubmissionValue({ field, value, uploads, fieldKey }: { field: Field; va
         {field.schema?.map(s => (
           <div key={s.key} className="flex gap-2">
             <span className="text-white/40 text-xs w-20 shrink-0">{s.label}</span>
-            <span>{String(data[s.key] ?? '—')}</span>
+            <span>{String(data[s.key] ?? '-')}</span>
           </div>
         ))}
       </div>
@@ -1108,7 +1108,7 @@ function ReportsTab({ orgId }: { orgId: string }) {
         open={!!pendingDelete}
         tone="destructive"
         title={`Delete "${pendingDelete?.title}"?`}
-        body="This removes the report from the client's portal. Uploaded files stay in storage — you can clean them up separately."
+        body="This removes the report from the client's portal. Uploaded files stay in storage - you can clean them up separately."
         confirmLabel="Delete report"
         cancelLabel="Cancel"
         onConfirm={runDeleteReport}

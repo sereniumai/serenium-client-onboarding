@@ -117,7 +117,7 @@
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20;
   }
 
-  /* For destructive actions — delete, sign-out, revoke, cancel-with-data-loss.
+  /* For destructive actions - delete, sign-out, revoke, cancel-with-data-loss.
      Error-tinted bordered button that keeps the same geometry as btn-primary
      so it aligns in button rows. Not a muted/ghost pattern; this should read
      as "are you sure" at a glance. */

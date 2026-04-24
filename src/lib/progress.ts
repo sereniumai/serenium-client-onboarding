@@ -193,7 +193,7 @@ export function moduleIsReady(snap: OrgSnapshot, svcKey: ServiceKey, moduleKey: 
   }) ?? [];
   const fieldsDone = requiredFields.every(f => {
     const fieldKey = `${svcKey}.${m.key}.${f.key}`;
-    // File fields don't write to `submissions` — they write to `uploads`.
+    // File fields don't write to `submissions` - they write to `uploads`.
     // A required file field is "filled" when at least one upload exists.
     if (f.type === 'file' || f.type === 'file_multiple') {
       return snap.uploads.some(u => u.category === fieldKey);

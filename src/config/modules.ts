@@ -127,7 +127,7 @@ const BUSINESS_PROFILE: ServiceDef = {
       estimatedMinutes: 3,
       fields: [{
         key: 'logo_files',
-        label: 'Logo files — Google Drive or Dropbox link',
+        label: 'Logo files - Google Drive or Dropbox link',
         type: 'url',
         required: true,
         placeholder: 'https://drive.google.com/…',
@@ -866,7 +866,7 @@ const WEBSITE: ServiceDef = {
       fields: [
         {
           key: 'website_logo',
-          label: 'Logo — Google Drive or Dropbox link',
+          label: 'Logo - Google Drive or Dropbox link',
           type: 'url',
           required: true,
           placeholder: 'https://drive.google.com/…',

@@ -62,7 +62,7 @@ export function ModulePage() {
 
   const celebrateCompletionRef = useRef<() => void>(() => {});
 
-  // Memoized early — findNextActionableModule walks every enabled service
+  // Memoized early - findNextActionableModule walks every enabled service
   // and every module. Stay above early returns so hook order is stable.
   // Nullable inputs handled inside.
   const nextActionable = useMemo(
@@ -298,7 +298,7 @@ export function ModulePage() {
             )}
 
             {/* FORM. Hide any fields the admin has disabled for this client
-                 (disabledFieldKeys). Same rule ServicePage applies — without
+                 (disabledFieldKeys). Same rule ServicePage applies - without
                  this check, module-level drill-ins would expose fields that
                  the list-level view hides. */}
             {mod.fields && mod.fields.filter(f => !disabledFieldSet.has(`${mod.key}.${f.key}`)).length > 0 && (

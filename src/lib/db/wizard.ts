@@ -50,7 +50,7 @@ export async function createClient(input: CreateClientInput): Promise<Organizati
         extra: { phase: 'rollback-failed', orgId: org.id, originalReason: reason },
         level: 'fatal',
       });
-      console.error('[wizard] rollback failed — zombie org left behind:', org.id, rollbackErr);
+      console.error('[wizard] rollback failed - zombie org left behind:', org.id, rollbackErr);
     }
   };
 

@@ -7,7 +7,7 @@ import { cn } from '../lib/cn';
  * red = health check failed. Click-through optional via `href`.
  *
  * Variant 'admin' renders a link to /admin/diagnostics with label text.
- * Variant 'client' is compact and tooltip-only — Serenium signature on
+ * Variant 'client' is compact and tooltip-only - Serenium signature on
  * the client dashboard that says "the people behind this are watching it."
  */
 export function StatusPill({ variant = 'admin', href }: { variant?: 'admin' | 'client'; href?: string }) {

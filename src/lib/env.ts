@@ -42,5 +42,5 @@ export function readEnv(): EnvConfig {
   };
 }
 
-/** Singleton — validated once at import. */
+/** Singleton - validated once at import. */
 export const env = readEnv();

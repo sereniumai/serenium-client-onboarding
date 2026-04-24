@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isClientInsideOnboarding = !!(user?.role === 'client' && org
     && location.pathname.startsWith(`/onboarding/${org.slug}/services`));
 
-  // Fetch whether a welcome video is set — drives a "Welcome video" sidebar
+  // Fetch whether a welcome video is set - drives a "Welcome video" sidebar
   // entry for clients. Cached with the same queryKey as the modal so both
   // share one request.
   const { data: welcomeVideo } = useQuery({
@@ -182,7 +182,7 @@ function buildSections({
   }
 
   // During onboarding, list each enabled service directly. No phase grouping, no
-  // module-level detail — clean and clickable.
+  // module-level detail - clean and clickable.
   const enabledServiceKeys = progress?.enabledServices ?? [];
   const serviceItems = SELECTABLE_SERVICES
     .filter(s => enabledServiceKeys.includes(s.key))

@@ -133,7 +133,7 @@ export function WelcomeVideoManager() {
             <div className="card mt-6">
               <p className="eyebrow mb-2">Testing</p>
               <p className="text-sm text-white/60 mb-4">
-                Clients only see the welcome video once. While testing the video with staff, click here to wipe the "already seen" flag — every client sees it again on their next login.
+                Clients only see the welcome video once. While testing the video with staff, click here to wipe the "already seen" flag - every client sees it again on their next login.
               </p>
               <button
                 onClick={() => setResetOpen(true)}

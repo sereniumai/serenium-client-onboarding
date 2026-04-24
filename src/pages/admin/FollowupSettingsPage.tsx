@@ -21,7 +21,7 @@ export function FollowupSettingsPage() {
 
   // Warn before the browser unloads with unsaved changes. This covers refresh,
   // tab close, and external navigation. Doesn't cover in-app <Link> clicks
-  // (React Router needs its own blocker for that — not added here since most
+  // (React Router needs its own blocker for that - not added here since most
   // admin work happens in this tab at a time).
   useEffect(() => {
     if (!dirty) return;

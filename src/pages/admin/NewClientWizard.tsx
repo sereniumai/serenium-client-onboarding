@@ -42,7 +42,7 @@ export function NewClientWizard() {
     setDisabledModules(prev => ({ ...prev, [svcKey]: enabled ? [] : svc.modules.map(m => m.key) }));
   };
 
-  // Basic shape check — catches "no @" and "no ." typos. The real verification
+  // Basic shape check - catches "no @" and "no ." typos. The real verification
   // happens when Resend bounces the invite; this just stops the most common
   // fat-finger errors from shipping a client who never gets an email.
   const isValidEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim());
@@ -60,7 +60,7 @@ export function NewClientWizard() {
     const validUsers = allExtras.filter(u => isValidEmail(u.email));
     const skipped = allExtras.length - validUsers.length;
     if (skipped > 0) {
-      toast.warning(`${skipped} user row${skipped === 1 ? '' : 's'} skipped — invalid email`);
+      toast.warning(`${skipped} user row${skipped === 1 ? '' : 's'} skipped - invalid email`);
     }
     const final = validUsers.length > 0 ? validUsers : [{ fullName: primaryName, email: primaryEmail, role: 'owner' as const }];
     try {
@@ -246,8 +246,8 @@ export function NewClientWizard() {
               <div className="pt-5 mt-5 border-t border-border-subtle">
                 <p className="eyebrow mb-3">Review</p>
                 <div className="grid sm:grid-cols-2 gap-3 text-sm mb-4">
-                  <SummaryRow label="Business" value={businessName || '—'} />
-                  <SummaryRow label="Primary contact" value={primaryName || '—'} />
+                  <SummaryRow label="Business" value={businessName || '-'} />
+                  <SummaryRow label="Primary contact" value={primaryName || '-'} />
                   <SummaryRow label="Total steps" value={totalSteps(services, disabledModules).toString()} />
                   <SummaryRow label="Users invited" value={(users.filter(u => u.email.trim()).length || 1).toString()} />
                 </div>

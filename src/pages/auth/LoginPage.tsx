@@ -40,11 +40,19 @@ export function LoginPage() {
       const profile = await Promise.race([signIn(data.email, data.password), timeout]);
 
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
-      if (from) { navigate(from, { replace: true }); return; }
 
+      // Admins always land on /admin after login. Deep-link "from" resume is
+      // only useful for clients (email invite link → login → continue to
+      // onboarding). Admins logging back in want the fresh client list, not
+      // whatever page their expired session last touched.
       if (profile.role === 'admin') {
         navigate('/admin', { replace: true });
-      } else {
+        return;
+      }
+
+      if (from) { navigate(from, { replace: true }); return; }
+
+      {
         const orgs = await Promise.race([listOrgsForUser(profile.id), timeout]).catch(() => []);
         if (orgs[0]) navigate(`/onboarding/${orgs[0].slug}`, { replace: true });
         else navigate('/', { replace: true });

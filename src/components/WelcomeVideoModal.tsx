@@ -23,7 +23,7 @@ export function WelcomeVideoModal() {
   const { user } = useAuth();
   const [show, setShow] = useState(false);
   // Track whether this open is "first login" (should mark seen on dismiss)
-  // or "manual rewatch" (don't touch seen-state — they've already seen it).
+  // or "manual rewatch" (don't touch seen-state - they've already seen it).
   const [manuallyOpened, setManuallyOpened] = useState(false);
 
   const { data: video } = useQuery({

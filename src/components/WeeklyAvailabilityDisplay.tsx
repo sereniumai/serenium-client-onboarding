@@ -52,9 +52,9 @@ export function WeeklyAvailabilityDisplay({ schedule }: { schedule: WeekSchedule
               <div className="text-xs mt-1 text-white/40">Closed</div>
             ) : (
               <>
-                <div className="text-xs font-mono mt-1 text-white/90">{d.open ?? '—'}</div>
+                <div className="text-xs font-mono mt-1 text-white/90">{d.open ?? '-'}</div>
                 <div className="text-[10px] text-white/40">to</div>
-                <div className="text-xs font-mono text-white/90">{d.close ?? '—'}</div>
+                <div className="text-xs font-mono text-white/90">{d.close ?? '-'}</div>
                 {d.breakStart && d.breakEnd && (
                   <div className="text-[10px] text-white/40 mt-1 pt-1 border-t border-border-subtle">
                     Break {d.breakStart}–{d.breakEnd}

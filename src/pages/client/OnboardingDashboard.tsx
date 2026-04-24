@@ -44,7 +44,7 @@ export function OnboardingDashboard() {
   // smoothly scroll back to the top when the hash clears. Depends only on
   // snapshot *existence* (not identity) so autosave-driven re-fetches of
   // the snapshot don't yank the page back to the top mid-scroll.
-  // ALL hooks live above any early return — must be called in the same
+  // ALL hooks live above any early return - must be called in the same
   // order every render. Each one tolerates a null snapshot so they can
   // run on loading renders too.
   const hasSnapshot = !!snapshot;
@@ -59,7 +59,7 @@ export function OnboardingDashboard() {
     }
   }, [location.hash, hasSnapshot]);
 
-  // Memoized — getOrgProgress walks every enabled service's modules and
+  // Memoized - getOrgProgress walks every enabled service's modules and
   // every submission. React Query's structural sharing means the snapshot
   // reference only changes when actual data changes, so this skips the
   // walk on child-triggered re-renders.
@@ -291,7 +291,7 @@ function OtherSerenumServices({ unavailableServiceKeys }: { unavailableServiceKe
             Other services we offer
           </h3>
           <p className="text-sm text-white/55 mt-1 max-w-xl">
-            Not part of your current plan — but each one slots into the same portal whenever you're ready.
+            Not part of your current plan - but each one slots into the same portal whenever you're ready.
           </p>
         </div>
         <a
