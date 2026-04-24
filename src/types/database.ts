@@ -224,14 +224,14 @@ interface TeamNotificationSent {
 
 type Table<Row> = {
   Row: Row;
-  Insert: Partial<Row> & Pick<Row, Extract<keyof Row, string>>;
+  Insert: Partial<Row>;
   Update: Partial<Row>;
 };
 
 export interface Database {
   public: {
     Tables: {
-      profiles:                { Row: Profile;               Insert: Partial<Profile> & Pick<Profile, 'id' | 'full_name' | 'email'>; Update: Partial<Profile> };
+      profiles:                Table<Profile>;
       organizations:           Table<Organization>;
       organization_members:    Table<OrganizationMember>;
       organization_services:   Table<OrganizationService>;
