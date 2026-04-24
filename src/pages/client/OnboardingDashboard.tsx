@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useParams, Navigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, PlayCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle2, PlayCircle, ArrowRight, Clock } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { CircleProgress } from '../../components/CircleProgress';
@@ -157,6 +157,35 @@ export function OnboardingDashboard() {
 
         </section>
 
+        {/* Resume where you left off */}
+        {!onboardingDone && (() => {
+          const resume = findLastTouchedModule(snapshot);
+          if (!resume) return null;
+          return (
+            <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-4">
+              <Link
+                to={`/onboarding/${org.slug}/services/${resume.serviceKey}/${resume.moduleKey}`}
+                className="card block group border-orange/30 hover:border-orange/60 hover:-translate-y-0.5 transition-all"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-11 w-11 rounded-xl bg-orange/15 text-orange flex items-center justify-center shrink-0">
+                    <PlayCircle className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="eyebrow mb-1">Pick up where you left off</p>
+                    <p className="font-display font-bold text-base md:text-lg truncate">{resume.serviceLabel} · {resume.moduleTitle}</p>
+                    <p className="text-xs text-white/55 mt-0.5 inline-flex items-center gap-3">
+                      <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> ~{resume.estimatedMinutes} min</span>
+                      {resume.lastTouchedAt && <span>Last edited {relativeTime(resume.lastTouchedAt)}</span>}
+                    </p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-orange shrink-0 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            </section>
+          );
+        })()}
+
         {/* At-a-glance stats strip */}
         {!onboardingDone && (
           <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-4">
@@ -278,4 +307,59 @@ function daysSince(iso: string): string {
   if (days === 0) return 'Today';
   if (days === 1) return '1 day ago';
   return `${days} days ago`;
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? 'yesterday' : `${days} days ago`;
+}
+
+/** Find the module most recently touched that isn't already complete. */
+function findLastTouchedModule(snapshot: import('../../lib/progress').OrgSnapshot):
+  | { serviceKey: ServiceKey; moduleKey: string; serviceLabel: string; moduleTitle: string; estimatedMinutes: number; lastTouchedAt: string | null }
+  | null
+{
+  // Pick the submission with the latest updated_at, map back to its module.
+  const sorted = [...snapshot.submissions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  for (const sub of sorted) {
+    const [svcKey, modKey] = sub.fieldKey.split('.');
+    if (!svcKey || !modKey) continue;
+    const svc = getService(svcKey as ServiceKey);
+    const mod = svc?.modules.find(m => m.key === modKey);
+    if (!svc || !mod) continue;
+    const mp = snapshot.moduleProgress.find(p => p.serviceKey === svcKey && p.moduleKey === modKey);
+    if (mp?.status === 'complete') continue; // Skip completed modules, we want something to resume.
+    return {
+      serviceKey: svc.key,
+      moduleKey: mod.key,
+      serviceLabel: svc.label,
+      moduleTitle: mod.title,
+      estimatedMinutes: mod.estimatedMinutes ?? 5,
+      lastTouchedAt: sub.updatedAt,
+    };
+  }
+
+  // No recent submissions, fall back to the first in-progress module.
+  const firstInProgress = snapshot.moduleProgress.find(p => p.status === 'in_progress');
+  if (firstInProgress) {
+    const svc = getService(firstInProgress.serviceKey);
+    const mod = svc?.modules.find(m => m.key === firstInProgress.moduleKey);
+    if (svc && mod) {
+      return {
+        serviceKey: svc.key,
+        moduleKey: mod.key,
+        serviceLabel: svc.label,
+        moduleTitle: mod.title,
+        estimatedMinutes: mod.estimatedMinutes ?? 5,
+        lastTouchedAt: null,
+      };
+    }
+  }
+  return null;
 }

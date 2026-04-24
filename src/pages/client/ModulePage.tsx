@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Clock, PlayCircle, CheckCircle2, ArrowRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { cn } from '../../lib/cn';
 import { AppShell } from '../../components/AppShell';
 import { TaskCheckbox } from '../../components/TaskCheckbox';
 import { FieldRenderer } from '../../components/FieldRenderer';
@@ -20,7 +20,7 @@ import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../
 import { getService, getModule } from '../../config/modules';
 import { evaluate } from '../../lib/condition';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
-import { moduleIsReady, findNextActionableModule, getOrgProgress } from '../../lib/progress';
+import { moduleIsReady, findNextActionableModule, getOrgProgress, submissionIsFilled } from '../../lib/progress';
 import { useQuery } from '@tanstack/react-query';
 import { listStepVideos } from '../../lib/db/videos';
 import type { ServiceKey } from '../../types';
@@ -80,10 +80,8 @@ export function ModulePage() {
     }
   };
 
-  const markComplete = () => {
+  const celebrateCompletion = () => {
     const before = getOrgProgress(snapshot);
-    setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'complete', userId: user?.id });
-    // After-progress is computed against the in-flight snapshot; refreshed data arrives via query invalidation.
     const after = { ...before, completeModules: before.completeModules + 1, overall: Math.round(((before.completeModules + 1) / before.totalModules) * 100) };
 
     if (after.totalModules > 0 && after.overall === 100) {
@@ -116,10 +114,28 @@ export function ModulePage() {
         colors: ['#FF6B1F', '#FF7A35', '#FFD4BA', '#ffffff'],
         zIndex: 9999,
       });
-      toast.success('Submitted', { description: mod.title });
+      toast.success('Module complete', { description: mod.title });
     }
     setShowComplete(true);
   };
+
+  // Auto-complete when every required field/task is filled. We debounce the
+  // transition so the confetti doesn't fire on page load for an already-done
+  // module (ready was already true before this render).
+  const readyRef = useRef(ready);
+  useEffect(() => {
+    if (!mp) return;
+    if (ready && mp.status !== 'complete' && !adminLockedReason) {
+      // Transition from "not ready" / first-time ready to "ready + not yet complete".
+      // Fire complete + celebrate, exactly once per module instance.
+      if (!readyRef.current || mp.status === 'not_started' || mp.status === 'in_progress') {
+        setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'complete', userId: user?.id });
+        celebrateCompletion();
+      }
+    }
+    readyRef.current = ready;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, mp?.status]);
 
   const markIncomplete = () => {
     setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'in_progress', userId: user?.id });
@@ -318,28 +334,28 @@ export function ModulePage() {
               </section>
             )}
 
-            {/* ACTIONS */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 py-6 border-t border-border-subtle mb-8">
-              <div>
-                {!ready && !complete && (
-                  <p className="text-sm text-white/50">Complete required items to mark this module done.</p>
-                )}
-                {complete && (
-                  <div className="inline-flex items-center gap-2 text-success">
-                    <CheckCircle2 className="h-5 w-5" />
-                    <span className="font-medium">Submitted</span>
-                  </div>
-                )}
-              </div>
+            {/* COMPLETION STATE */}
+            <div className="py-6 border-t border-border-subtle mb-8">
               {complete ? (
-                <motion.button whileTap={{ scale: 0.98 }} onClick={markIncomplete} className="btn-secondary w-full sm:w-auto">
-                  Edit submission
-                </motion.button>
+                <div className="card border-success/40 bg-success/5 flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-success/15 text-success flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold">Module complete</p>
+                    <p className="text-xs text-white/55">Your answers autosaved. The Serenium team can see them now.</p>
+                  </div>
+                  <button onClick={markIncomplete} className="text-xs text-white/60 hover:text-white underline underline-offset-2 shrink-0">
+                    Edit again
+                  </button>
+                </div>
               ) : (
-                <motion.button whileTap={{ scale: 0.98 }} onClick={markComplete} disabled={!ready || !!adminLockedReason} className="btn-primary w-full sm:w-auto">
-                  Submit this step
-                  <ArrowRight className="h-4 w-4" />
-                </motion.button>
+                <ModuleCompletionPanel
+                  snapshot={snapshot}
+                  svcKey={svc.key}
+                  mod={mod}
+                  adminLockedReason={adminLockedReason}
+                />
               )}
             </div>
 
@@ -381,5 +397,83 @@ export function ModulePage() {
         onContinue={() => { setShowFinal(false); navigate(`/onboarding/${org.slug}`); }}
       />
     </AppShell>
+  );
+}
+
+function ModuleCompletionPanel({ snapshot, svcKey, mod, adminLockedReason }: {
+  snapshot: import('../../lib/progress').OrgSnapshot;
+  svcKey: ServiceKey;
+  mod: import('../../config/modules').ModuleDef;
+  adminLockedReason: string | null;
+}) {
+  const svcEntry = snapshot.services.find(s => s.serviceKey === svcKey);
+  const disabledFieldSet = new Set(svcEntry?.disabledFieldKeys ?? []);
+  const requiredFields = (mod.fields ?? []).filter(f => f.required && !disabledFieldSet.has(`${mod.key}.${f.key}`));
+  const requiredTasks = (mod.tasks ?? []).filter(t => t.required !== false);
+
+  const fieldStates = requiredFields.map(f => {
+    const fieldKey = `${svcKey}.${mod.key}.${f.key}`;
+    const sub = snapshot.submissions.find(s => s.fieldKey === fieldKey);
+    const done = sub ? submissionIsFilled(f, sub.value, { uploads: snapshot.uploads, fieldKey }) : false;
+    return { label: f.label ?? f.key, done };
+  });
+  const taskStates = requiredTasks.map(t => {
+    const key = `${svcKey}.${mod.key}.${t.key}`;
+    const done = !!snapshot.taskCompletions.find(c => c.taskKey === key && c.completed);
+    return { label: t.label, done };
+  });
+
+  const totalRequired = fieldStates.length + taskStates.length;
+  const totalDone = fieldStates.filter(s => s.done).length + taskStates.filter(s => s.done).length;
+
+  if (adminLockedReason) {
+    return (
+      <div className="card border-orange/30 bg-orange/5 flex items-start gap-3">
+        <div className="h-8 w-8 rounded-lg bg-orange/15 text-orange flex items-center justify-center shrink-0">🔒</div>
+        <div className="flex-1">
+          <p className="font-semibold text-sm">Not ready yet</p>
+          <p className="text-xs text-white/65 mt-0.5">{adminLockedReason}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (totalRequired === 0) {
+    return (
+      <div className="card border-success/30 bg-success/5 flex items-center gap-3">
+        <div className="h-8 w-8 rounded-lg bg-success/15 text-success flex items-center justify-center shrink-0">
+          <CheckCircle2 className="h-4 w-4" />
+        </div>
+        <p className="text-sm text-white/70">Nothing required for this module. It'll mark itself complete as soon as you save anything.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between mb-3">
+        <p className="eyebrow">Still to finish</p>
+        <span className="text-xs text-white/50 tabular-nums">{totalDone} / {totalRequired} done</span>
+      </div>
+      <div className="h-1 mb-4 rounded-full bg-bg-tertiary overflow-hidden">
+        <div className="h-full bg-orange transition-all" style={{ width: `${totalRequired === 0 ? 0 : (totalDone / totalRequired) * 100}%` }} />
+      </div>
+      <ul className="space-y-2 text-sm">
+        {fieldStates.map((f, i) => <CompletionRow key={'f' + i} label={f.label} done={f.done} />)}
+        {taskStates.map((t, i) => <CompletionRow key={'t' + i} label={t.label} done={t.done} />)}
+      </ul>
+      <p className="text-[11px] text-white/40 mt-3">Fill these in and the module ticks itself complete automatically.</p>
+    </div>
+  );
+}
+
+function CompletionRow({ label, done }: { label: string; done: boolean }) {
+  return (
+    <li className="flex items-center gap-2.5">
+      <span className={cn('h-4 w-4 rounded flex items-center justify-center shrink-0', done ? 'bg-success/20 text-success' : 'border border-white/20 text-white/30')}>
+        {done && <CheckCircle2 className="h-3 w-3" />}
+      </span>
+      <span className={cn(done ? 'text-white/50 line-through' : 'text-white/85')}>{label}</span>
+    </li>
   );
 }

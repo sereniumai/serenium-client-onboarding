@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ChevronLeft, CheckCircle2, Clock, PlayCircle, ArrowRight, Lock } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Clock, PlayCircle, Lock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
@@ -180,13 +179,23 @@ function ModuleSection({
     }
   };
 
-  const markComplete = () => {
-    onSetModuleStatus('complete');
-    sfx.submit();
-    confetti({ particleCount: 30, spread: 50, origin: { y: 0.5 }, colors: ['#FF6B1F', '#FF7A35', '#ffffff'], zIndex: 9999 });
-    toast.success('Submitted', { description: module.title });
-    onComplete();
-  };
+  // Auto-complete when ready + not already complete. Tracks previous ready value
+  // so we only fire the celebration on the transition, not on page load for
+  // an already-done module.
+  const readyRef = useRef(readyFor);
+  useEffect(() => {
+    if (readyFor && !complete && !adminLocked) {
+      if (!readyRef.current || mp?.status === 'not_started' || mp?.status === 'in_progress') {
+        onSetModuleStatus('complete');
+        sfx.submit();
+        confetti({ particleCount: 30, spread: 50, origin: { y: 0.5 }, colors: ['#FF6B1F', '#FF7A35', '#ffffff'], zIndex: 9999 });
+        toast.success('Module complete', { description: module.title });
+        onComplete();
+      }
+    }
+    readyRef.current = readyFor;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyFor, complete, adminLocked, mp?.status]);
 
   const markIncomplete = () => { onSetModuleStatus('in_progress'); };
 
@@ -323,18 +332,20 @@ function ModuleSection({
           </div>
         )}
 
-        {/* Submit */}
+        {/* Completion state */}
         <div className="pt-2 flex items-center justify-end gap-3">
           {complete ? (
-            <button onClick={markIncomplete} className="btn-secondary !py-2 !px-4 text-xs">
-              Edit submission
-            </button>
+            <div className="w-full flex items-center gap-3 rounded-lg border border-success/30 bg-success/5 px-4 py-2.5">
+              <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+              <span className="text-sm text-white/80 flex-1">Module complete. Autosaved.</span>
+              <button onClick={markIncomplete} className="text-xs text-white/60 hover:text-white underline underline-offset-2 shrink-0">
+                Edit again
+              </button>
+            </div>
           ) : (
-            <motion.button whileTap={{ scale: 0.98 }} onClick={markComplete}
-              disabled={!readyFor || adminLocked}
-              className="btn-primary !py-2 !px-4 text-xs">
-              Submit <ArrowRight className="h-3.5 w-3.5" />
-            </motion.button>
+            <p className="text-xs text-white/45 ml-auto">
+              {readyFor ? 'Saving…' : 'Fill the required fields above, we\'ll mark this complete automatically.'}
+            </p>
           )}
         </div>
       </div>
