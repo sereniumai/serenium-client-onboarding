@@ -188,6 +188,7 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
 
   return (
     <div className="space-y-6">
+      <AdminSetupCard orgId={org.id} />
       {readyForLive && org.status === 'onboarding' && (
         <div className="card border-success/40 bg-success/5">
           <div className="flex items-start gap-4">
@@ -882,6 +883,95 @@ function ProgressTab({ orgId }: { orgId: string }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Admin setup card (Retell number + AI Receptionist ready flag) ──────
+function AdminSetupCard({ orgId }: { orgId: string }) {
+  const qc = useQueryClient();
+  const { data: retell = null } = useQuery({
+    queryKey: ['retell', orgId],
+    queryFn: () => import('../../lib/db/retellNumbers').then(m => m.getRetellNumber(orgId)),
+  });
+  const { data: flags = {} } = useQuery({
+    queryKey: qk.adminFlags(orgId),
+    queryFn: () => import('../../lib/db/progress').then(m => m.listAdminFlags(orgId)),
+  });
+
+  const [number, setNumber] = useState(retell ?? '');
+  useEffect(() => { if (retell !== null) setNumber(retell); }, [retell]);
+
+  const aiReceptionistReady = !!flags['ai_receptionist_ready_for_connection'];
+
+  const saveNumber = useMutation({
+    mutationFn: async () => {
+      const { setRetellNumber, clearRetellNumber } = await import('../../lib/db/retellNumbers');
+      if (number.trim()) await setRetellNumber(orgId, number.trim());
+      else await clearRetellNumber(orgId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['retell', orgId] });
+      toast.success('Forwarding number saved');
+    },
+    onError: (err: Error) => toast.error('Save failed', { description: err.message }),
+  });
+
+  const toggleFlag = useMutation({
+    mutationFn: async (value: boolean) => {
+      const { setAdminFlag } = await import('../../lib/db/progress');
+      await setAdminFlag(orgId, 'ai_receptionist_ready_for_connection', value);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminFlags(orgId) });
+      toast.success('Setup flag updated');
+    },
+  });
+
+  const dirty = number.trim() !== (retell ?? '');
+
+  return (
+    <div className="card space-y-5 border-orange/20">
+      <div>
+        <p className="eyebrow mb-1">Admin setup</p>
+        <p className="text-xs text-white/55">Serenium-only fields. Clients don't see these directly, they drive what's visible in their portal.</p>
+      </div>
+
+      <div>
+        <label className="label">AI Receptionist forwarding number</label>
+        <div className="flex gap-2">
+          <input
+            type="tel"
+            value={number}
+            onChange={e => setNumber(e.target.value)}
+            placeholder="+1 403 555 0199"
+            className="input flex-1"
+          />
+          <button onClick={() => saveNumber.mutate()} disabled={!dirty || saveNumber.isPending} className="btn-primary shrink-0">
+            {saveNumber.isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+        <p className="text-xs text-white/40 mt-1.5">
+          The number Retell provisioned. Shown to the client on the phone forwarding step.
+        </p>
+      </div>
+
+      <div className="pt-4 border-t border-border-subtle flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">AI Receptionist is ready for the client to connect</p>
+          <p className="text-xs text-white/55 mt-0.5">Flip this on once Retell is live. Unlocks the phone number setup step in the client's portal.</p>
+        </div>
+        <button
+          onClick={() => toggleFlag.mutate(!aiReceptionistReady)}
+          disabled={toggleFlag.isPending}
+          className={cn(
+            'relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0',
+            aiReceptionistReady ? 'bg-success' : 'bg-bg-tertiary',
+          )}
+        >
+          <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white transition-transform', aiReceptionistReady ? 'translate-x-6' : 'translate-x-1')} />
+        </button>
+      </div>
     </div>
   );
 }

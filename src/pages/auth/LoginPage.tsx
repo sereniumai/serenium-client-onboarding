@@ -27,23 +27,26 @@ export function LoginPage() {
   const onSubmit = async (data: FormData) => {
     setSubmitError(null);
     try {
-      const profile = await signIn(data.email, data.password);
+      // Race signIn against a 15-second timeout so the button can never stick.
+      // If any step hangs (cold start, stale session, etc) the user gets a
+      // specific error and can retry instead of staring at "Signing in…".
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Sign-in is taking too long. Try refreshing the page.")), 15000),
+      );
+      const profile = await Promise.race([signIn(data.email, data.password), timeout]);
+
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
-      if (from) {
-        navigate(from, { replace: true });
-        return;
-      }
+      if (from) { navigate(from, { replace: true }); return; }
+
       if (profile.role === 'admin') {
         navigate('/admin', { replace: true });
       } else {
-        const orgs = await listOrgsForUser(profile.id);
-        if (orgs[0]) {
-          navigate(`/onboarding/${orgs[0].slug}`, { replace: true });
-        } else {
-          navigate('/', { replace: true });
-        }
+        const orgs = await Promise.race([listOrgsForUser(profile.id), timeout]).catch(() => []);
+        if (orgs[0]) navigate(`/onboarding/${orgs[0].slug}`, { replace: true });
+        else navigate('/', { replace: true });
       }
     } catch (e) {
+      console.error('[login] failed', e);
       setSubmitError(e instanceof Error ? e.message : 'Sign in failed');
     }
   };
