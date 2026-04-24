@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { Markdown } from '../../components/Markdown';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useOrgBySlug, useOrgMembers, useOrgServices, useUpdateOrg, useDeleteOrg } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
 import { useAuth } from '../../auth/AuthContext';
@@ -173,8 +174,9 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
     }
   };
 
-  const confirmDelete = async () => {
-    if (!confirm(`Delete ${org.businessName}? This removes the org and all its data. Irreversible.`)) return;
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const runDelete = async () => {
+    setShowDeleteConfirm(false);
     try {
       await deleteOrg.mutateAsync(org.id);
       toast.success('Client deleted');
@@ -231,10 +233,21 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
       <div className="card border-error/30">
         <p className="eyebrow text-error mb-2">Danger zone</p>
         <p className="text-sm text-white/60 mb-4">Permanently delete this client and all their data. This cannot be undone.</p>
-        <button onClick={confirmDelete} disabled={deleteOrg.isPending} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-error border border-error/40 hover:bg-error/10 transition-colors disabled:opacity-50">
+        <button onClick={() => setShowDeleteConfirm(true)} disabled={deleteOrg.isPending} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-error border border-error/40 hover:bg-error/10 transition-colors disabled:opacity-50">
           <Trash2 className="h-4 w-4" /> {deleteOrg.isPending ? 'Deleting…' : 'Delete client'}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        tone="destructive"
+        title={`Delete ${org.businessName}?`}
+        body="This removes the organisation, all submissions, all uploads, and revokes access for every invited user. Cannot be undone."
+        confirmLabel="Yes, delete permanently"
+        cancelLabel="Cancel"
+        onConfirm={runDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }
@@ -1015,8 +1028,23 @@ function ReportsTab({ orgId }: { orgId: string }) {
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['reports', orgId] });
+
+  const runDeleteReport = async () => {
+    if (!pendingDelete) return;
+    const target = pendingDelete;
+    setPendingDelete(null);
+    try {
+      const { deleteReport } = await import('../../lib/db/reports');
+      await deleteReport(target.id);
+      refresh();
+      toast.success('Report deleted');
+    } catch (err) {
+      toast.error('Delete failed', { description: (err as Error).message });
+    }
+  };
 
   if (isLoading) return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading reports…</div>;
 
@@ -1062,16 +1090,21 @@ function ReportsTab({ orgId }: { orgId: string }) {
             key={r.id}
             report={r}
             onEdit={() => setEditingId(r.id)}
-            onDelete={async () => {
-              if (!confirm(`Delete the "${r.title}" report? Clients will no longer see it.`)) return;
-              const { deleteReport } = await import('../../lib/db/reports');
-              await deleteReport(r.id);
-              refresh();
-              toast.success('Report deleted');
-            }}
+            onDelete={() => setPendingDelete({ id: r.id, title: r.title })}
           />
         )
       ))}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        tone="destructive"
+        title={`Delete "${pendingDelete?.title}"?`}
+        body="This removes the report from the client's portal. Uploaded files stay in storage — you can clean them up separately."
+        confirmLabel="Delete report"
+        cancelLabel="Cancel"
+        onConfirm={runDeleteReport}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

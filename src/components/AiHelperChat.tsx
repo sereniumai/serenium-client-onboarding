@@ -5,6 +5,7 @@ import { Sparkles, X, Send, Trash2, Minus } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '../auth/AuthContext';
+import { ConfirmDialog } from './ConfirmDialog';
 import { useOrgsForUser } from '../hooks/useOrgs';
 import { useOrgSnapshot } from '../hooks/useOnboarding';
 import { getOrgProgress } from '../lib/progress';
@@ -104,10 +105,15 @@ export function AiHelperChat() {
     }
   };
 
-  const onClear = async () => {
-    if (!confirm('Clear your entire chat history with Aria?')) return;
-    await clearChat(user.id);
-    refetch();
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const runClear = async () => {
+    setShowClearConfirm(false);
+    try {
+      await clearChat(user.id);
+      refetch();
+    } catch (err) {
+      toast.error("Couldn't clear chat", { description: (err as Error).message });
+    }
   };
 
   return (
@@ -213,7 +219,7 @@ export function AiHelperChat() {
                 </button>
               </form>
               {messages.length > 0 && (
-                <button onClick={onClear} className="text-[10px] text-white/30 hover:text-white/60 inline-flex items-center gap-1 mt-2">
+                <button onClick={() => setShowClearConfirm(true)} className="text-[10px] text-white/30 hover:text-white/60 inline-flex items-center gap-1 mt-2">
                   <Trash2 className="h-2.5 w-2.5" /> Clear conversation
                 </button>
               )}
@@ -221,6 +227,17 @@ export function AiHelperChat() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmDialog
+        open={showClearConfirm}
+        tone="destructive"
+        title="Clear chat history?"
+        body="All of your past questions and Aria's answers will be removed from your account. Can't be undone."
+        confirmLabel="Clear everything"
+        cancelLabel="Keep them"
+        onConfirm={runClear}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </>
   );
 }
