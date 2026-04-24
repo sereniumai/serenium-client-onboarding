@@ -31,16 +31,15 @@ Vercel should be live with commits through `0b1ba0c`. Verify:
 
 ---
 
-## 🟠 Known issues (post-launch OK for first 1-2 clients)
+## 🟠 Remaining known issues (post-launch OK for first 1-2 clients)
 
-- **Wizard rollback** — if client creation fails mid-way, zombie org. Admin can delete manually.
 - **Ex-admin role change** — demoted admin keeps admin UI for up to 1hr until JWT refresh. Low risk at 5 clients.
-- **Invitation email send failure** — client-side `.catch(console.warn)` with no toast. Admin UX improvement.
-- **Modal focus trap + Esc handling** — keyboard-only users can't close CompletionOverlay / FinalCelebration / WelcomeVideoModal.
 - **Autosave optimistic concurrency** — two tabs editing same field can last-write-wins. Unlikely at our scale.
-- **Impersonation writes not tagged** — edits made while impersonating look like client edits in activity log.
-- **Supabase Pro upgrade + PITR** — $25/mo, gives 7-day point-in-time recovery. Needed before meaningful client data. Currently deferred.
-- **Stranded uploaded files** — clients who uploaded to the now-removed file fields have orphan files in Supabase Storage. Safe to delete manually; not urgent.
+- **Impersonation writes not tagged** — edits made while impersonating look like client edits in activity log. Session-level audit exists in `admin_impersonation_audit` so forensic path is there.
+- **Supabase Pro upgrade + PITR** — $25/mo, gives 7-day point-in-time recovery. Needed before meaningful client data.
+- **Stranded uploaded files** — clients who uploaded to the now-removed file fields have orphan files in Supabase Storage. Safe to delete manually.
+- **3 `setState-in-effect` lint warnings** — not bugs, just non-ideal patterns. Can rewrite later.
+- **5 `any` types in edge functions** — cosmetic, functions work fine.
 
 ---
 
@@ -75,6 +74,14 @@ Vercel should be live with commits through `0b1ba0c`. Verify:
 - Client-side system-health pill with live tooltip
 - Admin direct-URL `/onboarding/X` bounces to `/admin/clients/X`
 - Required file fields no longer block module completion
+
+### Polish sweep 2
+- Wizard rollback: createClient now deletes the org if any post-createOrg step fails. No more zombie orgs.
+- Modals: shared `useModal` hook adds Esc-to-close + focus return on unmount + role=dialog + aria-modal on CompletionOverlay, FinalCelebration, WelcomeVideoModal, FollowupModal.
+- Invitation email failure: toast + Sentry capture, admin told to copy the invite link.
+- Contrast bumps for essential muted text (help text, footers, optional labels) past WCAG AA.
+- Console cleanup: auth/sentry logs removed from production noise.
+- 2 more conditional-hooks bugs caught by lint and fixed.
 
 ### UX reshapes
 - All file upload fields replaced with Drive/Dropbox URL fields
