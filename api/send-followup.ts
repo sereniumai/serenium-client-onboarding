@@ -58,6 +58,9 @@ export default async function handler(req: Request): Promise<Response> {
   if (orgErr || !org) return json({ error: 'Organization not found' }, 404);
   const o = org as { primary_contact_email: string | null; primary_contact_name: string | null; business_name: string };
   if (!o.primary_contact_email) return json({ error: 'No primary contact email on file' }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.primary_contact_email)) {
+    return json({ error: 'Primary contact email on file is not a valid email address' }, 400);
+  }
 
   const firstName = (o.primary_contact_name ?? '').split(' ')[0] || 'there';
   const portalUrl = 'https://clients.sereniumai.com';
