@@ -8,9 +8,11 @@ interface Props {
   subtitle?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  width?: 'narrow' | 'wide';
 }
 
-export function AuthLayout({ eyebrow, title, subtitle, children, footer }: Props) {
+export function AuthLayout({ eyebrow, title, subtitle, children, footer, width = 'narrow' }: Props) {
+  const widthClass = width === 'wide' ? 'max-w-3xl' : 'max-w-md';
   return (
     <div className="relative min-h-screen overflow-hidden">
       <HeroGlow />
@@ -20,7 +22,7 @@ export function AuthLayout({ eyebrow, title, subtitle, children, footer }: Props
         </header>
 
         <main className="flex flex-1 items-center justify-center px-6 pb-16">
-          <div className="w-full max-w-md">
+          <div className={`w-full ${widthClass}`}>
             {eyebrow && <p className="eyebrow text-center mb-4">{eyebrow}</p>}
             <h1 className="text-center font-display font-black text-4xl md:text-5xl leading-[1.05] tracking-[-0.03em] mb-3">
               {title}

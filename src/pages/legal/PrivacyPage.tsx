@@ -7,11 +7,12 @@ export function PrivacyPage() {
       eyebrow="Legal"
       title={<>Privacy <span className="text-orange">Policy</span></>}
       subtitle="Last updated April 24, 2026"
+      width="wide"
       footer={<Link to="/login" className="text-orange hover:text-orange-hover">Back to sign in</Link>}
     >
       <div className="text-sm text-white/70 space-y-5 max-w-none leading-relaxed">
         <p>
-          This Privacy Policy explains how <strong className="text-white">Serenium AI Ltd.</strong> ("Serenium",
+          This Privacy Policy explains how <strong className="text-white">Serenium AI Inc.</strong> ("Serenium",
           "we", "us", "our") collects, uses, discloses, and protects personal information when you use
           clients.sereniumai.com (the "Portal"). We comply with Canada's Personal Information Protection and
           Electronic Documents Act (PIPEDA) and Alberta's Personal Information Protection Act (PIPA).
@@ -85,6 +86,11 @@ export function PrivacyPage() {
           <li><strong className="text-white/85">Anthropic</strong> — Claude AI model powering the in-Portal
             assistant. Messages you send the assistant are transmitted to Anthropic and are not used to train
             their models per their Zero Data Retention / API Terms</li>
+          <li><strong className="text-white/85">Sentry</strong> — application error monitoring. Receives
+            stack traces, browser metadata, and a non-identifying user ID when errors occur. We strip cookies
+            and IP addresses before sending. No form input or file content is transmitted (United States)</li>
+          <li><strong className="text-white/85">UptimeRobot</strong> — uptime monitoring. Polls a public health
+            endpoint every few minutes; does not access any personal information</li>
           <li><strong className="text-white/85">Google Fonts</strong> — typography delivery</li>
         </ul>
         <p>
@@ -124,7 +130,8 @@ export function PrivacyPage() {
           <li>Withdraw your consent to further processing</li>
           <li>Ask us to delete your information, subject to any overriding legal obligations</li>
           <li>Receive a copy of your data in a portable format</li>
-          <li>Lodge a complaint with the Office of the Privacy Commissioner of Canada</li>
+          <li>Lodge a complaint with the Office of the Privacy Commissioner of Canada (priv.gc.ca) or, for
+            Alberta residents, the Office of the Information and Privacy Commissioner of Alberta (oipc.ab.ca)</li>
         </ul>
         <p>
           To exercise any of these rights, email{' '}
@@ -153,16 +160,27 @@ export function PrivacyPage() {
           You can clear your chat history from the assistant panel at any time.
         </p>
 
-        <h3 className="text-white font-semibold text-base pt-4">13. Changes to this policy</h3>
+        <h3 className="text-white font-semibold text-base pt-4">13. Commercial electronic messages (CASL)</h3>
+        <p>
+          We comply with Canada's Anti-Spam Legislation (CASL). The emails we send you — invitations, password
+          resets, onboarding progress updates, and occasional nudges when your account is inactive — are part of
+          the service you signed up for when you accepted your Serenium invitation, and are sent under implied
+          consent arising from our business relationship with your company. Every email identifies Serenium AI Inc.
+          and includes a contact address. If you no longer wish to receive service-related emails, reply to any
+          message or contact <a href="mailto:contact@sereniumai.com" className="text-orange">contact@sereniumai.com</a>{' '}
+          and we will stop sending them (note: this may affect our ability to deliver the service).
+        </p>
+
+        <h3 className="text-white font-semibold text-base pt-4">14. Changes to this policy</h3>
         <p>
           We may update this policy. When we make material changes we will notify you in the Portal or by email
           at least seven days before the change takes effect. Continued use of the Portal after that constitutes
           acceptance.
         </p>
 
-        <h3 className="text-white font-semibold text-base pt-4">14. Contact</h3>
+        <h3 className="text-white font-semibold text-base pt-4">15. Contact</h3>
         <p>
-          Serenium AI Ltd.<br />
+          Serenium AI Inc.<br />
           Cochrane, Alberta, Canada<br />
           <a href="mailto:contact@sereniumai.com" className="text-orange">contact@sereniumai.com</a>
         </p>

@@ -228,14 +228,6 @@ function ModuleSection({
       </div>
 
       <div className="px-5 md:px-7 py-6 space-y-6">
-        {/* Retell forwarding number card, only for the call forwarding step */}
-        {false && module.lockedUntilAdminFlag === 'ai_receptionist_ready_for_connection' && (
-          <div className="rounded-lg border border-orange/50 p-4">
-            <p className="eyebrow mb-1">Your Serenium forwarding number</p>
-            <p className="font-display font-black text-2xl md:text-3xl tracking-tight tabular-nums">—</p>
-          </div>
-        )}
-
         {/* Video, only if module has one */}
         {hasVideo && (
           embed ? (

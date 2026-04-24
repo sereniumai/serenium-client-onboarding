@@ -7,12 +7,13 @@ export function TermsPage() {
       eyebrow="Legal"
       title={<>Terms of <span className="text-orange">Service</span></>}
       subtitle="Last updated April 24, 2026"
+      width="wide"
       footer={<Link to="/login" className="text-orange hover:text-orange-hover">Back to sign in</Link>}
     >
       <div className="text-sm text-white/70 space-y-5 max-w-none leading-relaxed">
         <p>
           These Terms of Service ("Terms") govern your access to and use of clients.sereniumai.com (the "Portal"),
-          operated by <strong className="text-white">Serenium AI Ltd.</strong> ("Serenium", "we", "us", "our")
+          operated by <strong className="text-white">Serenium AI Inc.</strong> ("Serenium", "we", "us", "our")
           from Cochrane, Alberta, Canada. By accessing the Portal you agree to these Terms.
         </p>
 
@@ -168,7 +169,7 @@ export function TermsPage() {
 
         <h3 className="text-white font-semibold text-base pt-4">18. Contact</h3>
         <p>
-          Serenium AI Ltd.<br />
+          Serenium AI Inc.<br />
           Cochrane, Alberta, Canada<br />
           <a href="mailto:contact@sereniumai.com" className="text-orange">contact@sereniumai.com</a>
         </p>

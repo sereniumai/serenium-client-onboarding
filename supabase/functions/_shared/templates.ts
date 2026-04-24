@@ -39,8 +39,10 @@ function shell(innerHtml: string, preview: string): string {
               </td>
             </tr>
             <tr>
-              <td style="padding: 24px 0; color: rgba(255,255,255,0.4); font-size: 12px; text-align: center;">
-                © ${new Date().getFullYear()} Serenium AI · Cochrane, Alberta
+              <td style="padding: 24px 0; color: rgba(255,255,255,0.4); font-size: 12px; text-align: center; line-height: 1.6;">
+                Sent by <strong style="color: rgba(255,255,255,0.6);">Serenium AI Inc.</strong> · Cochrane, Alberta, Canada<br />
+                <a href="mailto:contact@sereniumai.com" style="color: rgba(255,255,255,0.5);">contact@sereniumai.com</a> · <a href="https://clients.sereniumai.com/privacy" style="color: rgba(255,255,255,0.5);">Privacy</a> · <a href="https://clients.sereniumai.com/terms" style="color: rgba(255,255,255,0.5);">Terms</a><br />
+                <span style="color: rgba(255,255,255,0.3);">You're receiving this as part of your Serenium client onboarding.</span>
               </td>
             </tr>
           </table>

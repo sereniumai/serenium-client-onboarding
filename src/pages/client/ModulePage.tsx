@@ -42,6 +42,26 @@ export function ModulePage() {
   const svc = serviceKey ? getService(serviceKey as ServiceKey) : null;
   const mod = svc && moduleKey ? getModule(svc.key, moduleKey) : null;
 
+  const readyRef = useRef(false);
+  useEffect(() => {
+    if (!snapshot || !org || !svc || !mod) return;
+    const mpLocal = snapshot.moduleProgress.find(p => p.serviceKey === svc.key && p.moduleKey === mod.key);
+    if (!mpLocal) return;
+    const readyLocal = moduleIsReady(snapshot, svc.key, mod.key);
+    const adminLocked = mod.lockedUntilAdminFlag ? !snapshot.adminFlags[mod.lockedUntilAdminFlag] : false;
+    if (adminLocked) { readyRef.current = readyLocal; return; }
+    if (readyLocal && mpLocal.status !== 'complete') {
+      if (!readyRef.current || mpLocal.status === 'not_started' || mpLocal.status === 'in_progress') {
+        setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'complete', userId: user?.id });
+        celebrateCompletionRef.current();
+      }
+    }
+    readyRef.current = readyLocal;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot, org?.id, svc?.key, mod?.key]);
+
+  const celebrateCompletionRef = useRef<() => void>(() => {});
+
   if (isLoading) {
     return (
       <AppShell>
@@ -62,7 +82,6 @@ export function ModulePage() {
 
   const taskCompletions = snapshot.taskCompletions;
   const mp = snapshot.moduleProgress.find(p => p.serviceKey === svc.key && p.moduleKey === mod.key);
-  const ready = moduleIsReady(snapshot, svc.key, mod.key);
   const complete = mp?.status === 'complete';
 
   const svcIndex = svc.modules.findIndex(m => m.key === mod.key);
@@ -118,24 +137,7 @@ export function ModulePage() {
     }
     setShowComplete(true);
   };
-
-  // Auto-complete when every required field/task is filled. We debounce the
-  // transition so the confetti doesn't fire on page load for an already-done
-  // module (ready was already true before this render).
-  const readyRef = useRef(ready);
-  useEffect(() => {
-    if (!mp) return;
-    if (ready && mp.status !== 'complete' && !adminLockedReason) {
-      // Transition from "not ready" / first-time ready to "ready + not yet complete".
-      // Fire complete + celebrate, exactly once per module instance.
-      if (!readyRef.current || mp.status === 'not_started' || mp.status === 'in_progress') {
-        setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'complete', userId: user?.id });
-        celebrateCompletion();
-      }
-    }
-    readyRef.current = ready;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, mp?.status]);
+  useEffect(() => { celebrateCompletionRef.current = celebrateCompletion; });
 
   const markIncomplete = () => {
     setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'in_progress', userId: user?.id });
