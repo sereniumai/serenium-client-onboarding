@@ -40,7 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const reset = () => {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        console.log('[auth] idle timeout, signing out');
         supabase.auth.signOut().catch(() => {});
       }, IDLE_TIMEOUT_MS);
     };
@@ -72,7 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (d) await new Promise(r => setTimeout(r, d));
         try {
           const p = await loadProfile(userId);
-          console.log('[auth] profile loaded for', userId);
           return p;
         } catch (err) {
           lastErr = err;
@@ -87,7 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      console.log('[auth] event=', event, 'hasSession=', !!session);
 
       if (event === 'SIGNED_OUT') {
         setUser(null);
