@@ -63,6 +63,13 @@ export function AiHelperChat() {
     const pick = (svc: string, mod: string, field: string) =>
       submissions.find(s => s.fieldKey === `${svc}.${mod}.${field}`)?.value;
 
+    // Derive "years in business" from the year_founded field, which replaces
+    // the old years_in_business module (stable value, doesn't drift annually).
+    const yearFounded = pick('business_profile', 'year_founded', 'year_founded');
+    const yearsInBusiness = typeof yearFounded === 'number'
+      ? new Date().getFullYear() - yearFounded
+      : undefined;
+
     return {
       firstName: user.fullName.split(' ')[0],
       businessName: currentOrg.businessName,
@@ -71,7 +78,7 @@ export function AiHelperChat() {
         const mods = progress.perService[k];
         return mods && mods.length > 0 && mods.every(m => m.status === 'complete');
       }),
-      yearsInBusiness: pick('business_profile', 'years_in_business', 'years_in_business'),
+      yearsInBusiness,
       serviceAreas: pick('business_profile', 'service_areas', 'service_areas'),
       servicesOffered: pick('business_profile', 'services_offered', 'services_offered'),
       emergencyOffered: pick('business_profile', 'emergency_service', 'emergency_offered'),

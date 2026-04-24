@@ -116,12 +116,6 @@ const BUSINESS_PROFILE: ServiceDef = {
   description: 'Core business info used across all services, filled out once, used everywhere',
   modules: [
     {
-      key: 'years_in_business',
-      title: 'Years in business',
-      estimatedMinutes: 1,
-      fields: [{ key: 'years_in_business', label: 'Years in business', type: 'number', required: true, placeholder: 'e.g. 12' }],
-    },
-    {
       key: 'logo_files',
       title: 'Logo files',
       estimatedMinutes: 3,
@@ -138,13 +132,13 @@ const BUSINESS_PROFILE: ServiceDef = {
       key: 'service_areas',
       title: 'Service areas',
       estimatedMinutes: 3,
-      fields: [{ key: 'service_areas', label: 'Cities / towns you serve', type: 'repeatable', required: true }],
-    },
-    {
-      key: 'service_areas_priority',
-      title: 'Service areas ranked by priority',
-      estimatedMinutes: 3,
-      fields: [{ key: 'service_areas_priority', label: 'Ranked by importance (most important first)', type: 'repeatable' }],
+      fields: [{
+        key: 'service_areas',
+        label: 'Cities and towns you serve, most important first',
+        type: 'repeatable',
+        required: true,
+        helpText: 'Order matters: top of the list gets priority in ads, landing pages, and SEO.',
+      }],
     },
     {
       key: 'services_offered',
@@ -254,15 +248,6 @@ const BUSINESS_PROFILE: ServiceDef = {
       fields: [{ key: 'legal_business_name', label: 'Legal entity name', type: 'text', required: true, helpText: 'Used on contracts, website footer, GBP verification, privacy policy.' }],
     },
     {
-      key: 'primary_contact',
-      title: 'Primary contact',
-      estimatedMinutes: 2,
-      fields: [
-        { key: 'primary_contact_name', label: 'Name', type: 'text', required: true },
-        { key: 'primary_contact_role', label: 'Role', type: 'select', required: true, options: ['Owner', 'Operations', 'Marketing', 'Other'] },
-      ],
-    },
-    {
       key: 'customer_types',
       title: 'Customer types served',
       estimatedMinutes: 2,
@@ -305,33 +290,6 @@ const BUSINESS_PROFILE: ServiceDef = {
         type: 'multiselect',
         options: ['Google', 'Facebook', 'HomeStars', 'BBB', 'Other'],
       }],
-    },
-    {
-      key: 'billing_contact',
-      title: 'Billing contact',
-      estimatedMinutes: 2,
-      fields: [{
-        key: 'billing_contact',
-        label: 'Who handles billing / invoicing?',
-        type: 'structured',
-        helpText: 'Leave blank if it\'s the primary contact. Add your bookkeeper or accountant here if they handle invoices.',
-        schema: [
-          { key: 'name',  label: 'Name',  type: 'text' },
-          { key: 'email', label: 'Email', type: 'email' },
-          { key: 'phone', label: 'Phone', type: 'phone' },
-        ],
-      }],
-    },
-    {
-      key: 'preferred_comms',
-      title: 'Preferred communication channel',
-      estimatedMinutes: 1,
-      fields: [
-        { key: 'preferred_comms_channel', label: 'Best way to reach you', type: 'select', required: true, options: ['Email', 'Text', 'Phone', 'Slack'] },
-        { key: 'comms_email', label: 'Email for comms', type: 'email', required: true, validate: validateEmail, conditional: { field: 'preferred_comms_channel', op: 'eq', value: 'Email' } },
-        { key: 'comms_phone', label: 'Phone number', type: 'phone', required: true, conditional: { any: [{ field: 'preferred_comms_channel', op: 'eq', value: 'Text' }, { field: 'preferred_comms_channel', op: 'eq', value: 'Phone' }] } },
-        { key: 'comms_slack_handle', label: 'Slack handle (or workspace URL)', type: 'text', required: true, conditional: { field: 'preferred_comms_channel', op: 'eq', value: 'Slack' } },
-      ],
     },
     {
       key: 'tagline',
