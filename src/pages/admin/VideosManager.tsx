@@ -173,8 +173,39 @@ function VideoRow({ serviceKey, module: m, current }: { serviceKey: ServiceKey; 
               <iframe src={effective} className="w-full h-full" title={m.title} allow="fullscreen" />
             </div>
           )}
+
+          {/* Extra walkthroughs wired via module.links + module.conditionalLinks */}
+          {(m.links && Object.keys(m.links).length > 0) || (m.conditionalLinks && Object.keys(m.conditionalLinks).length > 0) ? (
+            <div className="mt-3 space-y-1.5">
+              {m.links && Object.entries(m.links).map(([label, href]) => (
+                <ExtraWalkthrough key={`link-${label}`} label={label} href={href} trigger="Always shown" />
+              ))}
+              {m.conditionalLinks && Object.entries(m.conditionalLinks).map(([value, href]) => (
+                <ExtraWalkthrough key={`cond-${value}`} label={value} href={href} trigger={`When field value = "${value}"`} />
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ExtraWalkthrough({ label, href, trigger }: { label: string; href: string; trigger: string }) {
+  const embed = videoEmbedUrl(href);
+  const isVideo = !!embed;
+  return (
+    <div className="flex items-center gap-2 p-2 rounded-md bg-bg-tertiary/40 border border-border-subtle text-xs">
+      <span className={cn('inline-flex h-5 w-5 items-center justify-center rounded shrink-0', isVideo ? 'bg-orange/15 text-orange' : 'bg-white/5 text-white/50')}>
+        {isVideo ? '▶' : '↗'}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-white/80 truncate">{label}</p>
+        <p className="text-[10px] text-white/40 truncate">{trigger}</p>
+      </div>
+      <a href={href} target="_blank" rel="noopener noreferrer" className="text-[11px] text-orange hover:text-orange-hover shrink-0">
+        Open →
+      </a>
     </div>
   );
 }
