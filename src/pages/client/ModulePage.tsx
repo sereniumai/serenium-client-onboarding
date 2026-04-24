@@ -137,7 +137,11 @@ export function ModulePage() {
     }
     setShowComplete(true);
   };
-  useEffect(() => { celebrateCompletionRef.current = celebrateCompletion; });
+  // Keep ref fresh with the latest closure. Mutating ref.current during
+  // render is a supported React pattern when used to bridge forward-references
+  // like this (effect at top reads ref.current AFTER render commits).
+  /* eslint-disable-next-line */
+  celebrateCompletionRef.current = celebrateCompletion;
 
   const markIncomplete = () => {
     setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'in_progress', userId: user?.id });

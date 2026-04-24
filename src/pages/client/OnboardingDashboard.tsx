@@ -41,13 +41,6 @@ export function OnboardingDashboard() {
   const { data: org, isLoading: orgLoading } = useOrgBySlug(orgSlug);
   const { snapshot, isLoading: snapLoading } = useOrgSnapshot(org?.id);
 
-  // Admin landing on a client page without an explicit impersonate=1 flag
-  // almost always means they typed / bookmarked the URL. Bounce them to
-  // the admin view of that client instead of the client-facing dashboard.
-  if (user?.role === 'admin' && searchParams.get('impersonate') !== '1' && orgSlug) {
-    return <Navigate to={`/admin/clients/${orgSlug}`} replace />;
-  }
-
   // Scroll to a phase anchor when the sidebar link uses #phase-<key>, or
   // smoothly scroll back to the top when the hash clears (e.g. user clicks Overview).
   useEffect(() => {
@@ -60,6 +53,14 @@ export function OnboardingDashboard() {
       setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 40);
     }
   }, [location.hash, snapshot]);
+
+  // Admin landing on a client page without an explicit impersonate=1 flag
+  // almost always means they typed / bookmarked the URL. Bounce them to
+  // the admin view of that client instead of the client-facing dashboard.
+  // This must come AFTER hooks to avoid conditional-hook violations.
+  if (user?.role === 'admin' && searchParams.get('impersonate') !== '1' && orgSlug) {
+    return <Navigate to={`/admin/clients/${orgSlug}`} replace />;
+  }
 
   if (orgLoading || snapLoading) {
     return (
