@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Loader2, FileBarChart2, FileText, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileBarChart2, FileText, Download } from 'lucide-react';
+import { LoadingState } from '../../components/LoadingState';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { useAuth } from '../../auth/AuthContext';
@@ -41,8 +42,8 @@ export function ReportsPage() {
   if (orgLoading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center min-h-[60vh] text-white/60">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <LoadingState variant="inline" />
         </div>
       </AppShell>
     );
@@ -70,7 +71,7 @@ export function ReportsPage() {
           </div>
 
           {reportsLoading ? (
-            <div className="text-white/50 text-sm"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading reports…</div>
+            <LoadingState variant="inline" label="Loading reports…" />
           ) : reports.length === 0 ? (
             <div className="card text-center py-16">
               <FileBarChart2 className="h-10 w-10 text-orange mx-auto mb-4" />

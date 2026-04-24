@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Video, Check, X, Search, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Video, Check, X, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { LoadingState } from '../../components/LoadingState';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
@@ -43,7 +44,7 @@ export function VideosManager() {
           </div>
 
           {isLoading && (
-            <div className="text-center text-white/50 py-16"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading…</div>
+            <LoadingState />
           )}
 
           <div className="space-y-3">

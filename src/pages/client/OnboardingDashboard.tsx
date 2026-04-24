@@ -11,8 +11,8 @@ import { CompleteBanner } from '../../components/CompleteBanner';
 import { PendingReview } from '../../components/PendingReview';
 import { AnimatedNumber } from '../../components/AnimatedNumber';
 import { StatusPill } from '../../components/StatusPill';
+import { LoadingState } from '../../components/LoadingState';
 import { timeOfDayGreeting } from '../../lib/greeting';
-import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot } from '../../hooks/useOnboarding';
@@ -68,8 +68,8 @@ export function OnboardingDashboard() {
   if (orgLoading || snapLoading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center min-h-[60vh] text-white/60">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <LoadingState variant="inline" />
         </div>
       </AppShell>
     );

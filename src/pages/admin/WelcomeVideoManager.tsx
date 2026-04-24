@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Trash2, Film, Loader2 } from 'lucide-react';
+import { Upload, Trash2, Film } from 'lucide-react';
+import { LoadingState } from '../../components/LoadingState';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
@@ -65,15 +66,15 @@ export function WelcomeVideoManager() {
           </div>
 
           {isLoading ? (
-            <div className="card text-center py-12 text-white/50"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading…</div>
+            <LoadingState />
           ) : video?.storagePath ? (
             <div className="card space-y-4">
               <p className="eyebrow">Current</p>
               {signedUrl ? (
                 <video src={signedUrl} controls className="w-full rounded-lg border border-border-subtle bg-black" />
               ) : (
-                <div className="aspect-video rounded-lg border border-border-subtle bg-bg-tertiary flex items-center justify-center text-white/40">
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" /> Preparing preview…
+                <div className="aspect-video rounded-lg border border-border-subtle bg-bg-tertiary flex items-center justify-center">
+                  <LoadingState variant="inline" label="Preparing preview…" />
                 </div>
               )}
               <div className="flex items-center justify-between pt-2">

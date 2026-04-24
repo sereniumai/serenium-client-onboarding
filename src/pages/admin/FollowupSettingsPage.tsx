@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Save, Loader2, Mail, Zap, MessageSquareText, AlertCircle, Copy, Check } from 'lucide-react';
+import { Plus, Trash2, Save, Mail, Zap, MessageSquareText, AlertCircle, Copy, Check } from 'lucide-react';
+import { LoadingState } from '../../components/LoadingState';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
@@ -49,9 +50,7 @@ export function FollowupSettingsPage() {
           </div>
 
           {(isLoading || !settings) ? (
-            <div className="card text-center py-16 text-white/50">
-              <Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading follow-up settings…
-            </div>
+            <LoadingState label="Loading follow-up settings…" />
           ) : (
             <Editor
               settings={settings}

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Users, Trash2, Copy, Mail, AlertTriangle, Loader2, MessageCircle as MessageCircleIcon, Eye, Plus } from 'lucide-react';
+import { ChevronLeft, Users, Trash2, Copy, Mail, AlertTriangle, MessageCircle as MessageCircleIcon, Eye, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { Markdown } from '../../components/Markdown';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { LoadingState } from '../../components/LoadingState';
 import { useOrgBySlug, useOrgMembers, useOrgServices, useUpdateOrg, useDeleteOrg } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
 import { useAuth } from '../../auth/AuthContext';
@@ -40,8 +41,8 @@ export function ClientDetail() {
   if (isLoading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center min-h-[60vh] text-white/60">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading client…
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <LoadingState variant="inline" label="Loading client…" />
         </div>
       </AppShell>
     );
@@ -285,7 +286,7 @@ function ServicesTab({ orgId }: { orgId: string }) {
     reorder.mutate(next);
   };
 
-  if (isLoading) return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading services…</div>;
+  if (isLoading) return <LoadingState label="Loading services…" />;
 
   return (
     <div className="space-y-6">
@@ -536,7 +537,7 @@ function UsersTab({ orgId }: { orgId: string }) {
       <div className="card">
         <p className="eyebrow mb-3">Members ({members.length})</p>
         {membersLoading ? (
-          <div className="text-white/50 text-sm"><Loader2 className="h-4 w-4 animate-spin inline-block mr-2" />Loading…</div>
+          <LoadingState variant="inline" />
         ) : members.length === 0 ? (
           <p className="text-sm text-white/50">No members yet. Invite someone below.</p>
         ) : (
@@ -560,7 +561,7 @@ function UsersTab({ orgId }: { orgId: string }) {
       <div className="card">
         <p className="eyebrow mb-3">Pending invitations ({invites.length})</p>
         {invitesLoading ? (
-          <div className="text-white/50 text-sm"><Loader2 className="h-4 w-4 animate-spin inline-block mr-2" />Loading…</div>
+          <LoadingState variant="inline" />
         ) : invites.length === 0 ? (
           <p className="text-sm text-white/50 mb-4">No pending invitations.</p>
         ) : (
@@ -635,7 +636,7 @@ function SubmissionsTab({ orgId }: { orgId: string }) {
   const [filled, setFilled] = useState<'all' | 'filled' | 'empty'>('all');
 
   if (isLoading || !snapshot) {
-    return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading…</div>;
+    return <LoadingState />;
   }
 
   const totalFilled = snapshot.submissions.filter(s => s.value != null && s.value !== '').length;
@@ -821,7 +822,7 @@ function ProgressTab({ orgId }: { orgId: string }) {
   const setTask = useSetTaskCompletion();
 
   if (isLoading || !snapshot) {
-    return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading…</div>;
+    return <LoadingState />;
   }
 
   return (
@@ -1046,7 +1047,7 @@ function ReportsTab({ orgId }: { orgId: string }) {
     }
   };
 
-  if (isLoading) return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading reports…</div>;
+  if (isLoading) return <LoadingState label="Loading reports…" />;
 
   return (
     <div className="space-y-4">
@@ -1300,7 +1301,7 @@ function ActivityTab({ orgId }: { orgId: string }) {
     queryFn: () => import('../../lib/db/activity').then(m => m.listActivityForOrg(orgId, 200)),
   });
 
-  if (isLoading) return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading activity…</div>;
+  if (isLoading) return <LoadingState label="Loading activity…" />;
 
   if (items.length === 0) {
     return (
@@ -1401,7 +1402,7 @@ function AiChatsTab({ orgId }: { orgId: string }) {
     },
   });
 
-  if (isLoading) return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading chats…</div>;
+  if (isLoading) return <LoadingState label="Loading chats…" />;
   if (messages.length === 0) {
     return (
       <div className="card text-center py-16">

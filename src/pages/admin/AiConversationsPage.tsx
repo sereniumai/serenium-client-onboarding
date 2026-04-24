@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { MessageCircle, Loader2, Search } from 'lucide-react';
+import { MessageCircle, Search } from 'lucide-react';
+import { LoadingState } from '../../components/LoadingState';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { listAllChatMessages } from '../../lib/db/chat';
@@ -72,7 +73,7 @@ export function AiConversationsPage() {
           </div>
 
           {isLoading && (
-            <div className="text-center text-white/50 py-16"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading…</div>
+            <LoadingState />
           )}
 
           {!isLoading && userList.length === 0 && (
