@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Clock, PlayCircle, CheckCircle2, ArrowRight, Menu, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, Clock, PlayCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { AppShell } from '../../components/AppShell';
 import { TaskCheckbox } from '../../components/TaskCheckbox';
 import { FieldRenderer } from '../../components/FieldRenderer';
 import { SaveIndicator } from '../../components/SaveIndicator';
 import { Markdown } from '../../components/Markdown';
-import { CurriculumSidebar } from '../../components/CurriculumSidebar';
 import { CompletionOverlay } from '../../components/CompletionOverlay';
 import { FinalCelebration } from '../../components/FinalCelebration';
 import { sfx } from '../../lib/soundFx';
@@ -66,7 +65,6 @@ export function ModulePage() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [showComplete, setShowComplete] = useState(false);
   const [showFinal, setShowFinal] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const { data: org } = useOrgBySlug(orgSlug);
   const { snapshot, isLoading } = useOrgSnapshot(org?.id);
@@ -171,52 +169,13 @@ export function ModulePage() {
 
   return (
     <AppShell>
-      <div className="lg:grid lg:grid-cols-[300px,1fr]">
-        {/* SIDEBAR, desktop */}
-        <aside className="hidden lg:block border-r border-border-subtle bg-bg-secondary/40 overflow-y-auto sticky top-[65px] h-[calc(100vh-65px)] p-5">
-          <Link to={`/onboarding/${org.slug}`} className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white mb-5 px-3">
-            <ChevronLeft className="h-3.5 w-3.5" /> Dashboard
-          </Link>
-          <CurriculumSidebar organizationId={org.id} orgSlug={org.slug} />
-        </aside>
-
-        {/* SIDEBAR, mobile overlay */}
-        <AnimatePresence>
-          {mobileNavOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-bg/80 backdrop-blur-sm z-40 lg:hidden"
-                onClick={() => setMobileNavOpen(false)}
-              />
-              <motion.aside
-                initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
-                transition={{ type: 'spring', stiffness: 260, damping: 30 }}
-                className="fixed inset-y-0 left-0 z-50 w-80 bg-bg-secondary border-r border-border-subtle overflow-y-auto p-5 lg:hidden"
-              >
-                <div className="flex items-center justify-between mb-5">
-                  <Link to={`/onboarding/${org.slug}`} className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white">
-                    <ChevronLeft className="h-3.5 w-3.5" /> Dashboard
-                  </Link>
-                  <button onClick={() => setMobileNavOpen(false)} className="text-white/50 hover:text-white">
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-                <CurriculumSidebar organizationId={org.id} orgSlug={org.slug} />
-              </motion.aside>
-            </>
-          )}
-        </AnimatePresence>
-
-        {/* MAIN */}
-        <div className="min-w-0">
+      <div className="min-w-0">
           <div className="mx-auto max-w-3xl px-4 md:px-8 py-6 md:py-12">
 
             <div className="flex items-center justify-between mb-6">
-              <button onClick={() => setMobileNavOpen(true)} className="lg:hidden inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white">
-                <Menu className="h-4 w-4" /> Onboarding
-              </button>
-              <div className="hidden lg:block" />
+              <Link to={`/onboarding/${org.slug}`} className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white">
+                <ChevronLeft className="h-4 w-4" /> Dashboard
+              </Link>
               <SaveIndicator status={saveStatus} />
             </div>
 
@@ -430,7 +389,6 @@ export function ModulePage() {
             )}
           </div>
         </div>
-      </div>
 
       <CompletionOverlay
         show={showComplete}
