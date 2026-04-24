@@ -165,6 +165,18 @@ export function OnboardingDashboard() {
 
         </section>
 
+        {/* At-a-glance stats strip */}
+        {!onboardingDone && (
+          <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatChip label="Modules done" value={`${progress.completeModules}/${progress.totalModules}`} />
+              <StatChip label="Fields answered" value={String(snapshot.submissions.filter(s => s.value != null && s.value !== '').length)} />
+              <StatChip label="Files uploaded" value={String(snapshot.uploads.length)} />
+              <StatChip label="Started" value={daysSince(org.createdAt)} />
+            </div>
+          </section>
+        )}
+
         {/* POST-ONBOARDING, latest report + complete banner */}
         {onboardingDone && (
           <section className="relative mx-auto max-w-6xl px-6 pb-2">
@@ -368,4 +380,20 @@ function ModuleRow({ index, orgSlug, serviceKey, moduleKey, title, description, 
 
   if (locked) return content;
   return <Link to={href}>{content}</Link>;
+}
+
+function StatChip({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-xl border border-border-subtle bg-bg-secondary/40 px-4 py-3">
+      <p className="text-[10px] uppercase tracking-wider text-white/40 font-semibold mb-1">{label}</p>
+      <p className="font-display font-black text-xl tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function daysSince(iso: string): string {
+  const days = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / (24 * 3600 * 1000)));
+  if (days === 0) return 'Today';
+  if (days === 1) return '1 day ago';
+  return `${days} days ago`;
 }

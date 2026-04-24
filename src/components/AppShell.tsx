@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, Briefcase, Globe, Bot, LifeBuoy } from 'lucide-react';
+import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, Briefcase, Globe, Bot, LifeBuoy, ChevronLeft } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { PHASES } from '../config/phases';
 import { Sidebar, type SidebarSection } from './Sidebar';
@@ -26,12 +26,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const progress = snapshot ? getOrgProgress(snapshot) : null;
   const onboardingDone = !!progress && progress.totalModules > 0 && progress.overall === 100;
 
+  const isClientInsideOnboarding = !!(user?.role === 'client' && org
+    && location.pathname.startsWith(`/onboarding/${org.slug}/services`));
+
   const sections = buildSections({
     userRole: user?.role,
     orgSlug,
     onboardingDone,
     hasUnreadWhatsNew: user?.role === 'admin' ? hasUnreadChangelog() : false,
     progress,
+    editingMode: isClientInsideOnboarding,
   });
 
   // Auth / public routes render without the shell chrome
@@ -52,9 +56,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
     );
   }
-
-  const isClientInsideOnboarding = user.role === 'client' && org
-    && (location.pathname.startsWith(`/onboarding/${org.slug}/services`));
 
   // AI chat is only for active onboarding. Hide it once the client's onboarding is done.
   const showAiChat = user.role === 'admin' || !onboardingDone;
@@ -88,13 +89,14 @@ const PHASE_ICON: Record<string, LucideIcon> = {
 };
 
 function buildSections({
-  userRole, orgSlug, onboardingDone, hasUnreadWhatsNew, progress,
+  userRole, orgSlug, onboardingDone, hasUnreadWhatsNew, progress, editingMode,
 }: {
   userRole: 'admin' | 'client' | undefined;
   orgSlug: string | null;
   onboardingDone: boolean;
   hasUnreadWhatsNew: boolean;
   progress: ReturnType<typeof getOrgProgress> | null;
+  editingMode: boolean;
 }): SidebarSection[] {
   if (userRole === 'admin') {
     return [
@@ -128,6 +130,19 @@ function buildSections({
 
   // Client nav
   if (!orgSlug) return [];
+
+  // Editing mode, client is inside a service/module page. Collapse nav to a
+  // single 'Back to dashboard' link. The curriculum tree (rendered as a child
+  // of Sidebar via AppShell) lives below for jumping between modules.
+  if (editingMode) {
+    return [
+      {
+        items: [
+          { to: `/onboarding/${orgSlug}`, label: 'Back to dashboard', icon: ChevronLeft, end: true },
+        ],
+      },
+    ];
+  }
 
   if (onboardingDone) {
     return [
