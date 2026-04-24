@@ -1,5 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/queryClient';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { AuthGuard } from './auth/AuthGuard';
 import { Toaster } from './components/Toaster';
@@ -44,6 +46,7 @@ function RootRedirect() {
 
 function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <AuthProvider>
         <ImpersonationBanner />
@@ -84,6 +87,7 @@ function App() {
         </Suspense>
       </AuthProvider>
     </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 

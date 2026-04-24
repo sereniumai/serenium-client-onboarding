@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { db } from '../lib/mockDb';
+import { supabase } from '../lib/supabase';
+import { loadProfile, signIn as authSignIn, signOut as authSignOut } from '../lib/db/auth';
+import { queryClient } from '../lib/queryClient';
 import type { Profile } from '../types';
 
 interface AuthContextValue {
@@ -7,6 +9,7 @@ interface AuthContextValue {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<Profile>;
   signOut: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -16,23 +19,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUser(db.getCurrentUser());
-    setLoading(false);
+    let mounted = true;
+
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (session) {
+          const profile = await loadProfile(session.user.id);
+          if (mounted) setUser(profile);
+        }
+      } catch (err) {
+        console.error('[auth] session restore failed', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      if (event === 'SIGNED_OUT' || !session) {
+        setUser(null);
+        queryClient.clear();
+        return;
+      }
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        try {
+          const profile = await loadProfile(session.user.id);
+          if (mounted) setUser(profile);
+        } catch (err) {
+          console.error('[auth] profile load failed', err);
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const profile = await db.signIn(email, password);
+    const profile = await authSignIn(email, password);
     setUser(profile);
     return profile;
   };
 
   const signOut = async () => {
-    await db.signOut();
+    await authSignOut();
     setUser(null);
+    queryClient.clear();
+  };
+
+  const refresh = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setUser(null); return; }
+    const profile = await loadProfile(session.user.id);
+    setUser(profile);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut, refresh }}>
       {children}
     </AuthContext.Provider>
   );
