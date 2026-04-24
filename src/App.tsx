@@ -31,6 +31,7 @@ const WelcomeVideoManager = lazy(() => import('./pages/admin/WelcomeVideoManager
 const FollowupSettingsPage = lazy(() => import('./pages/admin/FollowupSettingsPage').then(m => ({ default: m.FollowupSettingsPage })));
 const AiConversationsPage = lazy(() => import('./pages/admin/AiConversationsPage').then(m => ({ default: m.AiConversationsPage })));
 const ChangelogPage = lazy(() => import('./pages/admin/ChangelogPage').then(m => ({ default: m.ChangelogPage })));
+const AccountPage = lazy(() => import('./pages/account/AccountPage').then(m => ({ default: m.AccountPage })));
 
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
@@ -84,6 +85,7 @@ function App() {
             <Route path="/admin/settings/followups" element={<AuthGuard requireRole="admin"><FollowupSettingsPage /></AuthGuard>} />
             <Route path="/admin/ai-conversations" element={<AuthGuard requireRole="admin"><AiConversationsPage /></AuthGuard>} />
             <Route path="/admin/whats-new" element={<AuthGuard requireRole="admin"><ChangelogPage /></AuthGuard>} />
+            <Route path="/account" element={<AuthGuard><AccountPage /></AuthGuard>} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

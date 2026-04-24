@@ -77,15 +77,20 @@ export function Sidebar({ sections, children, footerExtra }: {
 
       <div className="border-t border-border-subtle px-3 py-3 space-y-2">
         {user && (
-          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg">
+          <Link
+            to="/account"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-bg-tertiary/60 transition-colors group"
+            title="Account settings"
+          >
             <div className="h-8 w-8 rounded-full bg-orange/15 text-orange flex items-center justify-center text-xs font-bold shrink-0">
               {user.fullName.split(' ').map(n => n[0]).slice(0, 2).join('')}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate leading-tight">{user.fullName}</p>
-              <p className="text-[11px] text-white/50 truncate">{user.email}</p>
+              <p className="text-[11px] text-white/50 truncate group-hover:text-white/70 transition-colors">Account settings →</p>
             </div>
-          </div>
+          </Link>
         )}
         <div className="flex gap-1">
           <button
