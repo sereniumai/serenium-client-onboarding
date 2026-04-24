@@ -172,7 +172,7 @@ export function RegisterPage() {
         <div>
           <label className="label">Email</label>
           <input type="email" className="input" value={invitation?.email ?? ''} disabled />
-          <p className="text-xs text-white/40 mt-1.5">Locked to the invited address.</p>
+          <p className="text-xs text-white/55 mt-1.5">Locked to the invited address.</p>
         </div>
         <div>
           <label className="label" htmlFor="name">Full name</label>

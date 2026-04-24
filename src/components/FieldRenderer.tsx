@@ -84,7 +84,7 @@ export function FieldRenderer({ field, organizationId, fieldKey, userId, onStatu
       )}
       <FieldInput field={field} organizationId={organizationId} fieldKey={fieldKey} userId={userId} onStatusChange={onStatusChange} />
       <FieldValidationMessage field={field} organizationId={organizationId} fieldKey={fieldKey} />
-      {field.helpText && <p className="mt-1.5 text-xs text-white/40">{field.helpText}</p>}
+      {field.helpText && <p className="mt-1.5 text-xs text-white/55">{field.helpText}</p>}
     </div>
   );
 }
@@ -167,11 +167,11 @@ function WeeklyAvailabilityField({ field, organizationId, fieldKey, userId, onSt
                   <input type="time" value={d.close ?? ''} onChange={e => updateDay(key, { close: e.target.value })} className="input mt-1" />
                 </label>
                 <label className="text-xs text-white/60">
-                  Break start <span className="text-white/30">(optional)</span>
+                  Break start <span className="text-white/50">(optional)</span>
                   <input type="time" value={d.breakStart ?? ''} onChange={e => updateDay(key, { breakStart: e.target.value })} className="input mt-1" />
                 </label>
                 <label className="text-xs text-white/60">
-                  Break end <span className="text-white/30">(optional)</span>
+                  Break end <span className="text-white/50">(optional)</span>
                   <input type="time" value={d.breakEnd ?? ''} onChange={e => updateDay(key, { breakEnd: e.target.value })} className="input mt-1" />
                 </label>
               </div>

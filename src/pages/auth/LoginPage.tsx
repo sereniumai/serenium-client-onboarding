@@ -117,7 +117,7 @@ export function LoginPage() {
           <Link to="/forgot-password" className="text-white/60 hover:text-white transition-colors">
             Forgot password?
           </Link>
-          <span className="text-white/40 text-xs">Invite-only · no public signup</span>
+          <span className="text-white/55 text-xs">Invite-only · no public signup</span>
         </div>
       </form>
     </AuthLayout>
