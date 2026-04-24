@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Users, Trash2, Copy, Mail, AlertTriangle, Loader2, MessageCircle as MessageCircleIcon, Eye } from 'lucide-react';
+import { ChevronLeft, Users, Trash2, Copy, Mail, AlertTriangle, Loader2, MessageCircle as MessageCircleIcon, Eye, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
@@ -23,7 +23,7 @@ import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey, OrgStatus, Upload } from '../../types';
 import { cn } from '../../lib/cn';
 
-type Tab = 'overview' | 'services' | 'submissions' | 'progress' | 'activity' | 'users' | 'ai';
+type Tab = 'overview' | 'services' | 'submissions' | 'progress' | 'reports' | 'activity' | 'users' | 'ai';
 
 export function ClientDetail() {
   const { orgSlug } = useParams();
@@ -86,6 +86,7 @@ export function ClientDetail() {
             <TabBtn active={tab === 'services'} onClick={() => setTab('services')}>Services</TabBtn>
             <TabBtn active={tab === 'submissions'} onClick={() => setTab('submissions')}>Submitted info</TabBtn>
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')}>Progress</TabBtn>
+            <TabBtn active={tab === 'reports'} onClick={() => setTab('reports')}>Reports</TabBtn>
             <TabBtn active={tab === 'activity'} onClick={() => setTab('activity')}>Activity</TabBtn>
             <TabBtn active={tab === 'ai'} onClick={() => setTab('ai')}>AI chats</TabBtn>
             <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>Users</TabBtn>
@@ -95,6 +96,7 @@ export function ClientDetail() {
           {tab === 'services' && <ServicesTab orgId={org.id} />}
           {tab === 'submissions' && <SubmissionsTab orgId={org.id} />}
           {tab === 'progress' && <ProgressTab orgId={org.id} />}
+          {tab === 'reports' && <ReportsTab orgId={org.id} />}
           {tab === 'activity' && <ActivityTab orgId={org.id} />}
           {tab === 'ai' && <AiChatsTab orgId={org.id} />}
           {tab === 'users' && <UsersTab orgId={org.id} />}
@@ -718,6 +720,182 @@ function ProgressTab({ orgId }: { orgId: string }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Reports tab ─────────────────────────────────────────────────────────
+function ReportsTab({ orgId }: { orgId: string }) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const { data: reports = [], isLoading } = useQuery({
+    queryKey: ['reports', orgId],
+    queryFn: () => import('../../lib/db/reports').then(m => m.listReportsForOrg(orgId)),
+  });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showNew, setShowNew] = useState(false);
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ['reports', orgId] });
+
+  if (isLoading) return <div className="card text-center text-white/50 py-12"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />Loading reports…</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="eyebrow mb-1">Monthly reports</p>
+          <p className="text-sm text-white/60">Published reports show in the client's portal after onboarding completes.</p>
+        </div>
+        <button onClick={() => setShowNew(s => !s)} className="btn-primary">
+          <Plus className="h-4 w-4" /> {showNew ? 'Cancel' : 'New report'}
+        </button>
+      </div>
+
+      {showNew && (
+        <ReportEditor
+          orgId={orgId}
+          userId={user?.id}
+          onSaved={() => { setShowNew(false); refresh(); toast.success('Report published'); }}
+          onCancel={() => setShowNew(false)}
+        />
+      )}
+
+      {reports.length === 0 && !showNew && (
+        <div className="card text-center py-16">
+          <p className="text-white/50">No reports yet for this client.</p>
+        </div>
+      )}
+
+      {reports.map(r => (
+        editingId === r.id ? (
+          <ReportEditor
+            key={r.id}
+            orgId={orgId}
+            userId={user?.id}
+            existing={r}
+            onSaved={() => { setEditingId(null); refresh(); toast.success('Report updated'); }}
+            onCancel={() => setEditingId(null)}
+          />
+        ) : (
+          <ReportCard
+            key={r.id}
+            report={r}
+            onEdit={() => setEditingId(r.id)}
+            onDelete={async () => {
+              if (!confirm(`Delete the "${r.title}" report? Clients will no longer see it.`)) return;
+              const { deleteReport } = await import('../../lib/db/reports');
+              await deleteReport(r.id);
+              refresh();
+              toast.success('Report deleted');
+            }}
+          />
+        )
+      ))}
+    </div>
+  );
+}
+
+function ReportCard({ report, onEdit, onDelete }: {
+  report: import('../../types').MonthlyReport; onEdit: () => void; onDelete: () => void;
+}) {
+  return (
+    <div className="card">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="min-w-0">
+          <p className="text-xs text-white/50 tabular-nums">{report.period}</p>
+          <h3 className="font-display font-bold text-lg truncate">{report.title}</h3>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={onEdit} className="btn-secondary !py-1.5 !px-3 text-xs">Edit</button>
+          <button onClick={onDelete} className="text-xs text-error hover:underline">Delete</button>
+        </div>
+      </div>
+      {report.summary && <p className="text-sm text-white/70 mb-3 whitespace-pre-wrap">{report.summary}</p>}
+      {report.highlights && report.highlights.length > 0 && (
+        <ul className="mb-3 space-y-0.5">
+          {report.highlights.map((h, i) => <li key={i} className="text-sm text-white/80">• {h}</li>)}
+        </ul>
+      )}
+      {report.loomUrl && <a href={report.loomUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-orange hover:text-orange-hover inline-flex items-center gap-1">→ Watch report video</a>}
+    </div>
+  );
+}
+
+function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
+  orgId: string; userId?: string;
+  existing?: import('../../types').MonthlyReport;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [period, setPeriod] = useState(existing?.period ?? new Date().toISOString().slice(0, 7));
+  const [title, setTitle] = useState(existing?.title ?? '');
+  const [summary, setSummary] = useState(existing?.summary ?? '');
+  const [loomUrl, setLoomUrl] = useState(existing?.loomUrl ?? '');
+  const [highlights, setHighlights] = useState<string[]>(existing?.highlights ?? []);
+  const [pending, setPending] = useState(false);
+
+  const addHighlight = () => setHighlights([...highlights, '']);
+  const updateHighlight = (i: number, v: string) => setHighlights(highlights.map((h, idx) => idx === i ? v : h));
+  const removeHighlight = (i: number) => setHighlights(highlights.filter((_, idx) => idx !== i));
+
+  const save = async () => {
+    if (!title.trim() || !period.trim()) return;
+    setPending(true);
+    try {
+      const { createReport, updateReport } = await import('../../lib/db/reports');
+      const cleaned = highlights.map(h => h.trim()).filter(Boolean);
+      if (existing) {
+        await updateReport(existing.id, { period, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned });
+      } else {
+        await createReport({ organizationId: orgId, period, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned, createdBy: userId });
+      }
+      onSaved();
+    } catch (err) {
+      toast.error('Save failed', { description: (err as Error).message });
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="card space-y-4 border-orange/30">
+      <p className="eyebrow">{existing ? 'Editing report' : 'New report'}</p>
+      <div className="grid md:grid-cols-[160px,1fr] gap-3">
+        <div>
+          <label className="label">Period</label>
+          <input type="month" className="input" value={period} onChange={e => setPeriod(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Title</label>
+          <input type="text" className="input" placeholder="e.g. April 2026 performance" value={title} onChange={e => setTitle(e.target.value)} />
+        </div>
+      </div>
+      <div>
+        <label className="label">Summary (markdown OK)</label>
+        <textarea rows={4} className="input" placeholder="What happened this month, what worked, what we're changing next month." value={summary} onChange={e => setSummary(e.target.value)} />
+      </div>
+      <div>
+        <label className="label">Loom / YouTube video URL (optional)</label>
+        <input type="url" className="input" placeholder="https://www.loom.com/share/..." value={loomUrl} onChange={e => setLoomUrl(e.target.value)} />
+      </div>
+      <div>
+        <label className="label">Headline numbers / bullets</label>
+        <div className="space-y-2">
+          {highlights.map((h, i) => (
+            <div key={i} className="flex gap-2">
+              <input className="input flex-1" placeholder="e.g. 42 leads this month, up 18%" value={h} onChange={e => updateHighlight(i, e.target.value)} />
+              <button onClick={() => removeHighlight(i)} className="text-white/40 hover:text-error p-2"><Trash2 className="h-4 w-4" /></button>
+            </div>
+          ))}
+          <button onClick={addHighlight} className="text-xs text-orange hover:text-orange-hover font-medium inline-flex items-center gap-1"><Plus className="h-3 w-3" /> Add bullet</button>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 pt-2">
+        <button onClick={onCancel} className="btn-secondary">Cancel</button>
+        <button onClick={save} disabled={!title.trim() || !period.trim() || pending} className="btn-primary">
+          {pending ? 'Saving…' : existing ? 'Save' : 'Publish report'}
+        </button>
+      </div>
     </div>
   );
 }
