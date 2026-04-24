@@ -124,9 +124,12 @@ export interface Upload {
 export interface ReportFile {
   id: string;
   fileName: string;
+  /** Supabase Storage path, under `reports/{orgId}/{reportId}/...`. Rendered via signed URLs. */
   fileUrl: string;
   fileSize: number;
   mimeType: string;
+  /** Optional admin note explaining what the file is. Rendered to the client under the filename. */
+  description?: string;
 }
 
 export type ActivityAction =

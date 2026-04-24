@@ -8,6 +8,7 @@ import { CircleProgress } from '../../components/CircleProgress';
 import { WelcomeVideoModal } from '../../components/WelcomeVideoModal';
 import { LatestReportHero } from '../../components/LatestReportHero';
 import { CompleteBanner } from '../../components/CompleteBanner';
+import { PendingReview } from '../../components/PendingReview';
 import { AnimatedNumber } from '../../components/AnimatedNumber';
 import { timeOfDayGreeting } from '../../lib/greeting';
 import { Loader2 } from 'lucide-react';
@@ -60,10 +61,24 @@ export function OnboardingDashboard() {
 
   const progress = getOrgProgress(snapshot);
   const firstName = user?.fullName.split(' ')[0] ?? 'there';
-  // Reports come back in Phase 7, for now an empty array keeps the UI quiet.
+  const onboardingDone = progress.totalModules > 0 && progress.overall === 100;
+
+  // Post-onboarding states handled here:
+  // - status === 'live'       → reports have been unlocked, redirect to /reports
+  // - status === 'onboarding' + 100% done → pending review (waiting for team)
+  // - otherwise → active onboarding dashboard
+  if (org.status === 'live') return <Navigate to={`/onboarding/${org.slug}/reports`} replace />;
+  if (onboardingDone) {
+    return (
+      <AppShell>
+        <PendingReview org={org} firstName={firstName} />
+      </AppShell>
+    );
+  }
+
+  // Reports placeholder shown in hero metadata only, empty until status flips to 'live'.
   const reports: Array<never> = [];
   const latestReport = undefined;
-  const onboardingDone = progress.totalModules > 0 && progress.overall === 100;
 
   // Find next service with unfinished steps (top-level section, not individual module)
   let nextService: { svcKey: ServiceKey; label: string; hasStarted: boolean } | null = null;

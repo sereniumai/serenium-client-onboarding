@@ -955,11 +955,44 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
   const [summary, setSummary] = useState(existing?.summary ?? '');
   const [loomUrl, setLoomUrl] = useState(existing?.loomUrl ?? '');
   const [highlights, setHighlights] = useState<string[]>(existing?.highlights ?? []);
+  const [files, setFiles] = useState<import('../../types').ReportFile[]>(existing?.files ?? []);
   const [pending, setPending] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const addHighlight = () => setHighlights([...highlights, '']);
   const updateHighlight = (i: number, v: string) => setHighlights(highlights.map((h, idx) => idx === i ? v : h));
   const removeHighlight = (i: number) => setHighlights(highlights.filter((_, idx) => idx !== i));
+
+  const onFilesPicked = async (picked: FileList | null) => {
+    if (!picked || picked.length === 0) return;
+    setUploading(true);
+    try {
+      const { uploadReportFile } = await import('../../lib/db/reportFiles');
+      const added: import('../../types').ReportFile[] = [];
+      for (const f of Array.from(picked)) {
+        const reportId = existing?.id ?? 'draft-' + Date.now();
+        const meta = await uploadReportFile({ organizationId: orgId, reportId, file: f });
+        added.push(meta);
+      }
+      setFiles(prev => [...prev, ...added]);
+    } catch (err) {
+      toast.error('Upload failed', { description: (err as Error).message });
+    } finally {
+      setUploading(false);
+    }
+  };
+  const removeFile = async (id: string) => {
+    const toRemove = files.find(f => f.id === id);
+    if (!toRemove) return;
+    setFiles(prev => prev.filter(f => f.id !== id));
+    if (toRemove.fileUrl) {
+      const { removeReportFile } = await import('../../lib/db/reportFiles');
+      removeReportFile(toRemove.fileUrl).catch(() => {});
+    }
+  };
+  const updateFileDescription = (id: string, description: string) => {
+    setFiles(prev => prev.map(f => f.id === id ? { ...f, description } : f));
+  };
 
   const save = async () => {
     if (!title.trim() || !period.trim()) return;
@@ -968,9 +1001,9 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
       const { createReport, updateReport } = await import('../../lib/db/reports');
       const cleaned = highlights.map(h => h.trim()).filter(Boolean);
       if (existing) {
-        await updateReport(existing.id, { period, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned });
+        await updateReport(existing.id, { period, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned, files });
       } else {
-        await createReport({ organizationId: orgId, period, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned, createdBy: userId });
+        await createReport({ organizationId: orgId, period, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned, files, createdBy: userId });
       }
       onSaved();
     } catch (err) {
@@ -1013,6 +1046,48 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
           <button onClick={addHighlight} className="text-xs text-orange hover:text-orange-hover font-medium inline-flex items-center gap-1"><Plus className="h-3 w-3" /> Add bullet</button>
         </div>
       </div>
+
+      <div>
+        <label className="label">Attachments (PDFs, screenshots, anything)</label>
+        <label className={cn(
+          'block border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-colors',
+          uploading ? 'border-orange/40 bg-orange/5 cursor-wait' : 'border-border-subtle hover:border-orange/40 bg-bg-tertiary/30',
+        )}>
+          <input
+            type="file"
+            multiple
+            accept="application/pdf,image/*"
+            onChange={e => onFilesPicked(e.target.files)}
+            className="hidden"
+            disabled={uploading}
+          />
+          <p className="text-sm font-medium">{uploading ? 'Uploading…' : 'Click to add files'}</p>
+          <p className="text-xs text-white/40 mt-1">PDFs + images, multiple at once</p>
+        </label>
+        {files.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {files.map(f => (
+              <div key={f.id} className="p-3 rounded-lg border border-border-subtle bg-bg-secondary/40">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded bg-orange/10 text-orange shrink-0">📎</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{f.fileName}</p>
+                    <p className="text-[10px] text-white/40 tabular-nums">{Math.round(f.fileSize / 1024)} KB</p>
+                  </div>
+                  <button onClick={() => removeFile(f.id)} className="text-error/60 hover:text-error p-1" title="Remove"><Trash2 className="h-4 w-4" /></button>
+                </div>
+                <input
+                  className="input !py-1.5 text-xs"
+                  placeholder="Note (shown under the filename to the client), optional"
+                  value={f.description ?? ''}
+                  onChange={e => updateFileDescription(f.id, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="flex justify-end gap-2 pt-2">
         <button onClick={onCancel} className="btn-secondary">Cancel</button>
         <button onClick={save} disabled={!title.trim() || !period.trim() || pending} className="btn-primary">

@@ -56,6 +56,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isClientInsideOnboarding = user.role === 'client' && org
     && (location.pathname.startsWith(`/onboarding/${org.slug}/services`));
 
+  // AI chat is only for active onboarding. Hide it once the client's onboarding is done.
+  const showAiChat = user.role === 'admin' || !onboardingDone;
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       <Sidebar sections={sections}>
@@ -73,7 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </ErrorBoundary>
         </main>
       </div>
-      <AiHelperChat />
+      {showAiChat && <AiHelperChat />}
     </div>
   );
 }
