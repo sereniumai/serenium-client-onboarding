@@ -42,9 +42,12 @@ export function OnboardingDashboard() {
   const { snapshot, isLoading: snapLoading } = useOrgSnapshot(org?.id);
 
   // Scroll to a phase anchor when the sidebar link uses #phase-<key>, or
-  // smoothly scroll back to the top when the hash clears (e.g. user clicks Overview).
+  // smoothly scroll back to the top when the hash clears. Depends only on
+  // snapshot *existence* (not identity) so autosave-driven re-fetches of
+  // the snapshot don't yank the page back to the top mid-scroll.
+  const hasSnapshot = !!snapshot;
   useEffect(() => {
-    if (!snapshot) return;
+    if (!hasSnapshot) return;
     if (location.hash) {
       const id = location.hash.slice(1);
       const el = document.getElementById(id);
@@ -52,7 +55,7 @@ export function OnboardingDashboard() {
     } else {
       setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 40);
     }
-  }, [location.hash, snapshot]);
+  }, [location.hash, hasSnapshot]);
 
   // Admin landing on a client page without an explicit impersonate=1 flag
   // almost always means they typed / bookmarked the URL. Bounce them to

@@ -45,7 +45,14 @@ export function AdminHome() {
       switch (sortKey) {
         case 'business': cmp = a.businessName.localeCompare(b.businessName); break;
         case 'contact':  cmp = (a.primaryContactName ?? '').localeCompare(b.primaryContactName ?? ''); break;
-        case 'status':   cmp = a.status.localeCompare(b.status); break;
+        case 'status': {
+          // Sort by a curated order so admin sees live clients first, then
+          // those mid-onboarding, then paused, then churned — rather than
+          // alphabetical order which puts "churned" before "live".
+          const order: Record<string, number> = { live: 0, onboarding: 1, paused: 2, churned: 3 };
+          cmp = (order[a.status] ?? 99) - (order[b.status] ?? 99);
+          break;
+        }
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });

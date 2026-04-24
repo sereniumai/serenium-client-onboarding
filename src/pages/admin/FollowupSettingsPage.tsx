@@ -84,7 +84,7 @@ function Editor({ settings, onChange, onSave, saving, dirty }: {
     onChange({
       ...settings,
       templates: [...settings.templates, {
-        key: `template_${Date.now()}`,
+        key: `template_${crypto.randomUUID().slice(0, 8)}`,
         label: 'New template',
         subject: '',
         body: '',

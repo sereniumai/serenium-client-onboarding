@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
+import { Markdown } from '../../components/Markdown';
 import { useOrgBySlug, useOrgMembers, useOrgServices, useUpdateOrg, useDeleteOrg } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
 import { useAuth } from '../../auth/AuthContext';
@@ -123,9 +124,6 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
   const updateOrg = useUpdateOrg();
   const deleteOrg = useDeleteOrg();
   const { snapshot } = useOrgSnapshot(org.id);
-  const progress = snapshot ? import('../../lib/progress').then(m => m.getOrgProgress(snapshot)) : null;
-  void progress;
-  // We compute ready-for-live inline below via a small hook pattern to keep JSX clean.
   const snap = snapshot;
   const readyForLive = (() => {
     if (!snap) return false;
@@ -1093,7 +1091,11 @@ function ReportCard({ report, onEdit, onDelete }: {
           <button onClick={onDelete} className="text-xs text-error hover:underline">Delete</button>
         </div>
       </div>
-      {report.summary && <p className="text-sm text-white/70 mb-3 whitespace-pre-wrap">{report.summary}</p>}
+      {report.summary && (
+        <div className="text-sm text-white/70 mb-3 prose prose-invert prose-sm max-w-none">
+          <Markdown>{report.summary}</Markdown>
+        </div>
+      )}
       {report.highlights && report.highlights.length > 0 && (
         <ul className="mb-3 space-y-0.5">
           {report.highlights.map((h, i) => <li key={i} className="text-sm text-white/80">• {h}</li>)}

@@ -35,10 +35,22 @@ export function WelcomeVideoManager() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: QK }); toast.success('Welcome video removed'); },
   });
 
+  const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'video/*': [] },
     maxFiles: 1,
-    onDrop: files => { if (files[0]) upload.mutate(files[0]); },
+    maxSize: MAX_BYTES,
+    onDrop: (files, rejections) => {
+      if (rejections.length > 0) {
+        const r = rejections[0];
+        const reason = r.errors[0]?.code === 'file-too-large'
+          ? `Max size is ${Math.round(MAX_BYTES / 1024 / 1024)} MB. Trim or re-encode the video.`
+          : r.errors[0]?.message ?? 'File rejected';
+        toast.error("Can't upload that", { description: reason });
+        return;
+      }
+      if (files[0]) upload.mutate(files[0]);
+    },
   });
 
   return (

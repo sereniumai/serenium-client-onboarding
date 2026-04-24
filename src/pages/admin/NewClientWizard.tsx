@@ -42,11 +42,26 @@ export function NewClientWizard() {
     setDisabledModules(prev => ({ ...prev, [svcKey]: enabled ? [] : svc.modules.map(m => m.key) }));
   };
 
-  const step1Valid = businessName.trim() && primaryName.trim() && primaryEmail.trim();
+  // Basic shape check — catches "no @" and "no ." typos. The real verification
+  // happens when Resend bounces the invite; this just stops the most common
+  // fat-finger errors from shipping a client who never gets an email.
+  const isValidEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim());
+  const step1Valid = !!(
+    businessName.trim() &&
+    primaryName.trim() &&
+    isValidEmail(primaryEmail)
+  );
   const step2Valid = services.length > 0;
 
   const submit = async () => {
-    const validUsers = users.filter(u => u.email.trim());
+    // Drop invalid extra-user rows, but surface how many were skipped so the
+    // admin doesn't silently lose a teammate they typed half of.
+    const allExtras = users.filter(u => u.fullName.trim() || u.email.trim());
+    const validUsers = allExtras.filter(u => isValidEmail(u.email));
+    const skipped = allExtras.length - validUsers.length;
+    if (skipped > 0) {
+      toast.warning(`${skipped} user row${skipped === 1 ? '' : 's'} skipped — invalid email`);
+    }
     const final = validUsers.length > 0 ? validUsers : [{ fullName: primaryName, email: primaryEmail, role: 'owner' as const }];
     try {
       const org = await createClient.mutateAsync({
