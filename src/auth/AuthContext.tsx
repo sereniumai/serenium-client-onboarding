@@ -64,9 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (session?.user) {
-        // First, set a stub user from the JWT so routing works immediately
-        // even if the profile DB call is slow or blocked. We'll upgrade to
-        // the full profile once hydrate resolves.
+        // Set stub user from JWT immediately so routing + subsequent queries
+        // can fire. Unblock the UI NOW, then hydrate real profile in bg.
         if (!userRef.current || userRef.current.id !== session.user.id) {
           const meta = session.user.user_metadata ?? {};
           const stub: Profile = {
@@ -77,33 +76,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           if (mounted) setUser(stub);
         }
+        markSettled();
 
-        try {
-          const profile = await hydrate(session.user.id);
-          if (mounted) setUser(profile);
+        // Background hydrate. Do NOT block markSettled on this.
+        hydrate(session.user.id)
+          .then(profile => { if (mounted) setUser(profile); })
+          .catch(err => console.error('[auth] profile hydrate failed, keeping stub', err));
 
-          if (event === 'SIGNED_IN' && profile.role === 'client') {
-            const { data } = await supabase
-              .from('organization_members')
-              .select('organization_id')
-              .eq('user_id', profile.id)
-              .limit(1)
-              .maybeSingle();
-            const orgId = (data as { organization_id: string } | null)?.organization_id;
-            if (orgId) {
-              const { fireFirstLoginNotification } = await import('../lib/teamNotifications');
-              fireFirstLoginNotification(orgId).catch(() => {});
-            }
-          }
-        } catch (err) {
-          console.error('[auth] profile hydrate failed after retries, keeping session', err);
-          // Do NOT clear user here. If userRef has a prior value, it persists.
+        if (event === 'SIGNED_IN' && (session.user.user_metadata as { role?: string })?.role !== 'admin') {
+          supabase
+            .from('organization_members')
+            .select('organization_id')
+            .eq('user_id', session.user.id)
+            .limit(1)
+            .maybeSingle()
+            .then(({ data }) => {
+              const orgId = (data as { organization_id: string } | null)?.organization_id;
+              if (!orgId) return;
+              import('../lib/teamNotifications').then(m =>
+                m.fireFirstLoginNotification(orgId).catch(() => {}),
+              );
+            });
         }
-      } else if (event === 'INITIAL_SESSION') {
-        // Truly no session on first mount, user isn't signed in.
-        if (mounted) setUser(null);
+        return;
       }
 
+      if (event === 'INITIAL_SESSION') {
+        if (mounted) setUser(null);
+      }
       markSettled();
     });
 
