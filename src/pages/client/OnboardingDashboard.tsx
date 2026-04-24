@@ -301,7 +301,7 @@ function OtherSerenumServices({ unavailableServiceKeys }: { unavailableServiceKe
           Ask us about adding one
         </a>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid md:grid-cols-2 gap-4">
         {unavailableServiceKeys.map((key, i) => {
           const svc = SELECTABLE_SERVICES.find(s => s.key === key);
           if (!svc) return null;
@@ -309,21 +309,36 @@ function OtherSerenumServices({ unavailableServiceKeys }: { unavailableServiceKe
           return (
             <motion.div
               key={key}
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}
-              aria-disabled="true"
-              className="relative rounded-xl border border-dashed border-white/10 bg-bg-secondary/20 px-4 py-3.5 flex items-start gap-3"
-              title="Not included in your current plan"
             >
-              <div className="h-9 w-9 rounded-lg bg-white/5 text-white/45 flex items-center justify-center shrink-0">
-                <Icon className="h-4 w-4" />
+              <div
+                className="card relative border-dashed border-white/10 bg-bg-secondary/30"
+                aria-disabled="true"
+                title="Not included in your current plan"
+              >
+                <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-white/45 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                  <Lock className="h-3 w-3" /> Not in plan
+                </span>
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-white/45">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0 pr-20">
+                    <h4 className="font-display font-bold text-lg tracking-[-0.01em] truncate text-white/70">{svc.label}</h4>
+                    <p className="text-xs text-white/55 leading-relaxed mt-0.5">{svc.description}</p>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-white/5">
+                  <a
+                    href="mailto:contact@sereniumai.com?subject=Adding%20a%20service%20to%20my%20Serenium%20plan"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-orange hover:text-orange-hover"
+                  >
+                    Ask about adding this <ArrowRight className="h-3.5 w-3.5" />
+                  </a>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-white/75 truncate">{svc.label}</p>
-                <p className="text-[11px] text-white/50 leading-relaxed mt-0.5 line-clamp-2">{svc.description}</p>
-              </div>
-              <Lock className="h-3.5 w-3.5 text-white/35 shrink-0 mt-1" aria-hidden />
             </motion.div>
           );
         })}
