@@ -44,6 +44,9 @@ export function OnboardingDashboard() {
   // smoothly scroll back to the top when the hash clears. Depends only on
   // snapshot *existence* (not identity) so autosave-driven re-fetches of
   // the snapshot don't yank the page back to the top mid-scroll.
+  // ALL hooks live above any early return — must be called in the same
+  // order every render. Each one tolerates a null snapshot so they can
+  // run on loading renders too.
   const hasSnapshot = !!snapshot;
   useEffect(() => {
     if (!hasSnapshot) return;
@@ -56,10 +59,24 @@ export function OnboardingDashboard() {
     }
   }, [location.hash, hasSnapshot]);
 
+  // Memoized — getOrgProgress walks every enabled service's modules and
+  // every submission. React Query's structural sharing means the snapshot
+  // reference only changes when actual data changes, so this skips the
+  // walk on child-triggered re-renders.
+  const progress = useMemo(() => (snapshot ? getOrgProgress(snapshot) : null), [snapshot]);
+  const filledCount = useMemo(
+    () => (snapshot ? snapshot.submissions.filter(s => s.value != null && s.value !== '').length : 0),
+    [snapshot],
+  );
+  const onboardingDone = !!progress && progress.totalModules > 0 && progress.overall === 100;
+  const resume = useMemo(
+    () => (snapshot && !onboardingDone ? findLastTouchedModule(snapshot) : null),
+    [snapshot, onboardingDone],
+  );
+
   // Admin landing on a client page without an explicit impersonate=1 flag
   // almost always means they typed / bookmarked the URL. Bounce them to
-  // the admin view of that client instead of the client-facing dashboard.
-  // This must come AFTER hooks to avoid conditional-hook violations.
+  // the admin view of that client.
   if (user?.role === 'admin' && searchParams.get('impersonate') !== '1' && orgSlug) {
     return <Navigate to={`/admin/clients/${orgSlug}`} replace />;
   }
@@ -73,27 +90,9 @@ export function OnboardingDashboard() {
       </AppShell>
     );
   }
-  if (!org || !snapshot) return <Navigate to="/login" replace />;
+  if (!org || !snapshot || !progress) return <Navigate to="/login" replace />;
 
-  // Memoized — getOrgProgress walks every enabled service's modules and
-  // every submission. React Query's structural sharing means the snapshot
-  // reference only changes when actual data changes, so this skips the
-  // walk on child-triggered re-renders (e.g. the StatusPill pinging
-  // /api/health every 60s shouldn't recompute the entire dashboard).
-  const progress = useMemo(() => getOrgProgress(snapshot), [snapshot]);
-  const filledCount = useMemo(
-    () => snapshot.submissions.filter(s => s.value != null && s.value !== '').length,
-    [snapshot.submissions],
-  );
   const firstName = user?.fullName.split(' ')[0] ?? 'there';
-  const onboardingDone = progress.totalModules > 0 && progress.overall === 100;
-  // Memoized — sorts the entire submissions list by updated_at, then
-  // walks modules looking for the last-touched one. Stays stable while
-  // the background status pill refetches.
-  const resume = useMemo(
-    () => (onboardingDone ? null : findLastTouchedModule(snapshot)),
-    [snapshot, onboardingDone],
-  );
 
   // Post-onboarding states handled here:
   // - status === 'live'       → reports have been unlocked, redirect to /reports

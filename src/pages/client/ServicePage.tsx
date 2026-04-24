@@ -47,6 +47,14 @@ export function ServicePage() {
   const setTask = useSetTaskCompletion();
   const { data: stepVideos = [] } = useQuery({ queryKey: ['step_videos'], queryFn: listStepVideos });
 
+  // Hooks before early returns. Nullable snapshot handled inside the memo
+  // bodies so the hook count stays stable across renders.
+  const modules = useMemo(
+    () => (snapshot && svc ? getEnabledModulesForService(snapshot, svc.key) : []),
+    [snapshot, svc],
+  );
+  const progress = useMemo(() => (snapshot ? getOrgProgress(snapshot) : null), [snapshot]);
+
   if (isLoading) {
     return (
       <AppShell>
@@ -54,16 +62,11 @@ export function ServicePage() {
       </AppShell>
     );
   }
-  if (!org || !svc || !snapshot) return <Navigate to={`/onboarding/${orgSlug}`} replace />;
+  if (!org || !svc || !snapshot || !progress) return <Navigate to={`/onboarding/${orgSlug}`} replace />;
   if (!snapshot.services.some(s => s.serviceKey === svc.key)) {
     return <Navigate to={`/onboarding/${org.slug}`} replace />;
   }
 
-  // Memoized so autosave's React Query invalidation doesn't rebuild every
-  // module row on every keystroke — expensive when Business Profile has
-  // 13 modules × N fields each.
-  const modules = useMemo(() => getEnabledModulesForService(snapshot, svc.key), [snapshot, svc.key]);
-  const progress = useMemo(() => getOrgProgress(snapshot), [snapshot]);
   const svcSummaries = progress.perService[svc.key] ?? [];
   const done = svcSummaries.filter(s => s.status === 'complete').length;
   const total = svcSummaries.length;

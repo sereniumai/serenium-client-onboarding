@@ -62,6 +62,16 @@ export function ModulePage() {
 
   const celebrateCompletionRef = useRef<() => void>(() => {});
 
+  // Memoized early — findNextActionableModule walks every enabled service
+  // and every module. Stay above early returns so hook order is stable.
+  // Nullable inputs handled inside.
+  const nextActionable = useMemo(
+    () => (snapshot && svc && mod
+      ? findNextActionableModule(snapshot, { serviceKey: svc.key, moduleKey: mod.key })
+      : null),
+    [snapshot, svc, mod],
+  );
+
   if (isLoading) {
     return (
       <AppShell>
@@ -90,13 +100,6 @@ export function ModulePage() {
   const svcIndex = svc.modules.findIndex(m => m.key === mod.key);
 
   const stepVideo = stepVideos.find(v => v.serviceKey === svc.key && v.moduleKey === mod.key);
-  // Memoized — findNextActionableModule walks every enabled service and
-  // every module looking for the next not-complete one. No need to re-walk
-  // on every keystroke while the user types into the current form.
-  const nextActionable = useMemo(
-    () => findNextActionableModule(snapshot, { serviceKey: svc.key, moduleKey: mod.key }),
-    [snapshot, svc.key, mod.key],
-  );
   const next = nextActionable?.module ?? null;
   const nextSvcKey = nextActionable?.serviceKey ?? svc.key;
 
