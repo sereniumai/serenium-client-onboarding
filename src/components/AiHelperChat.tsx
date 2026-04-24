@@ -43,6 +43,12 @@ export function AiHelperChat() {
     if (open) endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [open, messages.length, thinking]);
 
+  useEffect(() => {
+    const openFromElsewhere = () => setOpen(true);
+    window.addEventListener('serenium:open-chat', openFromElsewhere);
+    return () => window.removeEventListener('serenium:open-chat', openFromElsewhere);
+  }, []);
+
   if (!user) return null;
 
   const currentContext = (() => {

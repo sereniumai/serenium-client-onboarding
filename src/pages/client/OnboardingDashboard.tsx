@@ -1,4 +1,5 @@
-import { useParams, Navigate, Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useParams, Navigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Clock, Lock, PlayCircle, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
@@ -34,8 +35,17 @@ function motivation(pct: number, hasReports: boolean) {
 export function OnboardingDashboard() {
   const { orgSlug } = useParams();
   const { user } = useAuth();
+  const location = useLocation();
   const { data: org, isLoading: orgLoading } = useOrgBySlug(orgSlug);
   const { snapshot, isLoading: snapLoading } = useOrgSnapshot(org?.id);
+
+  // Scroll to a phase anchor when the sidebar link uses #phase-<key>
+  useEffect(() => {
+    if (!location.hash || !snapshot) return;
+    const id = location.hash.slice(1);
+    const el = document.getElementById(id);
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }, [location.hash, snapshot]);
 
   if (orgLoading || snapLoading) {
     return (
@@ -183,9 +193,11 @@ export function OnboardingDashboard() {
               return (
                 <motion.div
                   key={phase.key}
+                  id={`phase-${phase.key}`}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: phaseIdx * 0.08 }}
+                  className="scroll-mt-24"
                 >
                   {/* Phase header */}
                   {showPhaseChrome && (

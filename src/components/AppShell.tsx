@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { LayoutDashboard, UserPlus, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2 } from 'lucide-react';
+import { LayoutDashboard, UserPlus, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, Briefcase, Globe, Bot, LifeBuoy } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { PHASES } from '../config/phases';
 import { Sidebar, type SidebarSection } from './Sidebar';
 import { CurriculumSidebar } from './CurriculumSidebar';
 import { AiHelperChat } from './AiHelperChat';
@@ -29,6 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     orgSlug,
     onboardingDone,
     hasUnreadWhatsNew: user?.role === 'admin' ? hasUnreadChangelog() : false,
+    progress,
   });
 
   // Auth / public routes render without the shell chrome
@@ -75,13 +78,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+const PHASE_ICON: Record<string, LucideIcon> = {
+  business: Briefcase,
+  presence: Globe,
+  agents:   Bot,
+};
+
 function buildSections({
-  userRole, orgSlug, onboardingDone, hasUnreadWhatsNew,
+  userRole, orgSlug, onboardingDone, hasUnreadWhatsNew, progress,
 }: {
   userRole: 'admin' | 'client' | undefined;
   orgSlug: string | null;
   onboardingDone: boolean;
   hasUnreadWhatsNew: boolean;
+  progress: ReturnType<typeof getOrgProgress> | null;
 }): SidebarSection[] {
   if (userRole === 'admin') {
     return [
@@ -115,15 +125,81 @@ function buildSections({
   }
 
   // Client nav
-  if (orgSlug) {
-    const items = [
-      { to: `/onboarding/${orgSlug}`, label: 'Onboarding', icon: LayoutDashboard, end: true },
+  if (!orgSlug) return [];
+
+  if (onboardingDone) {
+    return [
+      {
+        title: 'Overview',
+        items: [
+          { to: `/onboarding/${orgSlug}`, label: 'Dashboard', icon: Home, end: true },
+        ],
+      },
+      {
+        title: 'Results',
+        items: [
+          { to: `/onboarding/${orgSlug}/reports`, label: 'Monthly reports', icon: FileBarChart2, end: true },
+        ],
+      },
+      {
+        title: 'Support',
+        items: [
+          { to: `/onboarding/${orgSlug}`, label: 'Ask Rob or Adam', icon: LifeBuoy, onClick: openAiChat },
+        ],
+      },
     ];
-    if (onboardingDone) {
-      items.push({ to: `/onboarding/${orgSlug}/reports`, label: 'Monthly reports', icon: FileBarChart2, end: true });
-    }
-    return [{ items }];
   }
 
-  return [];
+  // During onboarding, show a phase-aware nav
+  const phaseItems = PHASES.map(phase => {
+    const phaseSummaries = progress
+      ? phase.services.flatMap(k => progress.perService[k] ?? [])
+      : [];
+    const visibleSummaries = phaseSummaries;
+    const done = visibleSummaries.filter(s => s.status === 'complete').length;
+    const total = visibleSummaries.length;
+    return {
+      to: `/onboarding/${orgSlug}#phase-${phase.key}`,
+      label: phaseLabel(phase.key),
+      icon: PHASE_ICON[phase.key] ?? Home,
+      badge: total > 0 ? `${done}/${total}` : undefined,
+      skip: total === 0,
+    };
+  });
+
+  return [
+    {
+      title: 'Your onboarding',
+      items: [
+        {
+          to: `/onboarding/${orgSlug}`,
+          label: 'Overview',
+          icon: Home,
+          end: true,
+          badge: progress ? `${progress.overall}%` : undefined,
+        },
+        ...phaseItems.filter(p => !p.skip).map(({ skip, ...rest }) => { void skip; return rest; }),
+      ],
+    },
+    {
+      title: 'Support',
+      items: [
+        { to: `/onboarding/${orgSlug}`, label: 'Ask Rob or Adam', icon: LifeBuoy, onClick: openAiChat },
+      ],
+    },
+  ];
+}
+
+function phaseLabel(key: string): string {
+  switch (key) {
+    case 'business': return 'Your business';
+    case 'presence': return 'Online presence';
+    case 'agents':   return 'AI team';
+    default: return key;
+  }
+}
+
+function openAiChat() {
+  // Fire a DOM event the AiHelperChat listens for. Defined in AiHelperChat.
+  window.dispatchEvent(new CustomEvent('serenium:open-chat'));
 }

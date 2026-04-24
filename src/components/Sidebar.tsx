@@ -10,7 +10,8 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/cn';
 
 export interface SidebarNavItem {
-  to: string;
+  to?: string;
+  onClick?: () => void;
   label: string;
   icon: LucideIcon;
   end?: boolean;
@@ -65,35 +66,9 @@ export function Sidebar({ sections, children, footerExtra }: {
               </p>
             )}
             <div className="space-y-0.5">
-              {section.items.map(item => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.end}
-                    onClick={() => setOpen(false)}
-                    className={({ isActive }) => cn(
-                      'relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-orange/10 text-orange'
-                        : 'text-white/65 hover:bg-bg-tertiary/60 hover:text-white',
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate flex-1">{item.label}</span>
-                    {item.badge !== undefined && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-orange text-white text-[10px] font-bold tabular-nums">{item.badge}</span>
-                    )}
-                    {item.dot && (
-                      <span className="flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-orange opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-orange" />
-                      </span>
-                    )}
-                  </NavLink>
-                );
-              })}
+              {section.items.map((item, idx) => (
+                <SidebarItem key={item.to ?? `${section.title ?? i}-${idx}`} item={item} onNavigate={() => setOpen(false)} />
+              ))}
             </div>
           </div>
         ))}
@@ -172,5 +147,50 @@ export function Sidebar({ sections, children, footerExtra }: {
       {/* Active location marker for route changes to close the drawer */}
       <span className="sr-only" aria-hidden>{location.pathname}</span>
     </>
+  );
+}
+
+function SidebarItem({ item, onNavigate }: { item: SidebarNavItem; onNavigate: () => void }) {
+  const Icon = item.icon;
+  const classes = (isActive: boolean) => cn(
+    'relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+    isActive
+      ? 'bg-orange/10 text-orange'
+      : 'text-white/65 hover:bg-bg-tertiary/60 hover:text-white',
+  );
+
+  const inner = (
+    <>
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="truncate flex-1">{item.label}</span>
+      {item.badge !== undefined && (
+        <span className="text-[10px] font-semibold tabular-nums text-white/50">{item.badge}</span>
+      )}
+      {item.dot && (
+        <span className="flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-orange opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-orange" />
+        </span>
+      )}
+    </>
+  );
+
+  if (item.onClick) {
+    return (
+      <button onClick={() => { item.onClick!(); onNavigate(); }} className={cn(classes(false), 'w-full text-left')}>
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <NavLink
+      to={item.to!}
+      end={item.end}
+      onClick={onNavigate}
+      className={({ isActive }) => classes(isActive)}
+    >
+      {inner}
+    </NavLink>
   );
 }
