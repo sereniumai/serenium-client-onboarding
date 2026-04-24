@@ -17,6 +17,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { getUploadSignedUrl } from '../../lib/db/uploads';
+import { FollowupModal } from '../../components/FollowupModal';
 import { getEnabledModulesForService } from '../../lib/progress';
 import { SELECTABLE_SERVICES, getService, type Field } from '../../config/modules';
 import { SERVICE_ICON } from '../../config/serviceIcons';
@@ -30,6 +31,7 @@ export function ClientDetail() {
   const navigate = useNavigate();
   const { data: org, isLoading, isError, error } = useOrgBySlug(orgSlug);
   const [tab, setTab] = useState<Tab>('overview');
+  const [followupOpen, setFollowupOpen] = useState(false);
 
   if (!orgSlug) return <Navigate to="/admin" replace />;
 
@@ -70,7 +72,10 @@ export function ClientDetail() {
               <h1 className="font-display font-black text-[clamp(1.75rem,5vw,2.75rem)] leading-[1.05] tracking-[-0.025em]">{org.businessName}</h1>
               <p className="text-white/50 text-sm mt-1">/{org.slug}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <button onClick={() => setFollowupOpen(true)} className="btn-secondary">
+                <Mail className="h-4 w-4" /> Send follow-up
+              </button>
               <Link
                 to={`/onboarding/${org.slug}?impersonate=1`}
                 className="btn-secondary"
@@ -101,9 +106,13 @@ export function ClientDetail() {
           {tab === 'ai' && <AiChatsTab orgId={org.id} />}
           {tab === 'users' && <UsersTab orgId={org.id} />}
 
-          <div className="mt-8 text-xs text-white/30">
-            Reports, activity log, notes and follow-ups are being re-ported in later sprints.
-          </div>
+          {followupOpen && (
+            <FollowupModal
+              orgId={org.id}
+              primaryContactEmail={org.primaryContactEmail ?? null}
+              onClose={() => setFollowupOpen(false)}
+            />
+          )}
         </div>
       </div>
     </AppShell>
