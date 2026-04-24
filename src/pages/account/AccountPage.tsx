@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { User, Mail, Lock, Save, Loader2, ChevronLeft } from 'lucide-react';
+import { User, Mail, Lock, Save, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
