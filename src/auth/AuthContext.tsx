@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 import { supabase } from '../lib/supabase';
 import { loadProfile, signIn as authSignIn, signOut as authSignOut } from '../lib/db/auth';
 import { queryClient } from '../lib/queryClient';
@@ -20,7 +21,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const userRef = useRef<Profile | null>(null);
-  useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => {
+    userRef.current = user;
+    // Tag every Sentry event with the current user so we know who hit each
+    // error. We send id + role only, no email or name (PII).
+    if (user) {
+      Sentry.setUser({ id: user.id, segment: user.role });
+    } else {
+      Sentry.setUser(null);
+    }
+  }, [user]);
 
   // Idle logout. Resets on any user interaction. Fires signOut after an hour
   // of no activity so abandoned sessions can't be hijacked from a stolen laptop.
