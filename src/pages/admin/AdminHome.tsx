@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Plus, Activity, Rocket, Search, ArrowUp, ArrowDown, ArrowUpDown, Loader2, Heart } from 'lucide-react';
+import { Users, Plus, Activity, Rocket, Search, ArrowUp, ArrowDown, ArrowUpDown, Loader2 } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
+import { StatusPill as SystemStatusPill } from '../../components/StatusPill';
 import { useAllOrgs } from '../../hooks/useOrgs';
 import { cn } from '../../lib/cn';
 
@@ -72,7 +73,7 @@ export function AdminHome() {
               </p>
             </div>
             <div className="flex items-center gap-3 self-start md:self-auto">
-              <UptimePill />
+              <SystemStatusPill variant="admin" href="/admin/diagnostics" />
               <Link to="/admin/clients/new" className="btn-primary">
                 <Plus className="h-4 w-4" /> New client
               </Link>
@@ -209,50 +210,6 @@ function StatusPill({ status }: { status: 'onboarding' | 'live' | 'paused' | 'ch
     <span className={cn('inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize', styles[status])}>
       {status}
     </span>
-  );
-}
-
-// Tiny uptime badge in the top-right. Pings /api/health on mount and every
-// 60s. Shows green/red dot + a click-through to the full diagnostics page.
-function UptimePill() {
-  const [state, setState] = useState<'ok' | 'down' | 'loading'>('loading');
-  const [latency, setLatency] = useState<number | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    const check = async () => {
-      const t0 = performance.now();
-      try {
-        const r = await fetch('/api/health', { cache: 'no-store' });
-        if (!mounted) return;
-        setState(r.ok ? 'ok' : 'down');
-        setLatency(Math.round(performance.now() - t0));
-      } catch {
-        if (mounted) setState('down');
-      }
-    };
-    check();
-    const id = setInterval(check, 60_000);
-    return () => { mounted = false; clearInterval(id); };
-  }, []);
-
-  const color = state === 'ok' ? 'bg-success' : state === 'down' ? 'bg-error' : 'bg-white/30';
-  const label = state === 'ok' ? 'All systems operational' : state === 'down' ? 'Health check failed' : 'Checking…';
-
-  return (
-    <Link
-      to="/admin/diagnostics"
-      title={latency !== null ? `${label} · ${latency}ms` : label}
-      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border-subtle bg-bg-secondary/60 hover:bg-bg-secondary transition-colors text-xs text-white/70 hover:text-white"
-    >
-      <span className="relative flex h-2 w-2 shrink-0">
-        {state === 'ok' && <span className={cn('absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping', color)} />}
-        <span className={cn('relative inline-flex h-2 w-2 rounded-full', color)} />
-      </span>
-      <Heart className="h-3.5 w-3.5" />
-      <span className="hidden md:inline">{label}</span>
-      <span className="md:hidden">Status</span>
-    </Link>
   );
 }
 

@@ -10,6 +10,7 @@ import { LatestReportHero } from '../../components/LatestReportHero';
 import { CompleteBanner } from '../../components/CompleteBanner';
 import { PendingReview } from '../../components/PendingReview';
 import { AnimatedNumber } from '../../components/AnimatedNumber';
+import { StatusPill } from '../../components/StatusPill';
 import { timeOfDayGreeting } from '../../lib/greeting';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
@@ -94,7 +95,10 @@ export function OnboardingDashboard() {
         <section className="relative mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-14 pb-6 md:pb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-10">
             <div className="flex-1 min-w-0">
-              <p className="eyebrow mb-4">Onboarding · {org.businessName}</p>
+              <div className="flex items-center gap-3 mb-4">
+                <p className="eyebrow">Onboarding · {org.businessName}</p>
+                <StatusPill variant="client" />
+              </div>
               <h1 className="font-display font-black text-[clamp(2rem,6vw,3.75rem)] leading-[1.02] tracking-[-0.03em] mb-4">
                 {timeOfDayGreeting()}, <span className="text-orange">{firstName}</span>.
               </h1>

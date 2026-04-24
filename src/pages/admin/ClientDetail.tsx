@@ -278,13 +278,34 @@ function ServicesTab({ orgId }: { orgId: string }) {
 
   return (
     <div className="space-y-6">
+      {disabledServices.length > 0 && (
+        <div className="card space-y-2">
+          <p className="eyebrow mb-3">Available to enable</p>
+          {disabledServices.map(svc => {
+            const Icon = SERVICE_ICON[svc.key];
+            return (
+              <div key={svc.key} className="flex items-center gap-4 p-3 rounded-xl border border-border-subtle opacity-70 hover:opacity-100 hover:border-border-emphasis transition">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-white/40 shrink-0"><Icon className="h-4 w-4" /></div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{svc.label}</p>
+                  <p className="text-xs text-white/50 truncate">{svc.description}</p>
+                </div>
+                <button onClick={() => toggle.mutate({ key: svc.key, enabled: true })} disabled={toggle.isPending} className="btn-secondary !py-1.5 !px-3 text-xs">
+                  Enable
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div className="card">
         <div className="flex items-center justify-between mb-3">
           <p className="eyebrow">Enabled services, drag to reorder</p>
           <span className="text-xs text-white/40">{enabledKeys.length} active</span>
         </div>
         {enabledKeys.length === 0 ? (
-          <p className="text-sm text-white/50">No services enabled. Pick some from below.</p>
+          <p className="text-sm text-white/50">No services enabled. Pick some from above.</p>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={enabledKeys} strategy={verticalListSortingStrategy}>
@@ -306,27 +327,6 @@ function ServicesTab({ orgId }: { orgId: string }) {
           </DndContext>
         )}
       </div>
-
-      {disabledServices.length > 0 && (
-        <div className="card space-y-2">
-          <p className="eyebrow mb-3">Available to enable</p>
-          {disabledServices.map(svc => {
-            const Icon = SERVICE_ICON[svc.key];
-            return (
-              <div key={svc.key} className="flex items-center gap-4 p-3 rounded-xl border border-border-subtle opacity-70 hover:opacity-100 hover:border-border-emphasis transition">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-white/40 shrink-0"><Icon className="h-4 w-4" /></div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm">{svc.label}</p>
-                  <p className="text-xs text-white/50 truncate">{svc.description}</p>
-                </div>
-                <button onClick={() => toggle.mutate({ key: svc.key, enabled: true })} disabled={toggle.isPending} className="btn-secondary !py-1.5 !px-3 text-xs">
-                  Enable
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

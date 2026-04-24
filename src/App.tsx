@@ -6,7 +6,6 @@ import { AuthProvider, useAuth } from './auth/AuthContext';
 import { AuthGuard } from './auth/AuthGuard';
 import { Toaster } from './components/Toaster';
 import { CommandPalette } from './components/CommandPalette';
-import { ImpersonationBanner } from './components/ImpersonationBanner';
 import { RouteLoader } from './components/RouteLoader';
 import { useOrgsForUser } from './hooks/useOrgs';
 
@@ -65,7 +64,6 @@ function App() {
     <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <AuthProvider>
-        <ImpersonationBanner />
         <CommandPalette />
         <Toaster />
         <Suspense fallback={<RouteLoader />}>

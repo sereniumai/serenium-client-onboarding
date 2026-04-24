@@ -136,7 +136,7 @@ export function DiagnosticsPage() {
                 Live round-trip check of everything the portal depends on. If something's red, clients are likely hitting it.
               </p>
             </div>
-            <button onClick={run} disabled={running} className="btn-secondary">
+            <button onClick={run} disabled={running} className="btn-secondary whitespace-nowrap shrink-0 self-start">
               <RefreshCw className={cn('h-4 w-4', running && 'animate-spin')} /> Re-run
             </button>
           </div>
