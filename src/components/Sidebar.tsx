@@ -125,6 +125,9 @@ export function Sidebar({ sections, children, footerExtra }: {
             <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
+        <p className="text-[9px] text-white/25 tabular-nums mt-2 text-center" title="Deployed commit">
+          build {((import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA as string | undefined) ?? 'local').slice(0, 7)}
+        </p>
       </div>
     </>
   );
