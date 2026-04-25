@@ -16,7 +16,7 @@ import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../
 import { useAuth } from '../../auth/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../lib/queryClient';
-import { listInvitationsForOrg, createInvitation, revokeInvitation, buildInviteUrl, sendInvitationEmail, orgHasBeenContacted } from '../../lib/db/invitations';
+import { listInvitationsForOrg, createInvitation, revokeInvitation, buildInviteUrl, sendInvitationEmail } from '../../lib/db/invitations';
 import { enableService, disableService, reorderServices, setDisabledModuleKeys, setDisabledFieldKeys } from '../../lib/db/services';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
@@ -478,16 +478,7 @@ function ServicesTab({ orgId, org }: { orgId: string; org: Organization }) {
                   <p className="text-xs text-white/50 truncate">{svc.description}</p>
                 </div>
                 <button
-                  onClick={async () => {
-                    // Tracking-only clients (no email ever sent, nobody accepted)
-                    // never get notifications. For real clients we ask first.
-                    const isContacted = await orgHasBeenContacted(orgId).catch(() => false);
-                    if (!isContacted) {
-                      toggle.mutate({ key: svc.key, enabled: true, notify: false, label: svc.label });
-                    } else {
-                      setPendingEnable({ key: svc.key, label: svc.label });
-                    }
-                  }}
+                  onClick={() => setPendingEnable({ key: svc.key, label: svc.label })}
                   disabled={toggle.isPending}
                   className="btn-secondary !py-1.5 !px-3 text-xs"
                 >
@@ -1921,18 +1912,20 @@ function RevenueTab({ orgId }: { orgId: string }) {
   };
   const today = new Date().toISOString().slice(0, 10);
   const activeMonthly = lines.filter(l => l.type === 'monthly' && l.startedAt <= today && (!l.endedAt || l.endedAt > today));
-  const futureMonthly = lines.filter(l => l.type === 'monthly' && l.startedAt > today);
   const oneTimes = lines.filter(l => l.type === 'one_time');
   const mrr = activeMonthly.reduce((s, l) => s + l.amountCents, 0);
-  const futureMrr = futureMonthly.reduce((s, l) => s + l.amountCents, 0);
-  const totalEarned = oneTimes.reduce((s, l) => s + l.amountCents, 0)
-    + lines.filter(l => l.type === 'monthly').reduce((s, l) => {
-      const start = new Date(l.startedAt + 'T00:00:00Z');
-      const stop = l.endedAt ? new Date(l.endedAt + 'T00:00:00Z') : new Date();
-      if (stop <= start) return s;
-      const months = (stop.getUTCFullYear() - start.getUTCFullYear()) * 12 + (stop.getUTCMonth() - start.getUTCMonth());
-      return s + (months > 0 ? l.amountCents * months : 0);
-    }, 0);
+  const oneTimeTotal = oneTimes.reduce((s, l) => s + l.amountCents, 0);
+  // Total billed = sum of all one-time payments + accrued months on every
+  // monthly retainer (counting the current partial month as 1, so a brand-new
+  // retainer added today shows up as one month of revenue rather than $0).
+  const accruedMonthly = lines.filter(l => l.type === 'monthly').reduce((s, l) => {
+    const start = new Date(l.startedAt + 'T00:00:00Z');
+    const stop = l.endedAt ? new Date(l.endedAt + 'T00:00:00Z') : new Date();
+    if (stop < start) return s;
+    const months = (stop.getUTCFullYear() - start.getUTCFullYear()) * 12 + (stop.getUTCMonth() - start.getUTCMonth()) + 1;
+    return s + l.amountCents * Math.max(months, 1);
+  }, 0);
+  const totalEarned = oneTimeTotal + accruedMonthly;
 
   const fmt = (cents: number) => (cents / 100).toLocaleString('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
 
@@ -2003,14 +1996,14 @@ function RevenueTab({ orgId }: { orgId: string }) {
           <p className="text-xs text-white/45 mt-1">{activeMonthly.length} active retainer{activeMonthly.length === 1 ? '' : 's'}</p>
         </div>
         <div className="card !p-4">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1.5">Locked-in future MRR</p>
-          <p className="font-display font-black text-3xl tracking-[-0.02em] tabular-nums">{fmt(futureMrr)}</p>
-          <p className="text-xs text-white/45 mt-1">{futureMonthly.length} retainer{futureMonthly.length === 1 ? '' : 's'} starting later</p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1.5">One-time payments</p>
+          <p className="font-display font-black text-3xl tracking-[-0.02em] tabular-nums">{fmt(oneTimeTotal)}</p>
+          <p className="text-xs text-white/45 mt-1">{oneTimes.length} one-time payment{oneTimes.length === 1 ? '' : 's'}</p>
         </div>
         <div className="card !p-4">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1.5">Total earned to date</p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1.5">Total billed to date</p>
           <p className="font-display font-black text-3xl tracking-[-0.02em] tabular-nums">{fmt(totalEarned)}</p>
-          <p className="text-xs text-white/45 mt-1">{oneTimes.length} one-time{oneTimes.length === 1 ? '' : 's'} + accrued retainers</p>
+          <p className="text-xs text-white/45 mt-1">One-times plus every retainer month so far</p>
         </div>
       </div>
 

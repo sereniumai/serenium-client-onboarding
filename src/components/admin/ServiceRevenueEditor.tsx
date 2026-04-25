@@ -34,8 +34,11 @@ export function ServiceRevenueEditor({ orgId, serviceKey, serviceLabel, open, on
   const serviceLines = lines.filter(l => l.serviceKey === serviceKey);
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['revenue', orgId] });
-    qc.invalidateQueries({ queryKey: ['revenue', 'all'] });
+    // refetch (not just invalidate) so the global Revenue page reflects
+    // the change immediately on the next visit, even if it's currently
+    // mounted with a stale cache from earlier in the session.
+    qc.refetchQueries({ queryKey: ['revenue', orgId] });
+    qc.refetchQueries({ queryKey: ['revenue', 'all'] });
   };
 
   const create = useMutation({
