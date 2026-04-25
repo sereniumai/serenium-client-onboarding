@@ -14,7 +14,8 @@ import { getReportFileSignedUrl } from '../../lib/db/reportFiles';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
 import { Markdown } from '../../components/Markdown';
 import { cn } from '../../lib/cn';
-import type { MonthlyReport } from '../../types';
+import type { MonthlyReport, ServiceKey } from '../../types';
+import { getService } from '../../config/modules';
 
 export function ReportsPage() {
   const { orgSlug } = useParams();
@@ -121,7 +122,7 @@ function YearFolder({ year, reports, activeId, onPick }: {
 }) {
   const [open, setOpen] = useState(true);
   const hasActive = reports.some(r => r.id === activeId);
-  const monthsComplete = reports.length;
+  const months = useMemo(() => groupByMonth(reports), [reports]);
 
   return (
     <div>
@@ -135,7 +136,7 @@ function YearFolder({ year, reports, activeId, onPick }: {
         <ChevronRight className={cn('h-4 w-4 text-white/40 transition-transform shrink-0', open && 'rotate-90')} />
         <div className="flex-1 min-w-0 text-left">
           <p className="font-display font-bold text-lg tracking-[-0.01em]">{year}</p>
-          <p className="text-[11px] text-white/40 tabular-nums">{monthsComplete} report{monthsComplete === 1 ? '' : 's'}</p>
+          <p className="text-[11px] text-white/40 tabular-nums">{reports.length} report{reports.length === 1 ? '' : 's'}</p>
         </div>
       </button>
 
@@ -148,24 +149,76 @@ function YearFolder({ year, reports, activeId, onPick }: {
             transition={{ duration: 0.18 }}
             className="overflow-hidden mt-0.5 ml-3 pl-3 border-l border-border-subtle space-y-0.5"
           >
-            {reports.map(r => (
-              <li key={r.id}>
-                <button
-                  onClick={() => onPick(r.id)}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                    activeId === r.id ? 'bg-orange/15 text-orange' : 'text-white/70 hover:bg-bg-tertiary/60 hover:text-white',
-                  )}
-                >
-                  <FileText className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{monthName(r.period)}</span>
-                </button>
-              </li>
+            {months.map(({ period, reports: monthReports }) => (
+              <MonthFolder
+                key={period}
+                period={period}
+                reports={monthReports}
+                activeId={activeId}
+                onPick={onPick}
+              />
             ))}
           </motion.ul>
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function MonthFolder({ period, reports, activeId, onPick }: {
+  period: string;
+  reports: MonthlyReport[];
+  activeId: string | null;
+  onPick: (id: string) => void;
+}) {
+  const hasActive = reports.some(r => r.id === activeId);
+  const [open, setOpen] = useState(hasActive);
+  const services = useMemo(() => groupByService(reports), [reports]);
+
+  return (
+    <li>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'w-full flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-left',
+          hasActive ? 'text-white' : 'text-white/75 hover:text-white hover:bg-bg-tertiary/60',
+        )}
+      >
+        <ChevronRight className={cn('h-3.5 w-3.5 text-white/40 transition-transform shrink-0', open && 'rotate-90')} />
+        <span className="text-sm font-semibold">{monthName(period)}</span>
+        <span className="ml-auto text-[10px] text-white/35 tabular-nums">{reports.length}</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.ul
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            className="overflow-hidden mt-0.5 ml-3 pl-3 border-l border-border-subtle/60 space-y-0.5"
+          >
+            {services.map(group => (
+              <li key={group.serviceKey ?? 'untagged'}>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-white/35 px-2 pt-2 pb-1">{group.label}</p>
+                {group.reports.map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => onPick(r.id)}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors text-left',
+                      activeId === r.id ? 'bg-orange/15 text-orange' : 'text-white/70 hover:bg-bg-tertiary/60 hover:text-white',
+                    )}
+                  >
+                    <FileText className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{r.title}</span>
+                  </button>
+                ))}
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </li>
   );
 }
 
@@ -247,6 +300,27 @@ function ReportFileRow({ file }: { file: import('../../types').ReportFile & { de
       </button>
     </div>
   );
+}
+
+function groupByMonth(reports: MonthlyReport[]): Array<{ period: string; reports: MonthlyReport[] }> {
+  const byPeriod = new Map<string, MonthlyReport[]>();
+  for (const r of reports) (byPeriod.get(r.period) ?? byPeriod.set(r.period, []).get(r.period)!).push(r);
+  return Array.from(byPeriod.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([period, items]) => ({ period, reports: items }));
+}
+
+function groupByService(reports: MonthlyReport[]): Array<{ serviceKey: ServiceKey | null; label: string; reports: MonthlyReport[] }> {
+  const byService = new Map<string, MonthlyReport[]>();
+  for (const r of reports) {
+    const key = r.serviceKey ?? '_';
+    (byService.get(key) ?? byService.set(key, []).get(key)!).push(r);
+  }
+  return Array.from(byService.entries()).map(([key, items]) => ({
+    serviceKey: key === '_' ? null : (key as ServiceKey),
+    label: key === '_' ? 'General' : (getService(key as ServiceKey)?.label ?? key),
+    reports: items,
+  }));
 }
 
 function groupByYear(reports: MonthlyReport[]): Array<{ year: number; reports: MonthlyReport[] }> {

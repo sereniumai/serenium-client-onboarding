@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { toMonthlyReport } from './mappers';
-import type { MonthlyReport, ReportFile } from '../../types';
+import type { MonthlyReport, ReportFile, ServiceKey } from '../../types';
 
 export async function listReportsForOrg(orgId: string): Promise<MonthlyReport[]> {
   const { data, error } = await supabase
@@ -21,6 +21,7 @@ export async function getReport(id: string): Promise<MonthlyReport | null> {
 export interface CreateReportInput {
   organizationId: string;
   period: string;                // YYYY-MM
+  serviceKey?: ServiceKey;
   title: string;
   summary?: string;
   loomUrl?: string;
@@ -35,6 +36,7 @@ export async function createReport(input: CreateReportInput): Promise<MonthlyRep
     .insert({
       organization_id: input.organizationId,
       period: input.period,
+      service_key: input.serviceKey ?? null,
       title: input.title,
       summary: input.summary ?? null,
       loom_url: input.loomUrl ?? null,
@@ -53,7 +55,23 @@ export async function createReport(input: CreateReportInput): Promise<MonthlyRep
     metadata: { period: input.period, title: input.title },
   });
 
+  // Fire-and-forget client notification email. Edits don't trigger this —
+  // only the initial publish — so a typo fix later won't generate noise.
+  notifyReportPublished(input.organizationId, data.id).catch(err =>
+    console.warn('[report] notify email failed', err),
+  );
+
   return toMonthlyReport(data);
+}
+
+async function notifyReportPublished(organizationId: string, reportId: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+  await fetch('/api/notify-report-published', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ organizationId, reportId }),
+  });
 }
 
 export async function updateReport(id: string, patch: Partial<CreateReportInput>): Promise<MonthlyReport> {
@@ -62,6 +80,7 @@ export async function updateReport(id: string, patch: Partial<CreateReportInput>
   if (patch.summary !== undefined) dbPatch.summary = patch.summary;
   if (patch.loomUrl !== undefined) dbPatch.loom_url = patch.loomUrl;
   if (patch.period !== undefined) dbPatch.period = patch.period;
+  if (patch.serviceKey !== undefined) dbPatch.service_key = patch.serviceKey ?? null;
   if (patch.highlights !== undefined) dbPatch.highlights = patch.highlights;
   if (patch.files !== undefined) dbPatch.files = patch.files as object;
 

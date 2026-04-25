@@ -1444,6 +1444,7 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
   onCancel: () => void;
 }) {
   const [period, setPeriod] = useState(existing?.period ?? new Date().toISOString().slice(0, 7));
+  const [serviceKey, setServiceKey] = useState<ServiceKey | ''>(existing?.serviceKey ?? '');
   const [title, setTitle] = useState(existing?.title ?? '');
   const [summary, setSummary] = useState(existing?.summary ?? '');
   const [loomUrl, setLoomUrl] = useState(existing?.loomUrl ?? '');
@@ -1494,9 +1495,9 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
       const { createReport, updateReport } = await import('../../lib/db/reports');
       const cleaned = highlights.map(h => h.trim()).filter(Boolean);
       if (existing) {
-        await updateReport(existing.id, { period, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned, files });
+        await updateReport(existing.id, { period, serviceKey: serviceKey || undefined, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned, files });
       } else {
-        await createReport({ organizationId: orgId, period, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned, files, createdBy: userId });
+        await createReport({ organizationId: orgId, period, serviceKey: serviceKey || undefined, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned, files, createdBy: userId });
       }
       onSaved();
     } catch (err) {
@@ -1509,10 +1510,22 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
   return (
     <div className="card space-y-4 border-orange/30">
       <p className="eyebrow">{existing ? 'Editing report' : 'New report'}</p>
-      <div className="grid md:grid-cols-[160px,1fr] gap-3">
+      <div className="grid md:grid-cols-[160px,1fr,1fr] gap-3">
         <div>
           <label className="label">Period</label>
           <input type="month" className="input" value={period} onChange={e => setPeriod(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Service</label>
+          <select className="input" value={serviceKey} onChange={e => setServiceKey(e.target.value as ServiceKey | '')}>
+            <option value="">Untagged / general</option>
+            <option value="website">SEO / Website</option>
+            <option value="google_ads">Google Ads</option>
+            <option value="google_business_profile">Google Business Profile</option>
+            <option value="facebook_ads">Facebook Ads</option>
+            <option value="ai_sms">AI SMS</option>
+            <option value="ai_receptionist">AI Voice Receptionist</option>
+          </select>
         </div>
         <div>
           <label className="label">Title</label>

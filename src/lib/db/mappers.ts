@@ -111,18 +111,22 @@ export const toInvitation = (r: Row<'invitations'>): Invitation => ({
   createdAt: r.created_at,
 });
 
-export const toMonthlyReport = (r: Row<'monthly_reports'>): MonthlyReport => ({
-  id: r.id,
-  organizationId: r.organization_id,
-  period: r.period,
-  title: r.title,
-  summary: r.summary ?? undefined,
-  loomUrl: r.loom_url ?? undefined,
-  highlights: r.highlights ?? [],
-  files: ((r.files ?? []) as unknown) as MonthlyReport['files'],
-  createdAt: r.created_at,
-  createdBy: r.created_by ?? undefined,
-});
+export const toMonthlyReport = (r: Row<'monthly_reports'>): MonthlyReport => {
+  const row = r as Row<'monthly_reports'> & { service_key?: string | null };
+  return {
+    id: r.id,
+    organizationId: r.organization_id,
+    period: r.period,
+    serviceKey: (row.service_key ?? undefined) as MonthlyReport['serviceKey'],
+    title: r.title,
+    summary: r.summary ?? undefined,
+    loomUrl: r.loom_url ?? undefined,
+    highlights: r.highlights ?? [],
+    files: ((r.files ?? []) as unknown) as MonthlyReport['files'],
+    createdAt: r.created_at,
+    createdBy: r.created_by ?? undefined,
+  };
+};
 
 export const toActivityLog = (r: Row<'activity_log'>): ActivityLogEntry => ({
   id: r.id,

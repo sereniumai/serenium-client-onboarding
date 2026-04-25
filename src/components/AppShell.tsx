@@ -28,6 +28,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { snapshot } = useOrgSnapshot(org?.id);
   const progress = snapshot ? getOrgProgress(snapshot) : null;
   const onboardingDone = !!progress && progress.totalModules > 0 && progress.overall === 100;
+  // "Live" is a hard manual flip by admin, distinct from onboardingDone (the
+  // user just having filled in everything). Live clients land in reports
+  // mode — Aria, the welcome video, and the multi-section sidebar all go
+  // away in favour of a single Reports entry.
+  const isLive = org?.status === 'live';
 
   const isClientInsideOnboarding = !!(user?.role === 'client' && org
     && location.pathname.startsWith(`/onboarding/${org.slug}/services`));
@@ -46,6 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     userRole: user?.role,
     orgSlug,
     onboardingDone,
+    isLive,
     hasUnreadWhatsNew: user?.role === 'admin' ? hasUnreadChangelog() : false,
     progress,
     editingMode: isClientInsideOnboarding,
@@ -71,8 +77,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  // AI chat is only for active onboarding. Hide it once the client's onboarding is done.
-  const showAiChat = user.role === 'admin' || !onboardingDone;
+  // AI chat is only for active onboarding. Hide it for live clients (and for
+  // anyone past 100% onboarding awaiting manual review).
+  const showAiChat = user.role === 'admin' || (!onboardingDone && !isLive);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -92,17 +99,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       {showAiChat && <AiHelperChat />}
-      {user.role === 'client' && <WelcomeVideoModal />}
+      {user.role === 'client' && !isLive && <WelcomeVideoModal />}
     </div>
   );
 }
 
 function buildSections({
-  userRole, orgSlug, onboardingDone, hasUnreadWhatsNew, progress, editingMode, hasWelcomeVideo,
+  userRole, orgSlug, onboardingDone, isLive, hasUnreadWhatsNew, progress, editingMode, hasWelcomeVideo,
 }: {
   userRole: 'admin' | 'client' | undefined;
   orgSlug: string | null;
   onboardingDone: boolean;
+  isLive: boolean;
   hasUnreadWhatsNew: boolean;
   progress: ReturnType<typeof getOrgProgress> | null;
   editingMode: boolean;
@@ -162,18 +170,25 @@ function buildSections({
     ];
   }
 
+  // Live clients land in reports mode — single sidebar entry, no Aria, no
+  // welcome video.
+  if (isLive) {
+    return [
+      {
+        title: 'Your account',
+        items: [
+          { to: `/onboarding/${orgSlug}/reports`, label: 'Reports', icon: FileBarChart2, end: true },
+        ],
+      },
+    ];
+  }
+
   if (onboardingDone) {
     return [
       {
         title: 'Overview',
         items: [
           { to: `/onboarding/${orgSlug}`, label: 'Dashboard', icon: Home, end: true },
-        ],
-      },
-      {
-        title: 'Results',
-        items: [
-          { to: `/onboarding/${orgSlug}/reports`, label: 'Monthly reports', icon: FileBarChart2, end: true },
         ],
       },
       {
