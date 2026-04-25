@@ -1,5 +1,6 @@
 // Tiny markdown renderer, just enough for our instruction blocks.
-// Supports: **bold**, `code`, paragraphs, blank-line breaks, `- ` lists.
+// Supports: **bold**, `code`, [text](url) links, paragraphs, blank-line
+// breaks, `- ` lists.
 
 export function Markdown({ children }: { children: string }) {
   const blocks = children.trim().split(/\n\s*\n/);
@@ -22,15 +23,31 @@ export function Markdown({ children }: { children: string }) {
 
 function renderInline(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  // Order matters — link regex first so we don't shred [text] before catching the URL.
+  const regex = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`)/g;
   let last = 0;
   let m;
   let i = 0;
   while ((m = regex.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index));
     const t = m[0];
-    if (t.startsWith('**')) parts.push(<strong key={i++} className="text-white font-semibold">{t.slice(2, -2)}</strong>);
-    else parts.push(<code key={i++} className="px-1.5 py-0.5 rounded bg-bg-tertiary text-orange text-[0.9em]">{t.slice(1, -1)}</code>);
+    if (t.startsWith('[')) {
+      const linkMatch = t.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (linkMatch) {
+        const [, label, url] = linkMatch;
+        parts.push(
+          <a key={i++} href={url} target="_blank" rel="noopener noreferrer" className="text-orange hover:text-orange-hover underline-offset-2 hover:underline font-medium">
+            {label}
+          </a>,
+        );
+      } else {
+        parts.push(t);
+      }
+    } else if (t.startsWith('**')) {
+      parts.push(<strong key={i++} className="text-white font-semibold">{t.slice(2, -2)}</strong>);
+    } else {
+      parts.push(<code key={i++} className="px-1.5 py-0.5 rounded bg-bg-tertiary text-orange text-[0.9em]">{t.slice(1, -1)}</code>);
+    }
     last = m.index + t.length;
   }
   if (last < text.length) parts.push(text.slice(last));
