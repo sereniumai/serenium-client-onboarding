@@ -28,6 +28,18 @@ export function AiConversationsPage() {
     },
   });
 
+  const { data: orgs = {} } = useQuery({
+    queryKey: ['organizations', 'map'],
+    queryFn: async () => {
+      const { data } = await supabase.from('organizations').select('id, business_name, slug');
+      const map: Record<string, { businessName: string; slug: string }> = {};
+      for (const r of (data ?? []) as Array<{ id: string; business_name: string; slug: string }>) {
+        map[r.id] = { businessName: r.business_name, slug: r.slug };
+      }
+      return map;
+    },
+  });
+
   const [query, setQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
@@ -45,19 +57,26 @@ export function AiConversationsPage() {
   const userList = useMemo(() => {
     const q = query.trim().toLowerCase();
     return Object.entries(byUser)
-      .map(([userId, msgs]) => ({
-        userId,
-        name: users[userId]?.name ?? userId.slice(0, 8),
-        email: users[userId]?.email ?? '',
-        lastMessage: msgs[msgs.length - 1],
-        count: msgs.length,
-      }))
+      .map(([userId, msgs]) => {
+        const lastMessage = msgs[msgs.length - 1];
+        const orgId = lastMessage?.organizationId;
+        const businessName = orgId ? orgs[orgId]?.businessName ?? '' : '';
+        return {
+          userId,
+          name: users[userId]?.name ?? userId.slice(0, 8),
+          email: users[userId]?.email ?? '',
+          businessName,
+          lastMessage,
+          count: msgs.length,
+        };
+      })
       .filter(u => !q
         || u.name.toLowerCase().includes(q)
         || u.email.toLowerCase().includes(q)
+        || u.businessName.toLowerCase().includes(q)
         || u.lastMessage?.content.toLowerCase().includes(q))
       .sort((a, b) => (b.lastMessage?.createdAt ?? '').localeCompare(a.lastMessage?.createdAt ?? ''));
-  }, [byUser, users, query]);
+  }, [byUser, users, orgs, query]);
 
   const activeMessages = selectedUser ? byUser[selectedUser] ?? [] : [];
 
@@ -69,7 +88,7 @@ export function AiConversationsPage() {
           <div className="mb-6">
             <p className="eyebrow mb-2">Communication</p>
             <h1 className="font-display font-black text-[clamp(1.75rem,5vw,2.5rem)] leading-[1.05] tracking-[-0.025em]">AI conversations</h1>
-            <p className="text-white/60 text-sm mt-1">Every chat between clients and Rob/Adam.</p>
+            <p className="text-white/60 text-sm mt-1">Every chat between clients and Aria.</p>
           </div>
 
           {isLoading && (
@@ -114,9 +133,12 @@ export function AiConversationsPage() {
                           <span className="text-[10px] text-white/40 shrink-0">{formatDistanceToNow(new Date(u.lastMessage.createdAt), { addSuffix: false })}</span>
                         )}
                       </div>
-                      <p className="text-xs text-white/50 truncate">{u.email}</p>
+                      {u.businessName && (
+                        <p className="text-xs text-orange/85 truncate">{u.businessName}</p>
+                      )}
+                      <p className="text-xs text-white/45 truncate">{u.email}</p>
                       {u.lastMessage && (
-                        <p className="text-xs text-white/40 truncate mt-0.5">{u.lastMessage.role === 'user' ? '↳ ' : ''}{u.lastMessage.content}</p>
+                        <p className="text-xs text-white/40 truncate mt-1">{u.lastMessage.role === 'user' ? '↳ ' : ''}{u.lastMessage.content}</p>
                       )}
                     </button>
                   ))}
@@ -128,6 +150,20 @@ export function AiConversationsPage() {
                   <div className="text-center py-16 text-white/50 text-sm">Pick a conversation from the list</div>
                 ) : (
                   <div className="max-h-[60vh] overflow-y-auto space-y-3">
+                    {(() => {
+                      const sel = userList.find(u => u.userId === selectedUser);
+                      if (!sel) return null;
+                      return (
+                        <div className="pb-3 mb-2 border-b border-border-subtle">
+                          <p className="font-semibold">{sel.name}</p>
+                          <p className="text-xs text-white/55">
+                            {sel.businessName && <span className="text-orange/85">{sel.businessName}</span>}
+                            {sel.businessName && sel.email && <span className="text-white/30"> · </span>}
+                            {sel.email}
+                          </p>
+                        </div>
+                      );
+                    })()}
                     {activeMessages.map(m => (
                       <div key={m.id} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                         <div className={cn(

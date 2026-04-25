@@ -53,7 +53,9 @@
   html[data-theme="light"] .bg-bg\/90 { background-color: #F6F3EF; }
 
   html[data-theme="light"] .bg-bg-secondary,
-  html[data-theme="light"] .bg-bg-secondary\/40 { background-color: #FFFFFF; }
+  html[data-theme="light"] .bg-bg-secondary\/40,
+  html[data-theme="light"] .bg-bg-secondary\/60,
+  html[data-theme="light"] .bg-bg-secondary\/80 { background-color: #FFFFFF; }
 
   html[data-theme="light"] .bg-bg-tertiary,
   html[data-theme="light"] .bg-bg-tertiary\/20,
@@ -102,9 +104,12 @@
   /* Border whites flip to dark so checkboxes and outlines stay visible */
   html[data-theme="light"] .border-white\/30 { border-color: rgba(0, 0, 0, 0.40); }
   html[data-theme="light"] .border-white\/50 { border-color: rgba(0, 0, 0, 0.55); }
+  html[data-theme="light"] .border-white\/55 { border-color: rgba(0, 0, 0, 0.60); }
+  html[data-theme="light"] .border-white\/80 { border-color: rgba(0, 0, 0, 0.80); }
   html[data-theme="light"] .border-white\/20 { border-color: rgba(0, 0, 0, 0.25); }
   html[data-theme="light"] .border-white\/10 { border-color: rgba(0, 0, 0, 0.12); }
   html[data-theme="light"] .group:hover .group-hover\:border-white\/50 { border-color: rgba(0, 0, 0, 0.65); }
+  html[data-theme="light"] .group:hover .group-hover\:border-white\/80 { border-color: rgba(0, 0, 0, 0.85); }
 
   /* Soft surfaces keep their tint but lighter */
   html[data-theme="light"] .bg-white\/5 { background-color: rgba(0, 0, 0, 0.04); }

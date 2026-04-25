@@ -35,7 +35,7 @@ export const validatePhone: FieldValidator = v =>
 export const validateDomain: FieldValidator = v => {
   if (typeof v !== 'string' || !v) return null;
   const stripped = v.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
-  return DOMAIN_RE.test(stripped) ? null : 'Enter a valid domain (e.g. surewestroofing.ca).';
+  return DOMAIN_RE.test(stripped) ? null : 'Enter a valid domain (e.g. yourcompany.ca).';
 };
 
 export const validateGoogleAdsId: FieldValidator = v =>
@@ -520,7 +520,7 @@ const AI_SMS: ServiceDef = {
           label: 'Info the AI must gather before booking',
           type: 'repeatable',
           required: true,
-          helpText: 'Ordered. Typical roofing: full name, service address, roof age, material, insurance vs cash, urgency.',
+          helpText: 'In the order the AI should ask. Typical for roofing: full name, service address, roof age, material, insurance vs cash, urgency.',
           tooltip: 'The questions the AI must get answered before it books. Order matters, ask the easy ones (name, address) first and the trickier ones (insurance vs cash) once they are warmed up.',
         },
         {
@@ -529,7 +529,7 @@ const AI_SMS: ServiceDef = {
           type: 'repeatable',
           minItems: 5,
           required: true,
-          helpText: 'Minimum 5. Cover service area, warranty, pricing, availability, insurance work, emergency service, financing.',
+          helpText: 'Add at least 5. Cover topics like service area, warranty, pricing, availability, insurance work, emergency service, and financing.',
           tooltip: 'For each common question, give the AI the exact answer in your voice. Example Q: "Do you do insurance claims?" A: "Yes, we work with all major Canadian insurers and handle the paperwork." More FAQs means fewer awkward AI moments.',
         },
         {
@@ -537,9 +537,9 @@ const AI_SMS: ServiceDef = {
           label: 'Pricing stance',
           type: 'select',
           required: true,
-          options: ['Share ranges', 'Share specifics', 'Always punt to human'],
-          helpText: 'Most roofers pick "punt to human".',
-          tooltip: 'How the AI should handle "how much?". Most roofers pick "punt to human" because every roof is different and quoting blind hurts conversion. Ranges work if you are confident on typical costs.',
+          options: ['Share ranges', 'Share specifics', 'Always hand off to a human'],
+          helpText: 'Most roofers pick "hand off to a human".',
+          tooltip: 'How the AI should handle "how much?". Most roofers pick "hand off to a human" because every roof is different and quoting blind hurts conversion. Ranges work if you are confident on typical costs.',
         },
         { key: 'sms_ai_never_say', label: 'Guardrails, things the AI should NEVER say', type: 'textarea', required: true, tooltip: "Hard limits. Examples: don't guarantee prices, don't commit to a specific date without checking the calendar, don't mention competitors by name." },
       ],
@@ -558,7 +558,7 @@ const AI_SMS: ServiceDef = {
           helpText: 'Speed-to-lead is the biggest conversion lever. Lower = better.',
           tooltip: 'How fast the AI replies to a brand-new lead. Studies put 5-minute response 100x better than 30-minute. We default to 10 seconds for a reason, leave it unless you have a strong reason.',
         },
-        { key: 'sms_disqualification_criteria', label: 'When the AI politely ends the chat', type: 'textarea', helpText: 'e.g. outside service area, wrong service, too-small job.', tooltip: 'When the AI should politely wrap up rather than book. Example: "outside our 50km service radius, residential-only inquiries for commercial buildings, jobs under $1k". Saves you wasted estimate visits.' },
+        { key: 'sms_disqualification_criteria', label: 'In what situation would the AI end the chat?', type: 'textarea', helpText: 'e.g. outside service area, wrong service, too-small job.', tooltip: 'When the AI should politely wrap up rather than book. Example: "outside our 50km service radius, residential-only inquiries for commercial buildings, jobs under $1k". Saves you wasted estimate visits.' },
         { key: 'sms_human_handoff_enabled', label: 'Allow handoff to a human?', type: 'select', required: true, options: ['Yes', 'No'], tooltip: 'If Yes, the AI forwards the conversation to a real person when the lead asks or gets stuck. Recommended, catches edge cases the AI can\'t resolve.' },
         { key: 'sms_human_handoff_triggers', label: 'What triggers a handoff?', type: 'textarea', required: true, conditional: { field: 'sms_human_handoff_enabled', op: 'eq', value: 'Yes' }, tooltip: 'Words or situations that should always pull a real person in. Example: "asks for the owner, mentions a lawyer, complains about a previous job, asks a question the AI cannot answer twice in a row".' },
         {
@@ -673,7 +673,7 @@ const AI_SMS: ServiceDef = {
       whyWeAsk: 'When the AI books an estimate, we ping you the moment it happens, not in a daily digest. Tell us how you want to be told (SMS, email, or both) and who on your team should get it.',
       estimatedMinutes: 4,
       fields: [
-        { key: 'notification_method', label: 'How do you want to be notified?', type: 'multiselect', required: true, options: ['SMS', 'Email', 'Both'], tooltip: 'How you find out the moment a booking lands. Most owners pick "Both", SMS for the buzz, email for the full details and lead history.' },
+        { key: 'notification_method', label: 'How do you want to be notified?', type: 'select', required: true, options: ['SMS', 'Email', 'Both'], tooltip: 'How you find out the moment a booking lands. Most owners pick "Both", SMS for the buzz, email for the full details and lead history.' },
         {
           key: 'appointment_notification_recipients',
           label: 'Who gets notified (name, phone, email each)',
@@ -686,11 +686,11 @@ const AI_SMS: ServiceDef = {
     },
     {
       key: 'ghl_calendar_setup',
-      title: 'Connect your Google Calendar',
+      title: 'Connect your calendar',
       whyWeAsk: 'This is the actual handshake that lets the AI drop a real appointment on your calendar without double-booking. The 10 minutes you spend here is the difference between "AI texts about a lead" and "AI books the lead while you are on a roof".',
       estimatedMinutes: 10,
       videoUrl: 'https://www.youtube.com/watch?v=KcdUwD3I5ms',
-      instructions: `Connect your Google Calendar so the AI can book estimates straight in, and set your weekly availability.`,
+      instructions: `Connect your calendar so the AI can book estimates straight in. We support Google Calendar, Outlook, and any GoHighLevel calendar.`,
       fields: [
         { key: 'calendar_connected', label: "I've connected my Google Calendar to my GHL account", type: 'checkbox', required: true, tooltip: 'Tick once you have linked Google Calendar inside the GHL account we provided. This is the handshake that lets the AI drop appointments straight onto your calendar without double-booking.' },
         {
@@ -754,9 +754,9 @@ const AI_RECEPTIONIST: ServiceDef = {
           tooltip: 'The questions the AI asks in order on every qualifying call. Easy first (name, address), then the deeper ones. Treat this like training a new front-desk hire.',
         },
         { key: 'retell_faqs', label: 'FAQs callers commonly ask', type: 'repeatable', required: true, tooltip: 'Question + ideal answer pairs for things callers always ask: hours, service area, warranty, financing, insurance work. The more you give, the less the AI fumbles.' },
-        { key: 'retell_pricing_stance', label: 'Pricing stance', type: 'select', required: true, options: ['Share ranges', 'Always punt to human'], tooltip: 'How the AI handles "what does a roof cost?" on a phone call. Most roofers pick "punt to human" since pricing varies, but ranges are fine if you are confident on typical jobs.' },
+        { key: 'retell_pricing_stance', label: 'Pricing stance', type: 'select', required: true, options: ['Share ranges', 'Always hand off to a human'], tooltip: 'How the AI handles "what does a roof cost?" on a phone call. Most roofers pick "punt to human" since pricing varies, but ranges are fine if you are confident on typical jobs.' },
         { key: 'retell_ai_never_say', label: 'Guardrails, never say', type: 'textarea', required: true, tooltip: 'Hard limits for the AI on calls. Examples: "do not promise specific prices, do not commit to dates without checking the calendar, do not name competitors, do not speculate on insurance coverage".' },
-        { key: 'retell_voice_preference', label: 'Voice preference', type: 'select', options: ['Male', 'Female', 'No preference'], tooltip: 'The voice your callers hear. We will pick a natural-sounding option in your chosen gender. Some markets respond better to one or the other, "no preference" lets us A/B test.' },
+        { key: 'retell_voice_preference', label: 'Voice preference', type: 'select', options: ['Female (recommended)', 'Male', 'No preference'], tooltip: "The voice your callers hear. Female voices tend to convert better on roofing inbound calls (callers stay on longer, more comfortable answering qualifying questions). Pick Male if your brand calls for it, or 'no preference' to let us pick." },
       ],
     },
     {
@@ -990,7 +990,7 @@ const WEBSITE: ServiceDef = {
       whyWeAsk: 'Your domain is your most valuable digital asset. We need to know who currently controls it, where the site is hosted today, and whether your business email is tied to either, so we can plan a clean cutover with zero downtime and no broken inboxes.',
       estimatedMinutes: 5,
       fields: [
-        { key: 'current_domain', label: 'Domain name', type: 'text', required: true, placeholder: 'surewestroofing.ca', validate: validateDomain, tooltip: 'Your existing domain (e.g. surewestroofing.ca). The new site will launch on this same domain so you keep all your SEO history and existing links.' },
+        { key: 'current_domain', label: 'Domain name', type: 'text', required: true, placeholder: 'yourcompany.ca', validate: validateDomain, tooltip: 'Your existing domain (e.g. yourcompany.ca). The new site will launch on this same domain so you keep all your SEO history and existing links.' },
         {
           key: 'has_dns_access',
           label: 'Do you currently have access to the domain so you can change DNS etc?',

@@ -36,7 +36,7 @@ export function TaskCheckbox({ checked, onChange, label, disabled }: Props) {
       <div
         className={cn(
           'mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-all',
-          checked ? 'bg-orange border-orange' : 'border-white/30 group-hover:border-white/50'
+          checked ? 'bg-orange border-orange' : 'bg-white/[0.04] border-white/55 group-hover:border-white/80'
         )}
         aria-hidden
       >

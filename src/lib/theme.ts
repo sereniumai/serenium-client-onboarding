@@ -12,8 +12,9 @@ export function getTheme(): Theme {
   if (typeof window === 'undefined') return 'dark';
   const saved = window.localStorage.getItem(STORAGE_KEY) as Theme | null;
   if (saved === 'light' || saved === 'dark') return saved;
-  // First visit, honour OS preference.
-  if (window.matchMedia?.('(prefers-color-scheme: light)').matches) return 'light';
+  // No saved preference -> always dark. The brand reads better in dark, and
+  // we don't want to surprise a client with their OS-light preference taking
+  // them somewhere they didn't choose.
   return 'dark';
 }
 

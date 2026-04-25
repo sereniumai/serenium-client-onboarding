@@ -111,9 +111,16 @@ function buildSections({
   if (userRole === 'admin') {
     return [
       {
-        title: 'Operations',
+        title: 'Clients',
         items: [
-          { to: '/admin', label: 'Clients', icon: LayoutDashboard, end: true },
+          { to: '/admin', label: 'All clients', icon: LayoutDashboard, end: true },
+        ],
+      },
+      {
+        title: 'Conversations',
+        items: [
+          { to: '/admin/ai-conversations', label: 'AI chats', icon: MessageCircle },
+          { to: '/admin/settings/followups', label: 'Follow-ups', icon: Mail },
         ],
       },
       {
@@ -124,16 +131,10 @@ function buildSections({
         ],
       },
       {
-        title: 'Communication',
+        title: 'System',
         items: [
-          { to: '/admin/ai-conversations', label: 'AI chats', icon: MessageCircle },
-          { to: '/admin/settings/followups', label: 'Follow-ups', icon: Mail },
-        ],
-      },
-      {
-        items: [
-          { to: '/admin/diagnostics', label: 'Diagnostics', icon: LifeBuoy },
           { to: '/admin/whats-new', label: "What's new", icon: Bell, dot: hasUnreadWhatsNew },
+          { to: '/admin/diagnostics', label: 'Diagnostics', icon: LifeBuoy },
         ],
       },
     ];

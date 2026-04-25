@@ -240,7 +240,7 @@ function CheckboxField({ field, organizationId, fieldKey, userId, onStatusChange
     >
       <div className={cn(
         'mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-all',
-        checked ? 'bg-orange border-orange' : 'border-white/30 group-hover:border-white/50'
+        checked ? 'bg-orange border-orange' : 'bg-white/[0.04] border-white/55 group-hover:border-white/80'
       )} aria-hidden>
         {checked && (
           <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
