@@ -99,6 +99,13 @@
   /* Selection */
   html[data-theme="light"] ::selection { background: rgba(255, 107, 31, 0.25); color: #1A1410; }
 
+  /* Border whites flip to dark so checkboxes and outlines stay visible */
+  html[data-theme="light"] .border-white\/30 { border-color: rgba(0, 0, 0, 0.40); }
+  html[data-theme="light"] .border-white\/50 { border-color: rgba(0, 0, 0, 0.55); }
+  html[data-theme="light"] .border-white\/20 { border-color: rgba(0, 0, 0, 0.25); }
+  html[data-theme="light"] .border-white\/10 { border-color: rgba(0, 0, 0, 0.12); }
+  html[data-theme="light"] .group:hover .group-hover\:border-white\/50 { border-color: rgba(0, 0, 0, 0.65); }
+
   /* Soft surfaces keep their tint but lighter */
   html[data-theme="light"] .bg-white\/5 { background-color: rgba(0, 0, 0, 0.04); }
   html[data-theme="light"] .bg-white\/10 { background-color: rgba(0, 0, 0, 0.06); }

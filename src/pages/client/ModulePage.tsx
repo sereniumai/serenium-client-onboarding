@@ -22,7 +22,7 @@ import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../
 import { getService, getModule } from '../../config/modules';
 import { evaluate } from '../../lib/condition';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
-import { moduleIsReady, findNextActionableModule, getOrgProgress, submissionIsFilled } from '../../lib/progress';
+import { moduleIsReady, findNextActionableModule, submissionIsFilled } from '../../lib/progress';
 import { useQuery } from '@tanstack/react-query';
 import { listStepVideos } from '../../lib/db/videos';
 import type { ServiceKey } from '../../types';
@@ -43,6 +43,12 @@ export function ModulePage() {
 
   const svc = serviceKey ? getService(serviceKey as ServiceKey) : null;
   const mod = svc && moduleKey ? getModule(svc.key, moduleKey) : null;
+
+  // Scroll to top whenever the user lands on a new module page so it's
+  // immediately obvious which section they're in.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [serviceKey, moduleKey]);
 
   // Presence: warn when another teammate is on the same module.
   const presenceKey = org && svc && mod ? `presence:${org.id}:${svc.key}:${mod.key}` : null;
@@ -130,9 +136,6 @@ export function ModulePage() {
     // No confetti, no overlay. Field changes already toast their own "saved".
     if (mp?.status === 'complete') return;
 
-    const before = getOrgProgress(snapshot);
-    const after = { ...before, completeModules: before.completeModules + 1, overall: Math.round(((before.completeModules + 1) / before.totalModules) * 100) };
-
     // Did THIS module's completion just make its service hit 100%?
     const enabledSvc = snapshot.services.find(s => s.serviceKey === svc.key);
     const disabledModKeys = new Set(enabledSvc?.disabledModuleKeys ?? []);
@@ -143,11 +146,10 @@ export function ModulePage() {
       return p?.status === 'complete';
     });
 
-    if (after.totalModules > 0 && after.overall === 100) {
-      sfx.complete();
-      setShowFinal(true);
-      return;
-    }
+    // Don't auto-fire the FinalCelebration anymore. Onboarding completion is
+    // confirmed by the team in admin (manual review), not by the client
+    // ticking the last field. Quietly celebrate the service-level milestone
+    // and let admin bump them to "live" when they're ready.
 
     if (svcWillBeComplete) {
       // Service just finished - this is the celebration moment

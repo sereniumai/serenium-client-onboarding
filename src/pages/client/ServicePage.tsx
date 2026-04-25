@@ -29,6 +29,13 @@ export function ServicePage() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [showFinal, setShowFinal] = useState(false);
 
+  // Scroll to top when landing on a new service. Hash anchors below override
+  // this when present (e.g. linking to a specific module).
+  useEffect(() => {
+    if (location.hash) return;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [serviceKey, location.hash]);
+
   // Scroll to hash anchor when the page loads or hash changes
   useEffect(() => {
     if (!location.hash) return;
@@ -119,9 +126,9 @@ export function ServicePage() {
                   onSetTask={(taskKey, checked) => setTask.mutate({ organizationId: org.id, taskKey, completed: checked, userId: user?.id })}
                   onSetModuleStatus={(status) => setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: m.key, status, userId: user?.id })}
                   onComplete={() => {
-                    if (progress.totalModules > 0 && progress.completeModules + 1 === progress.totalModules) {
-                      setShowFinal(true);
-                    }
+                    // Don't auto-trigger the final celebration anymore. The team
+                    // marks onboarding complete in admin once they've reviewed
+                    // everything; the client gets bumped to "live" mode then.
                   }}
                 />
               ))}
@@ -216,13 +223,12 @@ function ModuleSection({
     }
   };
 
-  // Auto-complete when ready + not already complete. Tracks previous ready value
-  // so we only fire the celebration on the transition, not on page load for
-  // an already-done module.
-  // Auto-complete only on the false→true ready transition. Re-completes from
-  // edits stay silent (no confetti, no toast). Confetti for whole-service
-  // completion is handled in ModulePage where the celebration lives.
-  const readyRef = useRef(readyFor);
+  // Auto-complete on the false→true ready transition. Init the ref at false
+  // so that a module the user already filled in a previous session (mounting
+  // ready=true) still gets flipped to 'complete' on the first render — the
+  // `!complete` guard below prevents re-firing for modules that are already
+  // marked done.
+  const readyRef = useRef(false);
   useEffect(() => {
     const wasReady = readyRef.current;
     readyRef.current = readyFor;

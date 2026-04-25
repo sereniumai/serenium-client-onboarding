@@ -195,15 +195,27 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
   return (
     <div className="space-y-6">
       <AdminSetupCard orgId={org.id} />
-      {readyForLive && org.status === 'onboarding' && (
-        <div className="card border-success/40 bg-success/5">
+      {org.status === 'onboarding' && (
+        <div className={cn(
+          'card',
+          readyForLive ? 'border-success/40 bg-success/5' : 'border-orange/30 bg-orange/5',
+        )}>
           <div className="flex items-start gap-4">
-            <div className="h-10 w-10 rounded-xl bg-success/20 text-success flex items-center justify-center shrink-0">
+            <div className={cn(
+              'h-10 w-10 rounded-xl flex items-center justify-center shrink-0',
+              readyForLive ? 'bg-success/20 text-success' : 'bg-orange/15 text-orange',
+            )}>
               <MessageCircleIcon className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold">All onboarding modules are complete</p>
-              <p className="text-xs text-white/60 mt-0.5">The client is waiting on the "we're reviewing" page. Once you've checked their submissions, mark them live to unlock the reports dashboard.</p>
+              <p className="font-semibold">
+                {readyForLive ? 'All onboarding modules are complete' : 'Mark onboarding complete manually'}
+              </p>
+              <p className="text-xs text-white/60 mt-0.5">
+                {readyForLive
+                  ? "Once you've reviewed their submissions, mark them live to unlock the reports dashboard."
+                  : "Use this when you've gathered everything you need (even if some optional fields aren't filled). The client moves to the live reports view."}
+              </p>
             </div>
             <button onClick={markLive} disabled={updateOrg.isPending} className="btn-primary shrink-0">
               {updateOrg.isPending ? 'Marking…' : 'Mark as live →'}
