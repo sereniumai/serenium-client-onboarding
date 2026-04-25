@@ -90,6 +90,7 @@ Modules still needing copy:
 - [ ] Live "what we're working on" feed in the portal (admin posts updates, client sees them on dashboard)
 - [ ] Refer-a-friend prompt after first monthly report
 - [ ] Export-all-data button on client account page (PIPEDA right-of-portability)
+- [ ] **Service-added notification email** — when admin enables a new service on an existing client, fire an email to the client: "Adam added [Service] to your plan. Log in to give us the info we need to launch it." Should include a deep-link to the new service. New Resend template + trigger when `organization_services` row is inserted post-creation.
 
 ---
 
