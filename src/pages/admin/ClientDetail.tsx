@@ -256,7 +256,7 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
           <p className="text-xs text-white/55">Admin-only actions. Pausing is reversible. Deleting is permanent.</p>
         </div>
 
-        {(org.status === 'live' || org.status === 'paused') && (
+        {org.status !== 'churned' && (
           <PauseActionRow org={org} updateOrg={updateOrg} />
         )}
 
