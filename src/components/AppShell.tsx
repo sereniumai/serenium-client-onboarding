@@ -224,8 +224,13 @@ function buildSections({
     .filter(s => enabledServiceKeys.includes(s.key))
     .map(s => {
       const summaries = progress?.perService[s.key] ?? [];
-      const done = summaries.filter(x => x.status === 'complete').length;
-      const total = summaries.length;
+      // Same completion-gate as the dashboard: admin-locked modules
+      // (Receptionist phone setup, AI SMS GHL calendar) don't count toward
+      // the X/Y badge so the sidebar reflects what the client can actually
+      // finish, not what's still on our plate.
+      const completable = summaries.filter(x => x.canStart);
+      const done = completable.filter(x => x.status === 'complete').length;
+      const total = completable.length;
       return {
         to: `/onboarding/${orgSlug}/services/${s.key}`,
         label: getService(s.key)?.label ?? s.key,

@@ -479,10 +479,10 @@ const AI_SMS: ServiceDef = {
         {
           key: 'sms_primary_goal',
           label: 'What should the AI do?',
-          type: 'multiselect',
+          type: 'select',
           required: true,
           options: ['Book a free estimate', 'Book a phone consultation / sales call', 'Qualify the lead and hand off to a human'],
-          tooltip: 'The single most important outcome you want from every text conversation. We tune the entire AI script around this, so picking one or two beats picking all three.',
+          tooltip: 'The single most important outcome you want from every text conversation. We tune the entire AI script around this.',
         },
       ],
     },
@@ -726,13 +726,14 @@ const AI_RECEPTIONIST: ServiceDef = {
       estimatedMinutes: 15,
       instructions: `Heads up, **this is a starting guide, not the final AI script.** We use what you give us as the foundation, then refine it together with you before launch. Be specific where you can, "we'll figure it out together" notes are totally fine for now.`,
       fields: [
+        { key: 'retell_voice_preference', label: 'Voice preference', type: 'select', required: true, options: ['Female (recommended)', 'Male', 'No preference'], tooltip: "The voice your callers hear. Female voices tend to convert better on roofing inbound calls (callers stay on longer, more comfortable answering qualifying questions). Pick Male if your brand calls for it, or 'no preference' to let us pick." },
         {
           key: 'retell_ai_name_choice',
           label: 'What would you like your AI receptionist to be called?',
           type: 'select',
           required: true,
           options: ['Aria (recommended)', 'Other'],
-          tooltip: 'The name your AI uses on every call. Aria is our recommended default, friendly, easy to say, no awkward pauses on the phone.',
+          tooltip: 'The name your AI uses on every call.',
         },
         {
           key: 'retell_ai_name_custom',
@@ -764,7 +765,6 @@ const AI_RECEPTIONIST: ServiceDef = {
         { key: 'retell_faqs', label: 'FAQs callers commonly ask', type: 'repeatable', required: true, tooltip: 'Question + ideal answer pairs for things callers always ask: hours, service area, warranty, financing, insurance work. The more you give, the less the AI fumbles.' },
         { key: 'retell_pricing_stance', label: 'Pricing stance', type: 'select', required: true, options: ['Share ranges', 'A team member will follow up with pricing details'], tooltip: 'How the AI handles "what does a roof cost?" on a phone call. The follow-up option lets the AI capture the lead without quoting blind, then your team calls back with real numbers. Pick "Share ranges" only if you are confident on typical pricing.' },
         { key: 'retell_ai_never_say', label: 'Guardrails, never say', type: 'textarea', required: true, tooltip: 'Hard limits for the AI on calls. Examples: "do not promise specific prices, do not commit to dates without checking the calendar, do not name competitors, do not speculate on insurance coverage".' },
-        { key: 'retell_voice_preference', label: 'Voice preference', type: 'select', options: ['Female (recommended)', 'Male', 'No preference'], tooltip: "The voice your callers hear. Female voices tend to convert better on roofing inbound calls (callers stay on longer, more comfortable answering qualifying questions). Pick Male if your brand calls for it, or 'no preference' to let us pick." },
       ],
     },
     {

@@ -186,6 +186,16 @@ export function OnboardingDashboard() {
               const svcPct = svcTotal === 0 ? 0 : Math.round((svcComplete / svcTotal) * 100);
               const svcDone = svcTotal > 0 && svcComplete === svcTotal;
               const anyInProgress = summaries.some(s => s.status !== 'not_started');
+              // True when the only thing left on the service is something we
+              // (Serenium) need to action, not the client. Surfaces a pill so
+              // the client knows what's holding things up and that we're
+              // already on it.
+              const waitingOnUs = svcDone && summaries.some(s => !s.canStart && s.status !== 'complete');
+              const waitingMessage = waitingOnUs && svcKey === 'ai_receptionist'
+                ? "Waiting on Serenium to provision your AI number, we'll let you know the moment it's ready."
+                : waitingOnUs && svcKey === 'ai_sms'
+                ? "Waiting on Serenium to set up your GoHighLevel access, we'll let you know once it's live."
+                : null;
 
               return (
                 <motion.div
@@ -216,16 +226,23 @@ export function OnboardingDashboard() {
                         <span className="text-[10px] font-semibold tabular-nums">{svcComplete}<span className="text-white/40">/{svcTotal}</span></span>
                       </CircleProgress>
                     </div>
+                    {waitingMessage && (
+                      <div className="mt-1 mb-3 px-3 py-2 rounded-md bg-orange/[0.06] border border-orange/25 text-xs text-white/85 leading-relaxed">
+                        {waitingMessage}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between pt-4 border-t border-border-subtle">
                       <span className={cn(
                         'inline-flex items-center gap-1.5 text-sm font-medium',
-                        svcDone ? 'text-success' : anyInProgress ? 'text-orange' : 'text-white/50',
+                        waitingOnUs ? 'text-orange' : svcDone ? 'text-success' : anyInProgress ? 'text-orange' : 'text-white/50',
                       )}>
-                        {svcDone
-                          ? <><CheckCircle2 className="h-4 w-4" /> Done</>
-                          : anyInProgress
-                            ? <>In progress</>
-                            : <>Not started</>
+                        {waitingOnUs
+                          ? <>Waiting on Serenium</>
+                          : svcDone
+                            ? <><CheckCircle2 className="h-4 w-4" /> Done</>
+                            : anyInProgress
+                              ? <>In progress</>
+                              : <>Not started</>
                         }
                       </span>
                       <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange group-hover:gap-2 transition-all">
