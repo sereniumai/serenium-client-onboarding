@@ -83,7 +83,7 @@ export default async function handler(req: Request): Promise<Response> {
   // of which admin clicked the button. Clients should always feel they're
   // hearing from the same person.
   const INVITER_FIRST = 'Rob';
-  const subject = `${INVITER_FIRST} from Serenium just invited you, ${i.organizations.business_name} is about to take off`;
+  const subject = `${INVITER_FIRST} from Serenium just invited you to start your onboarding 🚀`;
   const html = renderInviteEmail({
     businessName: i.organizations.business_name,
     inviteeName: i.full_name,

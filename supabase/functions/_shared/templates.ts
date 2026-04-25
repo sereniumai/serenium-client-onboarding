@@ -64,7 +64,7 @@ function button(href: string, label: string): string {
 export function invitationEmail({
   fullName, businessName, inviterName, acceptUrl,
 }: { fullName?: string; businessName: string; inviterName?: string; acceptUrl: string }): { subject: string; html: string } {
-  const subject = `${inviterName ? `${inviterName.split(' ')[0]} from Serenium` : 'Serenium'} just invited you, ${businessName} is about to take off`;
+  const subject = `${inviterName ? `${inviterName.split(' ')[0]} from Serenium` : 'Serenium'} just invited you to start your onboarding 🚀`;
   const hello = fullName ? fullName.split(' ')[0] : 'there';
   const inviter = inviterName ? `${inviterName.split(' ')[0]} from Serenium` : 'Your Serenium team';
   const html = shell(`
