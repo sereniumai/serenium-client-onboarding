@@ -120,10 +120,10 @@ export function OnboardingDashboard() {
             className="flex flex-col md:flex-row md:items-end md:justify-between gap-8"
           >
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-4">
-                <p className="eyebrow">{org.businessName}</p>
+              <div className="mb-3">
                 <StatusPill variant="client" />
               </div>
+              <p className="eyebrow mb-4">{org.businessName}</p>
               <h1 className="font-display font-black text-[clamp(1.875rem,5vw,3.25rem)] leading-[1.02] tracking-[-0.035em] mb-3">
                 {timeOfDayGreeting()}, <span className="text-orange">{firstName}</span>.
               </h1>
