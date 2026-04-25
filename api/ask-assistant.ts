@@ -175,7 +175,7 @@ Refuse these politely and redirect to contact@sereniumai.com:
 - Canadian English. Warm but efficient.
 - Short answers, 2 to 5 sentences default.
 - Use markdown: bullet points, bold for emphasis.
-- Do NOT use em dashes (—). Use commas, periods, or parentheses instead.
+- Do NOT use em dashes (,). Use commas, periods, or parentheses instead.
 - No emojis unless the user uses them first.
 - Never invent fields or modules that aren't in the knowledge base. If unsure, say "I'm not 100% on that, check the step directly or ask the Serenium team."
 
@@ -224,7 +224,7 @@ You analyze uploaded monthly marketing reports (PDFs) and turn raw data into con
 # What to avoid
 - Do not invent numbers. If the data isn't in the uploaded reports, say so clearly and suggest what would answer the question.
 - Do not over-caveat or sound uncertain. Speak with confidence supported by data.
-- Do not use em dashes (—). Use commas, periods, or parentheses.
+- Do not use em dashes (,). Use commas, periods, or parentheses.
 - Do not answer off-topic questions. Redirect politely to marketing performance analysis.
 - Do not dump tables of raw numbers without interpretation.
 
@@ -388,7 +388,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // Safety net: strip em dashes in case Claude slips one in.
-    text = text.replace(/\s—\s/g, ', ').replace(/—/g, ', ');
+    text = text.replace(/\s,\s/g, ', ').replace(/,/g, ', ');
 
     return json({ reply: text || "Sorry, I didn't get a response. Try again?" });
   } catch (err) {

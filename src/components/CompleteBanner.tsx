@@ -18,7 +18,7 @@ export function CompleteBanner(_: { hasReports?: boolean } = {}) {
           <p className="eyebrow mb-1 flex items-center gap-1.5"><Sparkles className="h-3 w-3" /> Submitted</p>
           <h2 className="font-display font-black text-lg md:text-2xl leading-[1.15] tracking-[-0.02em] mb-1">Nice work. We'll review your submission.</h2>
           <p className="text-white/70 text-sm">
-            Your sections are still editable below — feel free to add or update anything. We'll be in touch if we need more from you, then flip your account live.
+            Your sections are still editable below, feel free to add or update anything. We'll be in touch if we need more from you, then flip your account live.
           </p>
         </div>
       </div>

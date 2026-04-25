@@ -212,7 +212,7 @@ export interface MonthlyReport {
   id: string;
   organizationId: string;
   period: string;        // YYYY-MM e.g. "2026-04"
-  serviceKey?: ServiceKey;  // which service the report covers — used to group reports under Year → Month → Service in the live client view
+  serviceKey?: ServiceKey;  // which service the report covers, used to group reports under Year → Month → Service in the live client view
   title: string;
   summary?: string;
   loomUrl?: string;

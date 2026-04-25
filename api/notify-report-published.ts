@@ -3,7 +3,7 @@
 // ----------------------------------------------------------------------------
 // Fires when admin publishes a brand-new monthly report. Emails every member
 // of the org telling them the report is live, with a login link back to the
-// portal. No PDF attachments — reports stay behind auth.
+// portal. No PDF attachments, reports stay behind auth.
 // ----------------------------------------------------------------------------
 // Edits to existing reports do NOT call this; we only ping clients on the
 // initial create so a typo fix doesn't generate noise.
@@ -76,7 +76,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!report) return json({ error: 'Report not found' }, 404);
   const r = report as { period: string; title: string };
 
-  // All members of the org (accepted invitations only) — pull their emails
+  // All members of the org (accepted invitations only), pull their emails
   // from auth via profiles.
   const { data: memberRows } = await admin
     .from('organization_members')
@@ -142,7 +142,7 @@ function renderEmail({ monthLabel, portalUrl }: {
 <p style="margin:0 0 4px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#FF6B1F;font-weight:700;">New monthly report</p>
 <h1 style="margin:0 0 24px;font-size:26px;font-weight:800;letter-spacing:-0.025em;color:#fff;">Your ${escape(monthLabel)} report is ready.</h1>
 <p style="margin:0 0 32px;"><a href="${portalUrl}" style="display:inline-block;background:#FF6B1F;color:#fff;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:10px;font-size:15px;">Log in to view your report →</a></p>
-<p style="margin:0;color:rgba(255,255,255,0.5);font-size:13px;">Reports stay behind your portal login — we never email PDFs. Questions? Reply to this email and a real person picks it up.</p>
+<p style="margin:0;color:rgba(255,255,255,0.5);font-size:13px;">Reports stay behind your portal login, we never email PDFs. Questions? Reply to this email and a real person picks it up.</p>
 </td></tr></table></td></tr></table></body></html>`;
 }
 

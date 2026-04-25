@@ -241,7 +241,7 @@ export function RevenuePage() {
             />
             <MiniStat
               label="Avg services / client"
-              value={avgServicesPerClient > 0 ? avgServicesPerClient.toFixed(1) : '—'}
+              value={avgServicesPerClient > 0 ? avgServicesPerClient.toFixed(1) : ','}
               icon={Activity}
               hint="Across paying clients"
               tooltip="Average number of services each paying client buys from you (e.g. a client on Website + AI SMS = 2). Higher means more cross-sell. Helps you spot under-served clients you could expand."
@@ -327,7 +327,7 @@ export function RevenuePage() {
               />
               <MiniStat
                 label="Avg client tenure"
-                value={avgLifetime !== null ? `${Math.round(avgLifetime)} days` : '—'}
+                value={avgLifetime !== null ? `${Math.round(avgLifetime)} days` : ','}
                 icon={CalendarDays}
                 hint={avgLifetime !== null && avgLifetime >= 30 ? `~${(avgLifetime / 30).toFixed(1)} months` : avgLifetime === null ? 'No clients yet' : undefined}
                 tooltip="Average days each client has been with you. For active and paused clients, counted from their live date (or sign-up date) up to today. For churned clients, from live to churn. Gives you a real sense of how long the typical client stays, even before anyone has left."
@@ -659,11 +659,11 @@ function ClientLtvTable({ rows }: { rows: Array<{ org: Organization; mrrContrib:
                   {r.startedDate.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </td>
                 <td className="px-5 py-3 text-sm tabular-nums text-right">
-                  {r.mrrContrib > 0 ? <span className="text-orange font-semibold">{fmtCAD(r.mrrContrib)}/mo</span> : <span className="text-white/30">—</span>}
+                  {r.mrrContrib > 0 ? <span className="text-orange font-semibold">{fmtCAD(r.mrrContrib)}/mo</span> : <span className="text-white/30">,</span>}
                 </td>
                 <td className="px-5 py-3 text-sm tabular-nums text-right font-semibold">{fmtCAD(r.ltv)}</td>
-                <td className="px-5 py-3 text-sm tabular-nums text-right text-white/65">{r.tenureDays > 0 ? r.tenureDays : '—'}</td>
-                <td className="px-5 py-3 text-xs text-white/55">{r.org.leadSource ? LEAD_LABEL[r.org.leadSource] : '—'}</td>
+                <td className="px-5 py-3 text-sm tabular-nums text-right text-white/65">{r.tenureDays > 0 ? r.tenureDays : ','}</td>
+                <td className="px-5 py-3 text-xs text-white/55">{r.org.leadSource ? LEAD_LABEL[r.org.leadSource] : ','}</td>
               </tr>
             ))}
           </tbody>

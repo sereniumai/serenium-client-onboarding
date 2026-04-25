@@ -143,7 +143,7 @@ export function ServicePage() {
                   onSetTask={(taskKey, checked) => setTask.mutate({ organizationId: org.id, taskKey, completed: checked, userId: user?.id })}
                   onSetModuleStatus={(status) => setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: m.key, status, userId: user?.id })}
                   onComplete={() => {
-                    // No completion modal — Adam wants the user to stay
+                    // No completion modal, Adam wants the user to stay
                     // exactly where they are, see the green "Section complete"
                     // banner inline, and choose for themselves when to move on.
                   }}
@@ -244,7 +244,7 @@ function ModuleSection({
 
   // Auto-complete on the false→true ready transition. Init the ref at false
   // so that a module the user already filled in a previous session (mounting
-  // ready=true) still gets flipped to 'complete' on the first render — the
+  // ready=true) still gets flipped to 'complete' on the first render, the
   // `!complete` guard below prevents re-firing for modules that are already
   // marked done.
   const readyRef = useRef(false);
@@ -282,7 +282,7 @@ function ModuleSection({
       </div>
 
       <div className="px-5 md:px-7 py-6 space-y-6">
-        {/* Admin-locked notice — module isn't ready for the client yet (e.g.
+        {/* Admin-locked notice, module isn't ready for the client yet (e.g.
             AI receptionist phone setup waiting on us to provision a number).
             Render an orange callout so it's hard to miss. */}
         {adminLocked && (module.lockedMessage || module.lockedUntilAdminFlag) && (
@@ -291,7 +291,7 @@ function ModuleSection({
           </div>
         )}
 
-        {/* AI phone number — surfaced once admin has provisioned and saved
+        {/* AI phone number, surfaced once admin has provisioned and saved
             the Retell number for this org. Lives at the top of the
             Phone-Number-Implementation module so the client can copy it
             straight into their carrier's forwarding setup. */}

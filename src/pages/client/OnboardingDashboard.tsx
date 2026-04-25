@@ -97,14 +97,14 @@ export function OnboardingDashboard() {
   //                            after that we redirect straight to /reports.
   // - status === 'onboarding' + 100% done → pending review (waiting for team)
   // - otherwise → active onboarding dashboard
-  // Paused / churned clients hit a soft block. Auth is fine — admin can flip
+  // Paused / churned clients hit a soft block. Auth is fine, admin can flip
   // status back to 'live' and the same login walks straight in. All data is
   // preserved.
   if ((org.status === 'paused' || org.status === 'churned') && user?.role !== 'admin') {
     return <PausedScreen businessName={org.businessName} status={org.status} />;
   }
   if (org.status === 'live') return <LiveLandingGate org={org} firstName={firstName} userId={user?.id} />;
-  // Even at 100% we keep the dashboard fully editable — clients often need to
+  // Even at 100% we keep the dashboard fully editable, clients often need to
   // come back and tweak answers, and we may circle back asking for more. The
   // celebration view only fires once Serenium marks them live in admin.
 

@@ -95,7 +95,7 @@ export async function hasSeenWelcome(userId: string): Promise<boolean> {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Reports dashboard video — mirrors the welcome video shape on a separate URL
+// Reports dashboard video, mirrors the welcome video shape on a separate URL
 // slot + seen-state table so live clients get their own intro video.
 // ────────────────────────────────────────────────────────────────────────────
 

@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const onboardingDone = !!progress && progress.totalModules > 0 && progress.overall === 100;
   // "Live" is a hard manual flip by admin, distinct from onboardingDone (the
   // user just having filled in everything). Live clients land in reports
-  // mode — Aria, the welcome video, and the multi-section sidebar all go
+  // mode, Aria, the welcome video, and the multi-section sidebar all go
   // away in favour of a single Reports entry.
   const isLive = org?.status === 'live';
 
@@ -181,7 +181,7 @@ function buildSections({
     ];
   }
 
-  // Live clients land in reports mode — single sidebar entry, no Aria, no
+  // Live clients land in reports mode, single sidebar entry, no Aria, no
   // welcome video.
   if (isLive) {
     return [

@@ -175,7 +175,7 @@ export function getEnabledModulesForService(snap: OrgSnapshot, serviceKey: Servi
 /**
  * True if the module has at least one currently-required gating item (task
  * or field, after conditionals + admin disables). Used to decide whether to
- * show a manual "Mark complete" button — auto-complete is impossible when
+ * show a manual "Mark complete" button, auto-complete is impossible when
  * this returns false.
  */
 export function moduleHasRequiredItems(snap: OrgSnapshot, svcKey: ServiceKey, moduleKey: string): boolean {
@@ -228,7 +228,7 @@ export function moduleIsReady(snap: OrgSnapshot, svcKey: ServiceKey, moduleKey: 
 
   // Modules with no required gating (purely optional sections like Social
   // Profiles or Team Members) auto-complete once the user has engaged with
-  // *anything* inside — at least one submission, upload, or task. Without
+  // *anything* inside, at least one submission, upload, or task. Without
   // this they would either auto-complete on entry (bogus) or stay "Not
   // started" forever (annoying). Engagement-based gating threads the needle.
   if (requiredTasks.length === 0 && requiredFields.length === 0) {

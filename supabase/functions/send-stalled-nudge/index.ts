@@ -1,4 +1,4 @@
-// Scheduled Edge Function — find stalled clients and send a gentle nudge.
+// Scheduled Edge Function, find stalled clients and send a gentle nudge.
 // Deploy: supabase functions deploy send-stalled-nudge
 // Schedule via Supabase cron (daily 09:00):
 //   select cron.schedule('stalled-nudge-daily', '0 9 * * *',

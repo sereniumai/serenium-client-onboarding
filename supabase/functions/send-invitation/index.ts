@@ -1,4 +1,4 @@
-// Supabase Edge Function — send a branded invitation email via Resend.
+// Supabase Edge Function, send a branded invitation email via Resend.
 // Deploy: supabase functions deploy send-invitation
 // Invoke from the client/admin after creating an invitation row:
 //   supabase.functions.invoke('send-invitation', { body: { invitationId } })

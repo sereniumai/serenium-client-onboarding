@@ -355,7 +355,7 @@ function PauseActionRow({ org, updateOrg }: {
       <p className="text-xs text-white/55 mb-3">
         {isPaused
           ? 'Currently paused. Logins are blocked and monthly retainers are ended. Reactivate any time, all data is preserved.'
-          : 'Stops their portal access and ends every active monthly retainer today. Use when a client takes a break — all data, reports, and history stay safe so you can flip them back on later. Reversible.'}
+          : 'Stops their portal access and ends every active monthly retainer today. Use when a client takes a break, all data, reports, and history stay safe so you can flip them back on later. Reversible.'}
       </p>
       <button
         onClick={onAction}
@@ -1244,7 +1244,7 @@ function AdminSetupCard({ orgId }: { orgId: string }) {
 
       // On false -> true, send the client an email letting them know their AI
       // receptionist is ready to wire up. Skip silently if the endpoint is
-      // unreachable or the org has no contact email — log toggle still succeeds.
+      // unreachable or the org has no contact email, log toggle still succeeds.
       if (wasOff && value) {
         try {
           const { data: { session } } = await supabase.auth.getSession();

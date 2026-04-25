@@ -1,4 +1,4 @@
-// Branded HTML email templates — Serenium dark + orange aesthetic.
+// Branded HTML email templates, Serenium dark + orange aesthetic.
 // Rendered inline so every email client can display without external CSS.
 
 const bg = '#0A0706';
@@ -87,7 +87,7 @@ export function passwordResetEmail({ resetUrl }: { resetUrl: string }): { subjec
     <h1 style="font-size: 28px; font-weight: 900; letter-spacing: -0.025em; line-height: 1.15; margin: 0 0 16px;">Reset your password.</h1>
     <p style="color: ${muted}; line-height: 1.6; margin: 0 0 4px;">Click the button below to choose a new password. This link is valid for 1 hour and can only be used once.</p>
     ${button(resetUrl, 'Choose new password')}
-    <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin: 24px 0 0;">If you didn't ask for this, you can ignore this email — your password stays the same.</p>
+    <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin: 24px 0 0;">If you didn't ask for this, you can ignore this email, your password stays the same.</p>
   `, 'Reset your Serenium password');
   return { subject, html };
 }
@@ -98,7 +98,7 @@ export function milestoneEmail({
   const hello = fullName ? fullName.split(' ')[0] : 'there';
   let headline: string;
   if (percent >= 100) headline = "You're all set.";
-  else if (percent >= 75) headline = `${percent}% there — the final stretch.`;
+  else if (percent >= 75) headline = `${percent}% there, the final stretch.`;
   else if (percent >= 50) headline = `Halfway there.`;
   else headline = `You're off to a solid start.`;
 
@@ -123,7 +123,7 @@ export function stalledNudgeEmail({
     <p style="font-size: 13px; color: ${orange}; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; margin: 0 0 12px;">Quick nudge</p>
     <h1 style="font-size: 28px; font-weight: 900; letter-spacing: -0.025em; line-height: 1.15; margin: 0 0 16px;">Hey ${hello}, still with us?</h1>
     <p style="color: ${muted}; line-height: 1.6; margin: 0 0 4px;">It's been ${daysSinceActivity} days since we saw you in the ${businessName} portal. The sooner we have everything, the sooner your campaigns go live.</p>
-    <p style="color: ${muted}; line-height: 1.6; margin: 16px 0;">If anything's blocking you, hit reply — we'll jump on a call.</p>
+    <p style="color: ${muted}; line-height: 1.6; margin: 16px 0;">If anything's blocking you, hit reply, we'll jump on a call.</p>
     ${button(dashboardUrl, 'Pick up where you left off')}
   `, `Pick up your ${businessName} onboarding`);
   return { subject, html };

@@ -103,7 +103,7 @@ export function NewClientWizard() {
     }
 
     // Past this point the org exists. Anything that fails below is a soft
-    // follow-up — log it but always navigate to the new client so admin
+    // follow-up, log it but always navigate to the new client so admin
     // doesn't see "Could not create" while the client sits in the list.
     const validLines = revenueLines.filter(l => Number(l.amount) > 0);
     if (validLines.length > 0) {

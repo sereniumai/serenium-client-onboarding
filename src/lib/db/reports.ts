@@ -55,8 +55,8 @@ export async function createReport(input: CreateReportInput): Promise<MonthlyRep
     metadata: { period: input.period, title: input.title },
   });
 
-  // Fire-and-forget client notification email. Edits don't trigger this —
-  // only the initial publish — so a typo fix later won't generate noise.
+  // Fire-and-forget client notification email. Edits don't trigger this ,
+  // only the initial publish, so a typo fix later won't generate noise.
   notifyReportPublished(input.organizationId, data.id).catch(err =>
     console.warn('[report] notify email failed', err),
   );
