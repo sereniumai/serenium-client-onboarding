@@ -134,7 +134,7 @@ function renderInviteEmail({ businessName, inviteeName, inviteUrl, inviterName }
           <p style="margin:0 0 4px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#FF6B1F;font-weight:700;">Welcome aboard</p>
           <h1 style="margin:0 0 18px;font-size:26px;font-weight:800;letter-spacing:-0.025em;color:#fff;">Let's go, ${helloName}.</h1>
           <p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;"><strong style="color:#fff;">${inviterFirst} from Serenium</strong> just set up your private client portal. This is where the work happens, and where everything we build for <strong style="color:#fff;">${safeBusiness}</strong> comes together.</p>
-          <p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;">It's where you'll fill in everything we need to launch ${safeBusiness}'s online presence, your AI receptionist, your ads, your site, and your reputation. Log in any time, save as you go, pick up exactly where you left off.</p>
+          <p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;">Log in any time, save as you go, pick up exactly where you left off.</p>
           <p style="margin:0 0 24px;color:rgba(255,255,255,0.78);font-size:15px;">We're genuinely excited to get started. Click below to set your password and dive in.</p>
           <p style="margin:0 0 32px;"><a href="${inviteUrl}" style="display:inline-block;background:#FF6B1F;color:#fff;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:10px;font-size:15px;">Open your portal →</a></p>
           <p style="margin:0 0 8px;color:rgba(255,255,255,0.5);font-size:13px;">Stuck or have a question before you start? Just reply to this email, a real human reads it.</p>
