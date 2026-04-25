@@ -20,12 +20,19 @@ Invitation links are currently copy-paste. The Resend edge functions are scaffol
 - [ ] Test: invite link works on first click and expires correctly after use
 - [ ] Test: re-sending an invite invalidates the old link
 
-### 1.2 End-to-end smoke test
+### 1.2 Concurrent edit safety (presence indicator)
+Multiple people on the same client account can step on each other today. Last-write-wins on autosave, no warning.
+
+- [ ] Add Supabase Realtime presence to module pages
+- [ ] Show subtle "Someone else is editing this section" banner when 2+ users open the same module/service
+- [ ] Test by opening the same module in 2 browsers as 2 different users on the same org
+
+### 1.3 End-to-end smoke test
 Walk-through with no shortcuts, on production (`clients.sereniumai.com`).
 
 See full test plans in sections 4 (Admin) and 5 (Client) below.
 
-### 1.3 Final content sweep
+### 1.4 Final content sweep
 - [ ] Re-read every service's `description` and `marketingDescription` after the work this session
 - [ ] Re-read every module's `whyWeAsk` (when written, see section 2.1)
 - [ ] Re-read every module's `instructions` for tone consistency
