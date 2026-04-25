@@ -122,13 +122,13 @@ export function NewClientWizard() {
           {step === 1 && (
             <div className="card space-y-5">
               <Field label="Business name" required>
-                <input className="input" value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="Sure West Roofing" />
+                <input className="input" value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="Acme Roofing Co." />
               </Field>
               <Field label="Primary contact name" required>
-                <input className="input" value={primaryName} onChange={e => setPrimaryName(e.target.value)} placeholder="Craig Johnson" />
+                <input className="input" value={primaryName} onChange={e => setPrimaryName(e.target.value)} placeholder="Sample Smith" />
               </Field>
               <Field label="Primary contact email" required>
-                <input className="input" type="email" value={primaryEmail} onChange={e => setPrimaryEmail(e.target.value)} placeholder="craig@surewest.ca" />
+                <input className="input" type="email" value={primaryEmail} onChange={e => setPrimaryEmail(e.target.value)} placeholder="sample@example.com" />
               </Field>
               <Field label="Primary contact phone">
                 <input className="input" type="tel" value={primaryPhone} onChange={e => setPrimaryPhone(e.target.value)} placeholder="403-555-0199" />

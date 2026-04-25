@@ -81,8 +81,8 @@ export function FollowupSettingsPage() {
 }
 
 const PLACEHOLDERS: Record<string, string> = {
-  '{{firstName}}':    'Craig',
-  '{{businessName}}': 'Sure West Roofing',
+  '{{firstName}}':    'Sample',
+  '{{businessName}}': 'Acme Roofing Co.',
   '{{portalUrl}}':    'https://clients.sereniumai.com',
 };
 

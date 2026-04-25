@@ -221,11 +221,11 @@ export function RevenuePage() {
           {/* SECONDARY STATS */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
             <MiniStat
-              label="ARPU"
+              label="Avg MRR per client"
               value={fmtCAD(arpu)}
               icon={Users}
               hint="MRR ÷ active clients"
-              tooltip="Average Revenue Per User. Total MRR divided by active clients. Tells you what an average client is worth to you per month. Higher ARPU usually means you're attaching more services or charging confidently."
+              tooltip="Total MRR divided by the number of active clients. Tells you what the average client is worth to you per month, regardless of how many people from that client log into the portal. Higher means you're either charging more confidently or attaching more services per client."
             />
             <MiniStat
               label="Forecasted MRR"

@@ -262,7 +262,7 @@ const BUSINESS_PROFILE: ServiceDef = {
       title: 'Legal business name',
       whyWeAsk: 'This goes on contracts, your website footer, your privacy policy, CASL email footers, and Google Business Profile verification paperwork. It needs to match what is on your business registration exactly.',
       estimatedMinutes: 1,
-      fields: [{ key: 'legal_business_name', label: 'Legal entity name', type: 'text', required: true, helpText: 'Used on contracts, website footer, GBP verification, privacy policy.', tooltip: 'The exact name on your business registration (e.g. "Surewest Roofing Ltd."). Must match paperwork or Google Business Profile verification will fail.' }],
+      fields: [{ key: 'legal_business_name', label: 'Legal entity name', type: 'text', required: true, helpText: 'Used on contracts, website footer, GBP verification, privacy policy.', tooltip: 'The exact name on your business registration (e.g. "Acme Roofing Ltd."). Must match paperwork or Google Business Profile verification will fail.' }],
     },
     {
       key: 'social_profiles',
