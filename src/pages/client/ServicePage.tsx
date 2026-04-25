@@ -98,7 +98,7 @@ export function ServicePage() {
                 <CheckCircle2 className="h-5 w-5 text-orange shrink-0 mt-0.5" />
                 <div className="text-sm text-white/85">
                   <p className="font-semibold mb-0.5">Autosaves as you type</p>
-                  <p className="text-xs text-white/65">Each section marks itself complete automatically when every required field is filled. You can also tap Complete at the bottom of any section to confirm.</p>
+                  <p className="text-xs text-white/65">Each section marks itself complete automatically when every required field is filled. Edit anything later, it autosaves.</p>
                 </div>
               </div>
             </div>
@@ -206,8 +206,6 @@ function ModuleSection({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readyFor, complete, adminLocked]);
-
-  const markIncomplete = () => { onSetModuleStatus('in_progress'); };
 
   return (
     <div ref={sectionRef} id={`module-${module.key}`} className={cn(
@@ -323,26 +321,15 @@ function ModuleSection({
           </div>
         )}
 
-        {/* Completion state */}
-        <div className="pt-2 flex items-center justify-end gap-3">
-          {complete ? (
+        {/* Completion state - auto-completes when ready, no button needed */}
+        {complete && (
+          <div className="pt-2">
             <div className="w-full flex items-center gap-3 rounded-lg border border-success/30 bg-success/5 px-4 py-2.5">
               <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
               <span className="text-sm text-white/80 flex-1">Section complete. Autosaved.</span>
-              <button onClick={markIncomplete} className="text-xs text-white/60 hover:text-white underline underline-offset-2 shrink-0">
-                Edit again
-              </button>
             </div>
-          ) : (
-            <button
-              onClick={() => onSetModuleStatus('complete')}
-              disabled={!readyFor || adminLocked}
-              className="btn-primary !py-2 !px-4 text-xs"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" /> Mark complete
-            </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

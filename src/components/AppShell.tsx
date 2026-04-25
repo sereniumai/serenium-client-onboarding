@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, LifeBuoy, ChevronLeft, PlayCircle } from 'lucide-react';
+import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, LifeBuoy, ChevronLeft, PlayCircle, MessageCircleQuestion } from 'lucide-react';
 import { SELECTABLE_SERVICES, getService } from '../config/modules';
 import { SERVICE_ICON } from '../config/serviceIcons';
 import { Sidebar, type SidebarSection } from './Sidebar';
@@ -172,7 +172,7 @@ function buildSections({
       {
         title: 'Support',
         items: [
-          { label: 'Ask Aria', icon: LifeBuoy, onClick: openAiChat },
+          { label: 'Ask Aria', icon: MessageCircleQuestion, onClick: openAiChat },
           ...(hasWelcomeVideo
             ? [{ label: 'Welcome video', icon: PlayCircle, onClick: openWelcomeVideo }]
             : []),
@@ -215,7 +215,7 @@ function buildSections({
     {
       title: 'Support',
       items: [
-        { label: 'Ask Aria', icon: LifeBuoy, onClick: openAiChat },
+        { label: 'Ask Aria', icon: MessageCircleQuestion, onClick: openAiChat },
         ...(hasWelcomeVideo
           ? [{ label: 'Welcome video', icon: PlayCircle, onClick: openWelcomeVideo }]
           : []),
