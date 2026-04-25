@@ -7,7 +7,7 @@ import { useCreateClient } from '../../hooks/useOrgs';
 import { SERVICES, SELECTABLE_SERVICES, getService } from '../../config/modules';
 import { SERVICE_ICON } from '../../config/serviceIcons';
 import { toast } from 'sonner';
-import type { ServiceKey, LeadSource } from '../../types';
+import type { ServiceKey, LeadSource, RevenueType } from '../../types';
 import { cn } from '../../lib/cn';
 
 type UserRow = { fullName: string; email: string; role: 'owner' | 'member' };
@@ -15,7 +15,7 @@ type UserRow = { fullName: string; email: string; role: 'owner' | 'member' };
 export function NewClientWizard() {
   const navigate = useNavigate();
   const createClient = useCreateClient();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   const [businessName, setBusinessName] = useState('');
   const [primaryName, setPrimaryName] = useState('');
@@ -30,6 +30,21 @@ export function NewClientWizard() {
   // as the first owner; no need to retype it here.
   const [users, setUsers] = useState<UserRow[]>([]);
   const [sendInviteEmails, setSendInviteEmails] = useState(true);
+
+  // Revenue lines, captured before org creation and saved after the org
+  // exists. 'Set up later' = empty array. Each line is keyed to a service
+  // the admin has enabled in step 2.
+  type DraftRevenueLine = { serviceKey: ServiceKey; type: RevenueType; amount: string; startedAt: string };
+  const [revenueLines, setRevenueLines] = useState<DraftRevenueLine[]>([]);
+  const addRevenueLine = (serviceKey: ServiceKey, type: RevenueType) => {
+    setRevenueLines(arr => [...arr, { serviceKey, type, amount: '', startedAt: new Date().toISOString().slice(0, 10) }]);
+  };
+  const updateRevenueLine = (idx: number, patch: Partial<DraftRevenueLine>) => {
+    setRevenueLines(arr => arr.map((l, i) => i === idx ? { ...l, ...patch } : l));
+  };
+  const removeRevenueLine = (idx: number) => {
+    setRevenueLines(arr => arr.filter((_, i) => i !== idx));
+  };
 
   const toggleSvc = (k: ServiceKey) => setServices(s => s.includes(k) ? s.filter(x => x !== k) : [...s, k]);
   const toggleModule = (svcKey: ServiceKey, modKey: string, on: boolean) => {
@@ -81,10 +96,31 @@ export function NewClientWizard() {
         users: final,
         sendInviteEmails,
       });
+
+      // Save revenue lines now that the org exists. Skip empty/invalid amounts
+      // silently — admin can fix them on the Revenue tab.
+      const validLines = revenueLines.filter(l => Number(l.amount) > 0);
+      if (validLines.length > 0) {
+        const { createRevenueLine } = await import('../../lib/db/revenue');
+        for (const l of validLines) {
+          try {
+            await createRevenueLine({
+              organizationId: org.id,
+              serviceKey: l.serviceKey,
+              type: l.type,
+              amountCents: Math.round(Number(l.amount) * 100),
+              startedAt: l.startedAt,
+            });
+          } catch (err) {
+            console.warn('[wizard] revenue line save failed', err);
+          }
+        }
+      }
+
       toast.success(`${org.businessName} created`, {
         description: sendInviteEmails
-          ? `${services.length} ${services.length === 1 ? 'service' : 'services'} · invite emails sent to ${final.length} user${final.length === 1 ? '' : 's'}`
-          : `${services.length} ${services.length === 1 ? 'service' : 'services'} · no emails sent yet, send manually from the Users tab when ready`,
+          ? `${services.length} ${services.length === 1 ? 'service' : 'services'} · ${validLines.length > 0 ? `${validLines.length} revenue line${validLines.length === 1 ? '' : 's'} · ` : ''}invite emails sent to ${final.length} user${final.length === 1 ? '' : 's'}`
+          : `${services.length} ${services.length === 1 ? 'service' : 'services'} · ${validLines.length > 0 ? `${validLines.length} revenue line${validLines.length === 1 ? '' : 's'} · ` : ''}no emails sent yet, send manually from the Users tab when ready`,
       });
       // Land on the Revenue tab so admin can set rates immediately, with a
       // 'newclient=1' flag that surfaces a 'Set up now or later' banner.
@@ -103,15 +139,16 @@ export function NewClientWizard() {
             <ChevronLeft className="h-4 w-4" /> Back to admin
           </Link>
 
-          <p className="eyebrow mb-3">New client · step {step} of 3</p>
+          <p className="eyebrow mb-3">New client · step {step} of 4</p>
           <h1 className="font-display font-black text-[clamp(1.75rem,5vw,2.5rem)] leading-[1.05] tracking-[-0.025em] mb-6 md:mb-8">
             {step === 1 && <>Business <span className="text-orange">info</span></>}
             {step === 2 && <>Choose services and <span className="text-orange">steps</span></>}
-            {step === 3 && <>Invite <span className="text-orange">users</span></>}
+            {step === 3 && <>Set up <span className="text-orange">revenue</span></>}
+            {step === 4 && <>Invite <span className="text-orange">users</span></>}
           </h1>
 
           <div className="flex items-center gap-2 mb-10">
-            {[1, 2, 3].map(n => (
+            {[1, 2, 3, 4].map(n => (
               <div key={n} className={cn(
                 'h-1 flex-1 rounded-full transition-colors',
                 step >= n ? 'bg-orange' : 'bg-bg-tertiary'
@@ -235,6 +272,100 @@ export function NewClientWizard() {
           )}
 
           {step === 3 && (
+            <div className="card space-y-5">
+              <div>
+                <p className="text-sm text-white/70 leading-relaxed">
+                  Add what you're charging for each service. One-time payments and monthly retainers both supported. Skip if you'd rather set this up later from the client's Revenue tab.
+                </p>
+              </div>
+
+              {services.filter(s => s !== 'business_profile').length === 0 ? (
+                <div className="rounded-lg border border-border-subtle bg-bg-tertiary/40 p-4 text-sm text-white/60">
+                  No billable services selected in step 2. Skip ahead, or go back and add some.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {services.filter(s => s !== 'business_profile').map(svcKey => {
+                    const def = SERVICES.find(s => s.key === svcKey);
+                    if (!def) return null;
+                    const Icon = SERVICE_ICON[svcKey];
+                    const linesForService = revenueLines.map((l, i) => ({ ...l, _idx: i })).filter(l => l.serviceKey === svcKey);
+                    return (
+                      <div key={svcKey} className="rounded-xl border border-border-subtle p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-orange/10 text-orange flex items-center justify-center">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <p className="font-semibold text-sm">{def.label}</p>
+                        </div>
+                        {linesForService.length > 0 && (
+                          <ul className="space-y-2">
+                            {linesForService.map(l => (
+                              <li key={l._idx} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                                <input
+                                  className="input !py-1.5 text-sm"
+                                  type="number"
+                                  placeholder="Amount in CAD"
+                                  value={l.amount}
+                                  onChange={e => updateRevenueLine(l._idx, { amount: e.target.value })}
+                                />
+                                <select
+                                  className="input !py-1.5 text-sm"
+                                  value={l.type}
+                                  onChange={e => updateRevenueLine(l._idx, { type: e.target.value as RevenueType })}
+                                >
+                                  <option value="monthly">/ month</option>
+                                  <option value="one_time">one-time</option>
+                                </select>
+                                <input
+                                  className="input !py-1.5 text-sm"
+                                  type="date"
+                                  value={l.startedAt}
+                                  onChange={e => updateRevenueLine(l._idx, { startedAt: e.target.value })}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeRevenueLine(l._idx)}
+                                  className="px-2 text-white/45 hover:text-error"
+                                  aria-label="Remove"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => addRevenueLine(svcKey, 'monthly')}
+                            className="text-xs px-2.5 py-1.5 rounded-md border border-border-subtle hover:border-orange/40 text-white/70 hover:text-orange"
+                          >
+                            + Monthly retainer
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addRevenueLine(svcKey, 'one_time')}
+                            className="text-xs px-2.5 py-1.5 rounded-md border border-border-subtle hover:border-orange/40 text-white/70 hover:text-orange"
+                          >
+                            + One-time
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="pt-2 text-xs text-white/45">
+                {revenueLines.length === 0
+                  ? "You'll proceed without revenue logged. You can add it later from the client's Revenue tab."
+                  : `${revenueLines.length} revenue line${revenueLines.length === 1 ? '' : 's'} ready to save once the client is created.`}
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
             <div className="card space-y-4">
               <p className="text-sm text-white/60">The primary contact you added in step 1 is automatically the first owner. Add any additional teammates below if you want them to have their own login.</p>
 
@@ -323,12 +454,16 @@ export function NewClientWizard() {
 
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-border-subtle">
             {step > 1 ? (
-              <button onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3)} className="btn-secondary">Back</button>
+              <button onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3 | 4)} className="btn-secondary">Back</button>
             ) : <span />}
 
-            {step < 3 ? (
-              <button onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3)} disabled={step === 1 ? !step1Valid : !step2Valid} className="btn-primary">
-                Continue
+            {step < 4 ? (
+              <button
+                onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3 | 4)}
+                disabled={step === 1 ? !step1Valid : step === 2 ? !step2Valid : false}
+                className="btn-primary"
+              >
+                {step === 3 && revenueLines.length === 0 ? 'Skip, set up later →' : 'Continue'}
               </button>
             ) : (
               <button onClick={submit} disabled={createClient.isPending} className="btn-primary">
