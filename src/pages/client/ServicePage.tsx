@@ -95,11 +95,11 @@ export function ServicePage() {
               </div>
 
               {/* Single autosave banner at the top of the service, instead of per-module text */}
-              <div className="mt-6 rounded-xl border border-orange/30 bg-orange/5 p-4 flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-orange shrink-0 mt-0.5" />
-                <div className="text-sm text-white/85">
-                  <p className="font-semibold mb-0.5">Autosaves as you type</p>
-                  <p className="text-xs text-white/65">Each section marks itself complete automatically when every required field is filled. Edit anything later, it autosaves.</p>
+              <div className="mt-6 rounded-xl border border-orange/30 bg-orange/5 p-5 flex items-start gap-4">
+                <CheckCircle2 className="h-6 w-6 text-orange shrink-0 mt-0.5" />
+                <div className="text-base text-white/85">
+                  <p className="font-semibold text-base md:text-lg mb-1">Autosaves as you type</p>
+                  <p className="text-sm md:text-base text-white/70 leading-relaxed">Each section marks itself complete the moment every required field is filled. Leave anytime without saving, we keep your work, and you can pick up exactly where you left off.</p>
                 </div>
               </div>
             </div>

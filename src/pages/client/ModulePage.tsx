@@ -353,8 +353,8 @@ export function ModulePage() {
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold">Module complete</p>
-                    <p className="text-xs text-white/55">Your answers are saved. Change anything above and we autosave it.</p>
+                    <p className="font-semibold text-base">Module complete</p>
+                    <p className="text-sm text-white/65 mt-0.5">Your answers are saved. Change anything above and we autosave it. Leave anytime, your work is safe.</p>
                   </div>
                 </div>
               ) : (

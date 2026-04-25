@@ -163,7 +163,7 @@
   select.input::-ms-expand { display: none; }
 
   .label {
-    @apply block text-xs font-semibold uppercase tracking-wider text-white/60 mb-2;
+    @apply block text-sm font-semibold uppercase tracking-wider text-white/75 mb-2;
   }
 
   .eyebrow {

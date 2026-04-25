@@ -84,7 +84,7 @@ export function FieldRenderer({ field, organizationId, fieldKey, userId, onStatu
       )}
       <FieldInput field={field} organizationId={organizationId} fieldKey={fieldKey} userId={userId} onStatusChange={onStatusChange} />
       <FieldValidationMessage field={field} organizationId={organizationId} fieldKey={fieldKey} />
-      {field.helpText && <p className="mt-1.5 text-xs text-white/55">{field.helpText}</p>}
+      {field.helpText && <p className="mt-2 text-sm text-white/65 leading-relaxed">{field.helpText}</p>}
     </div>
   );
 }
