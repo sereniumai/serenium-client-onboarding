@@ -15,6 +15,7 @@ import {
 import { getService } from '../../config/modules';
 import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { Organization, ServiceKey } from '../../types';
+import { FieldTooltip } from '../../components/FieldTooltip';
 import { cn } from '../../lib/cn';
 
 const fmtCAD = (cents: number, opts: { compact?: boolean } = {}) => {
@@ -228,6 +229,7 @@ export function RevenuePage() {
               icon={Activity}
               accent="orange"
               footnote={`${activeClients} active client${activeClients === 1 ? '' : 's'}`}
+              tooltip="MRR (Monthly Recurring Revenue): the total of every monthly retainer that's billing right now. Excludes one-time payments and future-dated retainers that haven't kicked in yet. This is the core SaaS health metric."
             />
             <MetricCard
               label={`This month · ${now.toLocaleDateString('en-CA', { month: 'long' })}`}
@@ -235,12 +237,14 @@ export function RevenuePage() {
               icon={CalendarDays}
               footnote={momChange !== null ? `${momChange >= 0 ? '+' : ''}${momChange.toFixed(0)}% vs ${prevMonth?.label}` : 'Tracking…'}
               footnoteAccent={momChange !== null ? (momChange >= 0 ? 'success' : 'error') : 'muted'}
+              tooltip="Total revenue billed in this calendar month: every active retainer plus any one-time payments dated this month. The percentage compares this month vs last month."
             />
             <MetricCard
               label={`Year-to-date · ${year}`}
               value={fmtCAD(ytd)}
               icon={TrendingUp}
               footnote={`${monthly.filter(m => m.year === year).length} month${monthly.filter(m => m.year === year).length === 1 ? '' : 's'} of revenue`}
+              tooltip="Sum of every dollar billed since January 1 of this year. Combines retainer income (months active × amount) with all one-time payments dated this year."
             />
           </div>
 
@@ -251,6 +255,7 @@ export function RevenuePage() {
               value={fmtCAD(arpu)}
               icon={Users}
               hint="MRR ÷ active clients"
+              tooltip="Average Revenue Per User. Total MRR divided by active clients. Tells you what an average client is worth to you per month. Higher ARPU usually means you're attaching more services or charging confidently."
             />
             <MiniStat
               label="Forecasted MRR"
@@ -258,18 +263,21 @@ export function RevenuePage() {
               icon={TrendingUp}
               accent={futureLockedInMrr > 0 ? 'success' : 'default'}
               hint={futureLockedInMrr > 0 ? `+${fmtCAD(futureLockedInMrr)} locked in` : 'Once future retainers kick in'}
+              tooltip="Current MRR plus every retainer you've signed but hasn't started yet (e.g. a $300/mo retainer that kicks in 90 days). Shows what your MRR will be once everything in the pipeline goes live."
             />
             <MiniStat
               label="Avg services / client"
               value={avgServicesPerClient > 0 ? avgServicesPerClient.toFixed(1) : '—'}
               icon={Activity}
               hint="Across paying clients"
+              tooltip="Average number of services each paying client buys from you (e.g. a client on Website + AI SMS = 2). Higher means more cross-sell. Helps you spot under-served clients you could expand."
             />
             <MiniStat
               label="Active retainers"
               value={String(lines.filter(l => l.type === 'monthly' && l.startedAt <= todayStr() && (!l.endedAt || l.endedAt > todayStr())).length)}
               icon={CalendarDays}
               hint="Monthly retainers billing right now"
+              tooltip="Count of every monthly retainer that's billing right now. Different from active clients: one client can have multiple retainers (e.g. Website + AI SMS = 2 retainers, 1 client)."
             />
           </div>
 
@@ -332,18 +340,25 @@ export function RevenuePage() {
               <h2 className="font-display font-bold text-2xl tracking-[-0.02em]">Who you serve.</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
-              <MiniStat label="Active clients" value={String(activeClients)} icon={Users} />
+              <MiniStat
+                label="Active clients"
+                value={String(activeClients)}
+                icon={Users}
+                tooltip="Clients currently set to 'live' status. Excludes onboarding (still setting up), paused (taking a break), and churned (gone). This is your active book of business."
+              />
               <MiniStat
                 label="30-day churn rate"
                 value={`${churnRate30.toFixed(1)}%`}
                 icon={TrendingDown}
                 accent={churnRate30 > 5 ? 'error' : 'success'}
+                tooltip="Percentage of clients who churned in the last 30 days, out of all who were active at any point in that window. Anything under 5% is healthy for an agency. Above 5% = investigate why."
               />
               <MiniStat
                 label="Avg client lifetime"
                 value={avgLifetime !== null ? `${Math.round(avgLifetime)} days` : '—'}
                 icon={CalendarDays}
                 hint={avgLifetime === null ? 'Need 1+ churned client' : undefined}
+                tooltip="Average number of days a churned client stayed with you (from the day you marked them live to the day they churned). Higher means you keep clients longer. Becomes meaningful after several have churned."
               />
             </div>
             <ClientLtvTable rows={perClient} />
@@ -356,13 +371,14 @@ export function RevenuePage() {
 
 // ─── METRIC CARDS ──────────────────────────────────────────────────────────
 
-function MetricCard({ label, value, icon: Icon, accent = 'default', footnote, footnoteAccent = 'muted' }: {
+function MetricCard({ label, value, icon: Icon, accent = 'default', footnote, footnoteAccent = 'muted', tooltip }: {
   label: string;
   value: string;
   icon: React.ElementType;
   accent?: 'default' | 'orange';
   footnote?: string;
   footnoteAccent?: 'success' | 'error' | 'muted';
+  tooltip?: string;
 }) {
   return (
     <div className={cn(
@@ -371,12 +387,12 @@ function MetricCard({ label, value, icon: Icon, accent = 'default', footnote, fo
     )}>
       {accent === 'orange' && <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-orange/10 blur-3xl pointer-events-none" />}
       <div className="relative">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-white/45 font-semibold">{label}</p>
-          <div className={cn(
-            'h-7 w-7 rounded-lg flex items-center justify-center',
-            accent === 'orange' ? 'bg-orange/15 text-orange' : 'bg-bg-tertiary/60 text-white/65',
-          )}>
+        <div className="flex items-center justify-between mb-3 gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-white/45 font-semibold truncate">{label}</p>
+            {tooltip && <FieldTooltip text={tooltip} />}
+          </div>
+          <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-orange/15 text-orange shrink-0">
             <Icon className="h-3.5 w-3.5" />
           </div>
         </div>
@@ -611,23 +627,22 @@ function LeadSourceMix({ mix }: { mix: Array<{ source: string; cents: number }> 
 
 // ─── MINI STAT ─────────────────────────────────────────────────────────────
 
-function MiniStat({ label, value, icon: Icon, accent = 'default', hint }: {
+function MiniStat({ label, value, icon: Icon, accent = 'default', hint, tooltip }: {
   label: string;
   value: string;
   icon: React.ElementType;
   accent?: 'default' | 'success' | 'error';
   hint?: string;
+  tooltip?: string;
 }) {
   return (
     <div className="card !p-4">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-white/45 font-semibold">{label}</p>
-        <div className={cn(
-          'h-6 w-6 rounded-md flex items-center justify-center',
-          accent === 'success' && 'bg-success/15 text-success',
-          accent === 'error' && 'bg-error/15 text-error',
-          accent === 'default' && 'bg-bg-tertiary/60 text-white/65',
-        )}>
+      <div className="flex items-center justify-between mb-2 gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-white/45 font-semibold truncate">{label}</p>
+          {tooltip && <FieldTooltip text={tooltip} />}
+        </div>
+        <div className="h-6 w-6 rounded-md flex items-center justify-center bg-orange/15 text-orange shrink-0">
           <Icon className="h-3 w-3" />
         </div>
       </div>

@@ -140,7 +140,7 @@ function buildSections({
         title: 'System',
         items: [
           { to: '/admin/whats-new', label: "What's new", icon: Bell, dot: hasUnreadWhatsNew },
-          { to: '/admin/diagnostics', label: 'Diagnostics', icon: LifeBuoy },
+          { to: '/admin/diagnostics', label: 'System health', icon: LifeBuoy },
         ],
       },
     ];

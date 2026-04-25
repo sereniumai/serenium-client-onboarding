@@ -101,7 +101,7 @@ export function AdminHome() {
               </p>
             </div>
             <div className="flex items-center gap-3 self-start md:self-auto">
-              <SystemStatusPill variant="admin" href="/admin/diagnostics" />
+              <SystemStatusPill variant="admin" />
               <Link to="/admin/clients/new" className="btn-primary">
                 <Plus className="h-4 w-4" /> New client
               </Link>
