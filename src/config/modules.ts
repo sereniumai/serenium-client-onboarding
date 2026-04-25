@@ -55,6 +55,8 @@ export interface Field {
   type: FieldType;
   required?: boolean;
   placeholder?: string;
+  /** Pre-fills the field on mount when no submission exists yet, so clients see a working example they can edit. Used for AI scripts and opening messages. */
+  defaultValue?: string;
   options?: string[];
   helpText?: string;
   /** Short "What does this mean?" explanation shown in a ? tooltip next to the label. Keep it under ~140 chars. */
@@ -504,15 +506,18 @@ const AI_SMS: ServiceDef = {
       key: 'scripts_behaviour',
       title: 'Scripts & behaviour',
       estimatedMinutes: 20,
-      instructions: `The more specific you are here, the more your AI sounds like you.`,
+      instructions: `Heads up, **this is a starting guide, not the final AI script.** We use what you give us as the foundation, then refine it together with you before launch. Be specific where you can, ranges and "we'll figure it out together" notes are totally fine for now.
+
+The more specific you are here, the more your AI sounds like you.`,
       fields: [
         {
           key: 'sms_opening_message',
           label: 'Opening message',
           type: 'textarea',
           required: true,
+          defaultValue: "Hi [Name], thanks for reaching out to [Company] about your roof! I'm [AI Name], happy to help you get a free estimate. Mind if I grab a few quick details?",
           placeholder: "Hi [Name], thanks for reaching out to [Company] about your roof! I'm [AI Name], happy to help you get a free estimate. Mind if I grab a few quick details?",
-          helpText: 'First message the AI sends to a new lead.',
+          helpText: 'First message the AI sends to a new lead. We pre-filled an example, edit it to sound like you.',
           tooltip: 'The exact opening text the AI sends every new lead. Keep it warm and short, use [Name] and [Company] placeholders, and avoid overly formal language since this is SMS.',
         },
         {
@@ -692,15 +697,8 @@ const AI_SMS: ServiceDef = {
       videoUrl: 'https://www.youtube.com/watch?v=KcdUwD3I5ms',
       instructions: `Connect your calendar so the AI can book estimates straight in. We support Google Calendar, Outlook, and any GoHighLevel calendar.`,
       fields: [
-        { key: 'calendar_connected', label: "I've connected my Google Calendar to my GHL account", type: 'checkbox', required: true, tooltip: 'Tick once you have linked Google Calendar inside the GHL account we provided. This is the handshake that lets the AI drop appointments straight onto your calendar without double-booking.' },
-        {
-          key: 'weekly_availability',
-          label: 'Weekly availability (Mon–Fri)',
-          type: 'weekly_availability',
-          required: true,
-          helpText: 'Toggle a day to "Closed" if you don\'t work that day. Add an optional break window (e.g. lunch) to block the AI from booking during it.',
-          tooltip: 'When the AI is allowed to book estimates, separate from your business hours. Add a lunch break window so estimates do not get squeezed into your sandwich time.',
-        },
+        { key: 'calendar_connected', label: "I've connected my calendar to my GHL account", type: 'checkbox', required: true, tooltip: 'Tick once you have linked your calendar inside the GHL account we provided. This is the handshake that lets the AI drop appointments straight onto your calendar without double-booking.' },
+        { key: 'availability_set_in_ghl', label: 'I\'ve set my booking availability inside GoHighLevel', type: 'checkbox', required: true, helpText: 'Set your weekly hours, lunch break, and time off directly in GHL so it\'s the single source of truth. [Watch the 2-minute setup guide →](https://help.gohighlevel.com/support/solutions/articles/48000980738-calendar-availability)', tooltip: 'Set your weekly hours and any breaks (e.g. lunch) inside GHL so the AI never books during them. We keep it in GHL rather than asking you twice, that way changes you make later flow through automatically.' },
       ],
     },
   ],
@@ -736,13 +734,16 @@ const AI_RECEPTIONIST: ServiceDef = {
       title: 'Scripts & question flow',
       whyWeAsk: 'The greeting and questions you give us here are exactly what your AI receptionist will say to every caller, in your voice. Think of this as briefing a new front-desk hire on day one. The more specific you are, the more it sounds like you.',
       estimatedMinutes: 15,
+      instructions: `Heads up, **this is a starting guide, not the final AI script.** We use what you give us as the foundation, then refine it together with you before launch. Be specific where you can, "we'll figure it out together" notes are totally fine for now.`,
       fields: [
         {
           key: 'retell_greeting_script',
           label: 'Greeting script',
           type: 'textarea',
           required: true,
+          defaultValue: "Thanks for calling [Company], this is [AI Name], how can I help you today?",
           placeholder: "Thanks for calling [Company], this is [AI Name], how can I help you today?",
+          helpText: "We pre-filled an example, edit it to sound like you.",
           tooltip: 'The first thing every caller hears. Keep it short, warm, and on-brand. Use [Company] and [AI Name] placeholders. This sets the tone for the entire call.',
         },
         {
@@ -799,7 +800,7 @@ const AI_RECEPTIONIST: ServiceDef = {
       estimatedMinutes: 3,
       fields: [
         { key: 'retell_human_request_handling', label: 'When callers ask for a human', type: 'select', required: true, options: ['Transfer call', 'Always take message'], tooltip: 'What happens when a caller insists on a real person. Transferring keeps hot leads engaged, taking a message buys you time but loses some impatient callers.' },
-        { key: 'retell_transfer_contacts', label: 'Who to transfer to (name, phone, hours)', type: 'repeatable', required: true, conditional: { field: 'retell_human_request_handling', op: 'eq', value: 'Transfer call' }, tooltip: 'Add each person who can take a transferred call, with their hours of availability. The AI rings them in order and falls through to the next if no answer.' },
+        { key: 'retell_transfer_contacts', label: 'Who to transfer to (name and phone)', type: 'repeatable', required: true, conditional: { field: 'retell_human_request_handling', op: 'eq', value: 'Transfer call' }, helpText: 'One per line: name and phone number. The AI rings them in order, falling through to the next if no one picks up.', tooltip: 'Add each person who can take a transferred call. Just name and phone, the AI tries them in order. We deliberately do not ask for hours, the AI checks who picks up rather than guessing who is on shift.' },
       ],
     },
     {
@@ -819,7 +820,7 @@ const AI_RECEPTIONIST: ServiceDef = {
       whyWeAsk: 'This is the final connection that makes the AI live. Either we forward your existing business line to the AI (most common) or we give you a brand new Serenium number to use everywhere. Either way the AI starts answering calls the moment this is wired.',
       estimatedMinutes: 10,
       lockedUntilAdminFlag: 'ai_receptionist_ready_for_connection',
-      lockedMessage: "This step unlocks once we've built your AI. We'll let you know when it's ready.",
+      lockedMessage: "**Wait for our go-ahead before doing anything here.** Don't set up call forwarding yet. We'll build your AI receptionist behind the scenes and email you the moment it's ready, with the number to forward to and step-by-step setup. Once that email arrives, this section unlocks and you can wire it up in 5 minutes.",
       fields: [
         {
           key: 'retell_phone_mode',
@@ -973,9 +974,17 @@ const WEBSITE: ServiceDef = {
       whyWeAsk: 'The lead form is the single most important element on your site. Every other piece of design exists to drive people to it. Telling us what fields you want, what the CTA should say, and where the submission lands wires the whole conversion engine.',
       estimatedMinutes: 6,
       fields: [
-        { key: 'lead_form_fields', label: 'Fields on the lead form', type: 'multiselect', required: true, options: ['Name', 'Phone', 'Email', 'Service needed', 'Timeframe', 'Address'], tooltip: 'Fewer fields = more submissions but lower quality. Three fields (name, phone, service) usually wins for roofers. Pick the minimum you actually need to call back.' },
-        { key: 'primary_cta', label: 'Primary CTA across the site', type: 'select', required: true, options: ['Free quote', 'Book inspection', 'Call now', 'Financing'], tooltip: 'The action you most want every visitor to take. This becomes the headline button on every page. Pick one, having multiple competing CTAs lowers conversion.' },
-        { key: 'submission_destination', label: 'Where should form submissions go?', type: 'multiselect', required: true, options: ['Email', 'CRM', 'Both'], tooltip: 'Where the lead lands the moment someone submits. "Both" is safest, you get an email alert and the CRM record in one shot.' },
+        { key: 'lead_form_fields', label: 'Fields on the lead form', type: 'multiselect', required: true, options: ['Name', 'Phone', 'Email', 'Service needed', 'Timeframe', 'Address', 'Other (please specify)'], helpText: 'Recommended: keep it to 5 fields or fewer. Each extra field drops conversion ~10%.', tooltip: 'Fewer fields = more submissions but lower quality. Three fields (name, phone, service) usually wins for roofers. Pick the minimum you actually need to call back. We recommend 5 max.' },
+        { key: 'lead_form_fields_other', label: 'Other custom fields (one per line)', type: 'textarea', conditional: { field: 'lead_form_fields', op: 'includes', value: 'Other (please specify)' }, placeholder: 'Insurance company\nProperty type\nReferral source', tooltip: 'List any extra fields you want, one per line. Keep the total field count to 5 or under for best conversion.' },
+        { key: 'primary_cta', label: 'Primary CTA across the site', type: 'select', required: true, options: ['Free quote', 'Book inspection', 'Call now', 'Financing', 'Other (please specify)'], tooltip: 'The action you most want every visitor to take. This becomes the headline button on every page. Pick one, having multiple competing CTAs lowers conversion.' },
+        { key: 'primary_cta_other', label: 'Your custom CTA wording', type: 'text', conditional: { field: 'primary_cta', op: 'eq', value: 'Other (please specify)' }, placeholder: 'e.g. Book a free roof assessment', tooltip: 'The exact button text you want across the site. Keep it under ~5 words and action-oriented.' },
+        { key: 'submission_destination', label: 'Where should form submissions go?', type: 'multiselect', required: true, options: ['Email', 'CRM', 'Both'],
+          conditional: { serviceEnabled: 'ai_sms', expected: false },
+          tooltip: 'Where the lead lands the moment someone submits. "Both" is safest, you get an email alert and the CRM record in one shot.' },
+        { key: 'submission_destination_info', type: 'info',
+          conditional: { serviceEnabled: 'ai_sms', expected: true },
+          content: "Since you've signed up for AI SMS, every form submission flows automatically into the GoHighLevel CRM we manage for you and the AI follows up within 60 seconds. No setup needed here.",
+        },
         { key: 'email_destination', label: 'Email for lead notifications', type: 'email', required: true, validate: validateEmail, conditional: { field: 'submission_destination', op: 'includes', value: 'Email' }, tooltip: 'The inbox that gets a fresh email every time the form is submitted. Use a real, monitored address, not info@ unless someone actually watches it.' },
         { key: 'crm_choice', label: 'CRM', type: 'select', required: true,
           options: ['GoHighLevel (Serenium-managed)', 'GoHighLevel (their own)', 'HubSpot', 'Salesforce', 'Pipedrive', 'Zoho', 'JobNimbus', 'AccuLynx', 'Roofr', 'Other'],

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Upload as UploadIcon, X, Check } from 'lucide-react';
@@ -188,6 +188,19 @@ function SimpleField({ field, organizationId, fieldKey, userId, onStatusChange }
   const v = value ?? '';
 
   useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
+
+  // Pre-fill once when nothing is saved yet. Lets clients see a working
+  // example (e.g. AI greeting script) they can edit instead of staring at
+  // a blank textarea.
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (prefilledRef.current) return;
+    if (!field.defaultValue) return;
+    if (status === 'idle' && (value === undefined || value === '')) {
+      prefilledRef.current = true;
+      setValue(field.defaultValue);
+    }
+  }, [field.defaultValue, status, value, setValue]);
 
   const common = {
     id: fieldKey,
