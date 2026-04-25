@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Trash2, Minus, MessageCircleQuestion, Plus, MessagesSquare, ChevronLeft, Search, Sparkles } from 'lucide-react';
+import { X, Send, Trash2, Minus, MessageCircleQuestion, Plus, MessagesSquare, ChevronLeft, Search, Sparkles, Mail, Check } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '../auth/AuthContext';
@@ -19,7 +19,8 @@ import {
   setThreadTitle,
   deriveThreadTitle,
   saveMessage,
-  isAriaEscalation,
+  hasFlagToken,
+  stripFlagToken,
   logAriaEscalation,
 } from '../lib/aiHelper';
 import { ARIA } from '../config/personas';
@@ -145,18 +146,6 @@ export function AiHelperChat() {
       });
       qc.invalidateQueries({ queryKey: ['ai-chat', activeThreadId] });
       qc.invalidateQueries({ queryKey: ['ai-threads', user.id] });
-
-      // If Aria escalated, log it + email the Serenium team. Fire-and-forget;
-      // failures don't block the chat.
-      if (org?.id && isAriaEscalation(reply)) {
-        void logAriaEscalation({
-          organizationId: org.id,
-          threadId: activeThreadId,
-          question: content,
-          contextSnippet: reply.slice(0, 1200),
-          pageContext: currentContext,
-        });
-      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       console.error('[chat] send failed', err);
@@ -188,6 +177,34 @@ export function AiHelperChat() {
   };
 
   const [threadSearch, setThreadSearch] = useState('');
+
+  const [flaggedIds, setFlaggedIds] = useState<Set<string>>(new Set());
+  const handleFlagToTeam = async (assistantMsg: { id: string; content: string; context?: string | null }) => {
+    if (!org?.id || flaggedIds.has(assistantMsg.id)) return;
+    // Mark optimistically so the button locks immediately even if the request is slow.
+    setFlaggedIds(prev => new Set(prev).add(assistantMsg.id));
+    // Find the user message that prompted this reply, that's "the question".
+    const idx = messages.findIndex(m => m.id === assistantMsg.id);
+    const userMsg = idx > 0 ? messages.slice(0, idx).reverse().find(m => m.role === 'user') : undefined;
+    try {
+      await logAriaEscalation({
+        organizationId: org.id,
+        threadId: activeThreadId,
+        question: userMsg?.content ?? assistantMsg.content.slice(0, 200),
+        contextSnippet: assistantMsg.content.slice(0, 1200),
+        pageContext: assistantMsg.context ?? currentContext,
+      });
+      toast.success("Flagged to the Serenium team", { description: "We'll get back to you by email." });
+    } catch (err) {
+      // Roll back so they can try again.
+      setFlaggedIds(prev => {
+        const next = new Set(prev);
+        next.delete(assistantMsg.id);
+        return next;
+      });
+      toast.error("Couldn't flag to the team", { description: (err as Error).message });
+    }
+  };
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const runDeleteThread = async () => {
@@ -307,19 +324,42 @@ export function AiHelperChat() {
                   {messages.length === 0 ? (
                     <AriaIntro suggestions={suggestions} onPrompt={p => send(p)} firstName={user.fullName.split(' ')[0]} />
                   ) : (
-                    messages.map(m => (
-                      <div key={m.id} className={cn('flex gap-2', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-                        {m.role === 'assistant' && (
-                          <div className={cn('h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5', ARIA.avatarColor)}>{ARIA.initial}</div>
-                        )}
-                        <div className={cn(
-                          'max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-snug',
-                          m.role === 'user' ? 'bg-orange text-white rounded-br-md' : 'bg-bg-tertiary text-white/90 rounded-bl-md',
-                        )}>
-                          {m.role === 'assistant' ? <Markdown>{m.content}</Markdown> : <span className="whitespace-pre-wrap">{m.content}</span>}
+                    messages.map(m => {
+                      const showFlag = m.role === 'assistant' && hasFlagToken(m.content);
+                      const visibleContent = showFlag ? stripFlagToken(m.content) : m.content;
+                      const flagged = flaggedIds.has(m.id);
+                      return (
+                        <div key={m.id} className={cn('flex gap-2', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+                          {m.role === 'assistant' && (
+                            <div className={cn('h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5', ARIA.avatarColor)}>{ARIA.initial}</div>
+                          )}
+                          <div className={cn('max-w-[82%]', m.role === 'user' ? '' : '')}>
+                            <div className={cn(
+                              'rounded-2xl px-3 py-2 text-sm leading-snug',
+                              m.role === 'user' ? 'bg-orange text-white rounded-br-md' : 'bg-bg-tertiary text-white/90 rounded-bl-md',
+                            )}>
+                              {m.role === 'assistant' ? <Markdown>{visibleContent}</Markdown> : <span className="whitespace-pre-wrap">{m.content}</span>}
+                            </div>
+                            {showFlag && (
+                              flagged ? (
+                                <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-white/55 px-3 py-1.5">
+                                  <Check className="h-3.5 w-3.5 text-orange" />
+                                  Flagged. The team will email you.
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleFlagToTeam(m)}
+                                  className="mt-1.5 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-orange/15 text-orange hover:bg-orange/25 border border-orange/30 font-medium transition-colors"
+                                >
+                                  <Mail className="h-3.5 w-3.5" />
+                                  Flag this to the Serenium team
+                                </button>
+                              )
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                   {thinking && (
                     <div className="flex gap-2 justify-start">

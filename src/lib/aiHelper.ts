@@ -117,23 +117,21 @@ export async function saveMessage(args: {
 // ─── Escalation detection ──────────────────────────────────────────────────
 
 /**
- * Returns true when Aria's reply suggests she's escalating the question to
- * the Serenium team (vs. answering it herself). We use this to fire the
- * team notification email + log the row.
+ * Aria signals "this should be escalatable" by appending [[FLAG_TO_TEAM]] at
+ * the end of her message. The frontend detects the token, hides it, and
+ * renders a "Flag to the Serenium team" button. Click → email fires.
  *
- * Tuned to be moderately strict: false-positives spam the team inbox, false-
- * negatives leave clients waiting. Phrases match the system-prompt language.
+ * Token-based (not phrase-based) so we never flag accidentally and clients
+ * always have intent in the loop.
  */
-export function isAriaEscalation(reply: string): boolean {
-  const t = reply.toLowerCase();
-  const patterns: RegExp[] = [
-    /flag(?:ging)?\s+(?:this|it|that|your\s+question)\s+(?:to|with|for)\s+(?:the\s+)?(?:serenium\s+)?team/,
-    /i'?ll\s+(?:flag|let|loop|raise|ping|pass)\s+(?:this|it|that)?\s*(?:to|in|with|on|along\s+to)\s+(?:the\s+)?(?:serenium\s+)?team/,
-    /i'?ll\s+let\s+the\s+(?:serenium\s+)?team\s+know/,
-    /the\s+(?:serenium\s+)?team\s+(?:can|will|should)\s+(?:help|sort|handle|track|reach\s+out|get\s+back)/,
-    /i'?ll\s+(?:reach\s+out|escalate)\s+to\s+the\s+(?:serenium\s+)?team/,
-  ];
-  return patterns.some(p => p.test(t));
+export const FLAG_TOKEN = '[[FLAG_TO_TEAM]]';
+
+export function hasFlagToken(reply: string): boolean {
+  return reply.includes(FLAG_TOKEN);
+}
+
+export function stripFlagToken(reply: string): string {
+  return reply.replace(/\[\[FLAG_TO_TEAM\]\]/g, '').trim();
 }
 
 export async function logAriaEscalation(args: {
