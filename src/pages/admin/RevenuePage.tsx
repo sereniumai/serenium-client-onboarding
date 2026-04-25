@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Users, Activity, CalendarDays } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
@@ -11,13 +11,9 @@ import {
   computeMRR,
   revenueForMonth,
   revenueYTD,
-  listLeadSourceSpend,
-  upsertLeadSourceSpend,
-  deleteLeadSourceSpend,
 } from '../../lib/db/revenue';
 import { getService } from '../../config/modules';
-import type { Organization, ServiceKey, LeadSource, LeadSourceSpend } from '../../types';
-import { toast } from 'sonner';
+import type { Organization, ServiceKey } from '../../types';
 import { FieldTooltip } from '../../components/FieldTooltip';
 import { cn } from '../../lib/cn';
 
@@ -309,12 +305,6 @@ export function RevenuePage() {
             </section>
           </div>
 
-          {/* CHANNEL ROI */}
-          <ChannelRoiSection
-            orgs={orgs}
-            perClient={perClient}
-          />
-
           {/* CLIENTS SECTION */}
           <section className="mb-10">
             <div className="mb-4">
@@ -516,235 +506,6 @@ function RevenueChart({ monthly }: { monthly: Array<{ label: string; revenue: nu
           <span className="text-white/40">Hover any month for details. Bars = total billed that month, line = MRR at month-end.</span>
         )}
       </div>
-    </div>
-  );
-}
-
-// ─── CHANNEL ROI (CAC + LTV / CAC per source) ─────────────────────────────
-
-const SPENDABLE_SOURCES: LeadSource[] = ['facebook_ad', 'google_ads', 'referral', 'outreach', 'socials', 'networking', 'other'];
-
-function ChannelRoiSection({
-  orgs,
-  perClient,
-}: {
-  orgs: Organization[];
-  perClient: Array<{ org: Organization; mrrContrib: number; ltv: number; tenureDays: number; startedDate: Date }>;
-}) {
-  const qc = useQueryClient();
-  const { data: spends = [] } = useQuery({
-    queryKey: ['lead-source-spend'],
-    queryFn: listLeadSourceSpend,
-  });
-
-  const upsert = useMutation({
-    mutationFn: upsertLeadSourceSpend,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['lead-source-spend'] });
-      toast.success('Channel spend saved');
-    },
-    onError: (e: Error) => toast.error('Save failed', { description: e.message }),
-  });
-  const remove = useMutation({
-    mutationFn: deleteLeadSourceSpend,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['lead-source-spend'] });
-      toast.success('Removed');
-    },
-  });
-
-  // Build the per-source roll-up: clients acquired, total spent since `since`
-  // (rolling), sum of LTV from those clients, derived CAC and ROI.
-  const today = new Date();
-  const rows = useMemo(() => {
-    return SPENDABLE_SOURCES.map(source => {
-      const spend = spends.find(s => s.source === source);
-      const orgsFromSource = orgs.filter(o => o.leadSource === source);
-      const clientsCount = orgsFromSource.length;
-      const ltvFromSource = orgsFromSource.reduce((sum, o) => {
-        const row = perClient.find(p => p.org.id === o.id);
-        return sum + (row?.ltv ?? 0);
-      }, 0);
-
-      let totalSpentCents = 0;
-      let monthsActive = 0;
-      if (spend) {
-        const since = new Date(spend.since + 'T00:00:00Z');
-        monthsActive = Math.max(1,
-          (today.getUTCFullYear() - since.getUTCFullYear()) * 12 + (today.getUTCMonth() - since.getUTCMonth()) + 1,
-        );
-        totalSpentCents = spend.monthlySpendCents * monthsActive;
-      }
-
-      const cacCents = clientsCount > 0 ? totalSpentCents / clientsCount : null;
-      const roi = cacCents !== null && cacCents > 0 ? ltvFromSource / cacCents : null;
-
-      return {
-        source,
-        spend,
-        clientsCount,
-        ltvFromSource,
-        totalSpentCents,
-        monthsActive,
-        cacCents,
-        roi,
-      };
-    }).filter(r => r.spend || r.clientsCount > 0);
-  }, [spends, orgs, perClient, today]);
-
-  return (
-    <section className="mb-10">
-      <div className="mb-4 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="eyebrow mb-1">Channel ROI</p>
-          <h2 className="font-display font-bold text-2xl tracking-[-0.02em]">Where to spend more, where to cut.</h2>
-          <p className="text-xs text-white/55 mt-1.5 max-w-2xl">Enter what you spend on each channel per month. The page divides total spend by clients acquired to give you CAC, then divides client LTV by CAC to give you ROI. Higher ROI = spend more there.</p>
-        </div>
-      </div>
-
-      {rows.length === 0 ? (
-        <div className="card text-center py-10">
-          <p className="text-sm text-white/55">No channel spend logged yet.</p>
-          <p className="text-xs text-white/40 mt-1">Add your monthly spend per channel below to see CAC and ROI.</p>
-        </div>
-      ) : (
-        <div className="card !p-0 overflow-hidden mb-3">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px]">
-              <thead>
-                <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/40 border-b border-border-subtle">
-                  <th className="px-5 py-3 font-semibold">Channel</th>
-                  <th className="px-5 py-3 font-semibold text-right">Monthly spend</th>
-                  <th className="px-5 py-3 font-semibold text-right">Total spent</th>
-                  <th className="px-5 py-3 font-semibold text-right">Clients</th>
-                  <th className="px-5 py-3 font-semibold text-right">CAC</th>
-                  <th className="px-5 py-3 font-semibold text-right">LTV per client</th>
-                  <th className="px-5 py-3 font-semibold text-right">ROI</th>
-                  <th className="px-5 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(r => {
-                  const ltvPerClient = r.clientsCount > 0 ? r.ltvFromSource / r.clientsCount : 0;
-                  return (
-                    <tr key={r.source} className="border-b border-border-subtle last:border-0 hover:bg-bg-tertiary/30 transition-colors">
-                      <td className="px-5 py-3 text-sm font-medium">{LEAD_LABEL[r.source]}</td>
-                      <td className="px-5 py-3 text-sm tabular-nums text-right">
-                        {r.spend ? <span className="font-semibold">{fmtCAD(r.spend.monthlySpendCents)}/mo</span> : <span className="text-white/30">—</span>}
-                      </td>
-                      <td className="px-5 py-3 text-xs tabular-nums text-right text-white/60">
-                        {r.spend ? <>{fmtCAD(r.totalSpentCents)}<span className="text-white/35"> · {r.monthsActive}mo</span></> : '—'}
-                      </td>
-                      <td className="px-5 py-3 text-sm tabular-nums text-right">{r.clientsCount}</td>
-                      <td className="px-5 py-3 text-sm tabular-nums text-right">
-                        {r.cacCents !== null ? fmtCAD(r.cacCents) : <span className="text-white/30">—</span>}
-                      </td>
-                      <td className="px-5 py-3 text-sm tabular-nums text-right">
-                        {r.clientsCount > 0 ? fmtCAD(ltvPerClient) : <span className="text-white/30">—</span>}
-                      </td>
-                      <td className="px-5 py-3 text-sm tabular-nums text-right">
-                        {r.roi !== null
-                          ? <span className={cn('font-semibold', r.roi >= 3 ? 'text-success' : r.roi >= 1 ? 'text-orange' : 'text-error')}>
-                              {r.roi.toFixed(1)}×
-                            </span>
-                          : <span className="text-white/30">—</span>}
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        {r.spend && (
-                          <button
-                            onClick={() => remove.mutate(r.source)}
-                            className="text-xs text-white/40 hover:text-error px-2 py-1"
-                            title="Remove spend tracking for this channel"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      <SpendEditor onSave={(args) => upsert.mutate(args)} pending={upsert.isPending} existing={spends} />
-    </section>
-  );
-}
-
-function SpendEditor({ onSave, pending, existing }: {
-  onSave: (args: { source: LeadSource; monthlySpendCents: number; since?: string }) => void;
-  pending: boolean;
-  existing: LeadSourceSpend[];
-}) {
-  const [source, setSource] = useState<LeadSource>('facebook_ad');
-  const [amount, setAmount] = useState('');
-  const [since, setSince] = useState(() => new Date().toISOString().slice(0, 10));
-
-  // Pre-fill if editing an existing channel
-  const handleSourceChange = (s: LeadSource) => {
-    setSource(s);
-    const ex = existing.find(e => e.source === s);
-    if (ex) {
-      setAmount(String(ex.monthlySpendCents / 100));
-      setSince(ex.since);
-    } else {
-      setAmount('');
-      setSince(new Date().toISOString().slice(0, 10));
-    }
-  };
-
-  const submit = () => {
-    const cents = Math.round(Number(amount.replace(/[^0-9.]/g, '')) * 100);
-    if (!cents || cents < 0) {
-      toast.error('Enter a positive amount');
-      return;
-    }
-    onSave({ source, monthlySpendCents: cents, since });
-  };
-
-  return (
-    <div className="card border-orange/30 bg-orange/[0.03]">
-      <p className="eyebrow mb-3">Add or update channel spend</p>
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-white/45 font-semibold mb-1 block">Channel</label>
-          <select
-            className="input"
-            value={source}
-            onChange={e => handleSourceChange(e.target.value as LeadSource)}
-          >
-            {SPENDABLE_SOURCES.map(s => <option key={s} value={s}>{LEAD_LABEL[s]}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-white/45 font-semibold mb-1 block">Monthly spend (CAD)</label>
-          <input
-            className="input"
-            type="number"
-            placeholder="2000"
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-white/45 font-semibold mb-1 block">Spending since</label>
-          <input
-            className="input"
-            type="date"
-            value={since}
-            onChange={e => setSince(e.target.value)}
-          />
-        </div>
-        <button onClick={submit} disabled={pending} className="btn-primary !py-2.5">
-          {pending ? '…' : 'Save'}
-        </button>
-      </div>
-      <p className="text-xs text-white/45 mt-2">
-        Saving overwrites this channel's spend. To stop tracking a channel entirely, hit Remove on its row above.
-      </p>
     </div>
   );
 }
