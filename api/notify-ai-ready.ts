@@ -108,14 +108,14 @@ function renderEmail({ firstName, businessName, retellNumber, portalUrl }: {
 <tr><td>
 <p style="margin:0 0 4px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#FF6B1F;font-weight:700;">Ready to go live</p>
 <h1 style="margin:0 0 18px;font-size:26px;font-weight:800;letter-spacing:-0.025em;color:#fff;">Your AI is ready, ${escape(firstName)}.</h1>
-<p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;">We've built and trained <strong style="color:#fff;">${escape(businessName)}'s</strong> AI receptionist. The last step is to forward your existing line to it (or use the new number directly), which takes about 5 minutes.</p>
+<p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;">We've built and trained ${escape(businessName)}'s AI receptionist. The last step is to forward your existing line to it (or use the new number directly), which takes about 5 minutes.</p>
 ${retellNumber ? `
 <div style="margin:18px 0;padding:18px;border-radius:12px;background:rgba(255,107,31,0.08);border:1px solid rgba(255,107,31,0.25);">
   <p style="margin:0 0 4px;color:rgba(255,255,255,0.55);font-size:11px;text-transform:uppercase;letter-spacing:0.18em;font-weight:600;">Your AI phone number</p>
   <p style="margin:0;color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.01em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${escape(retellNumber)}</p>
 </div>
 ` : ''}
-<p style="margin:0 0 24px;color:rgba(255,255,255,0.78);font-size:15px;">Log into your portal and head to <strong style="color:#fff;">AI Receptionist → Phone number implementation</strong>. We'll walk you through the carrier-specific forwarding setup in 2 clicks.</p>
+<p style="margin:0 0 24px;color:rgba(255,255,255,0.78);font-size:15px;">Log into your portal and head to AI Receptionist → Phone number implementation. We'll walk you through the carrier-specific forwarding setup in 2 clicks.</p>
 <p style="margin:0 0 32px;"><a href="${portalUrl}" style="display:inline-block;background:#FF6B1F;color:#fff;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:10px;font-size:15px;">Finish AI setup →</a></p>
 <p style="margin:0;color:rgba(255,255,255,0.5);font-size:13px;">Stuck on any step? Just reply to this email or ask Aria in the portal, a real human reads either.</p>
 </td></tr></table></td></tr></table></body></html>`;

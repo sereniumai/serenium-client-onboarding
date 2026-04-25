@@ -105,7 +105,7 @@ function renderEmail({ firstName, businessName, serviceLabel, portalUrl }: {
 <tr><td>
 <p style="margin:0 0 4px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#FF6B1F;font-weight:700;">New service added</p>
 <h1 style="margin:0 0 18px;font-size:26px;font-weight:800;letter-spacing:-0.025em;color:#fff;">${escape(serviceLabel)} is now on your plan, ${escape(firstName)}.</h1>
-<p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;">We've added <strong style="color:#fff;">${escape(serviceLabel)}</strong> to <strong style="color:#fff;">${escape(businessName)}'s</strong> Serenium plan. To get it launched, log in and fill in what we need on the new section.</p>
+<p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;">We've added ${escape(serviceLabel)} to ${escape(businessName)}'s Serenium plan. To get it launched, log in and fill in what we need on the new section.</p>
 <p style="margin:0 0 24px;color:rgba(255,255,255,0.78);font-size:15px;">It'll take 5 to 15 minutes depending on the service. Save as you go, no rush.</p>
 <p style="margin:0 0 32px;"><a href="${portalUrl}" style="display:inline-block;background:#FF6B1F;color:#fff;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:10px;font-size:15px;">Start ${escape(serviceLabel)} →</a></p>
 <p style="margin:0;color:rgba(255,255,255,0.5);font-size:13px;">Questions? Reply to this email or ask Aria in the portal.</p>
