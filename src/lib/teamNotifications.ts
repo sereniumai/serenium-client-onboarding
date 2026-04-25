@@ -57,6 +57,13 @@ export async function fireTeamNotifications(args: FireArgs): Promise<void> {
     if (!wasComplete && isComplete) eventKeys.push(`service_completed:${svc.key}`);
   }
 
+  // 3. Whole-onboarding completion, fires once when every tracked module
+  // (across every enabled service) is complete. Lets us know it's time to
+  // review the submission and flip the account to live.
+  const wasAllComplete = args.previousProgress.length > 0 && args.previousProgress.every(p => p.status === 'complete');
+  const isAllComplete  = args.nextProgress.length > 0 && args.nextProgress.every(p => p.status === 'complete');
+  if (!wasAllComplete && isAllComplete) eventKeys.push('onboarding:complete');
+
   for (const eventKey of eventKeys) {
     fireOne(args.organizationId, eventKey).catch(err => console.warn('[team-notif] send failed', err));
   }

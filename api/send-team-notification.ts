@@ -61,6 +61,10 @@ const EVENT_TEMPLATES: Record<string, { subject: string; message: string }> = {
     subject: 'Meta Business Manager access granted',
     message: 'Partner access is in for the Meta Business Manager, Page, Instagram, Pixel, and Ad Account. Verify and begin campaign setup.',
   },
+  'onboarding:complete': {
+    subject: 'Client has completed all onboarding sections',
+    message: 'Every section the client can fill in is complete. Review their submission, request anything missing, then flip the account to live in admin so they get the launched experience.',
+  },
 };
 
 function templateForEvent(eventKey: string) {

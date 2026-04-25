@@ -86,9 +86,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  // AI chat is only for active onboarding. Hide it for live clients (and for
-  // anyone past 100% onboarding awaiting manual review).
-  const showAiChat = user.role === 'admin' || (!onboardingDone && !isLive);
+  // Aria stays visible all the way through onboarding (even after the client
+  // has hit 100% and is awaiting our review) and disappears only when the
+  // account flips to live, at which point the experience pivots to reports.
+  const showAiChat = user.role === 'admin' || !isLive;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
