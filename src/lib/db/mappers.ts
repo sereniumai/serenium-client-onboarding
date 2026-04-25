@@ -22,7 +22,7 @@ export const toProfile = (r: Row<'profiles'>): Profile => ({
 });
 
 export const toOrganization = (r: Row<'organizations'>): Organization => {
-  const row = r as Row<'organizations'> & { live_at?: string | null; churned_at?: string | null; lead_source?: string | null };
+  const row = r as Row<'organizations'> & { live_at?: string | null; churned_at?: string | null; lead_source?: string | null; show_other_services?: boolean | null };
   return {
     id: r.id,
     slug: r.slug,
@@ -38,6 +38,7 @@ export const toOrganization = (r: Row<'organizations'>): Organization => {
     liveAt: row.live_at ?? undefined,
     churnedAt: row.churned_at ?? undefined,
     leadSource: (row.lead_source ?? undefined) as Organization['leadSource'],
+    showOtherServices: row.show_other_services ?? true,
     createdAt: r.created_at,
   };
 };

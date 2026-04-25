@@ -27,7 +27,7 @@ import { FollowupModal } from '../../components/FollowupModal';
 import { getEnabledModulesForService } from '../../lib/progress';
 import { SELECTABLE_SERVICES, getService, type Field } from '../../config/modules';
 import { SERVICE_ICON } from '../../config/serviceIcons';
-import type { ServiceKey, OrgStatus, Upload } from '../../types';
+import type { ServiceKey, OrgStatus, Upload, Organization } from '../../types';
 import { cn } from '../../lib/cn';
 
 type Tab = 'overview' | 'services' | 'revenue' | 'submissions' | 'progress' | 'reports' | 'activity' | 'users' | 'ai' | 'flagged';
@@ -108,7 +108,7 @@ export function ClientDetail() {
           </div>
 
           {tab === 'overview' && <OverviewTab org={org} onDelete={() => navigate('/admin')} />}
-          {tab === 'services' && <ServicesTab orgId={org.id} />}
+          {tab === 'services' && <ServicesTab orgId={org.id} org={org} />}
           {tab === 'revenue' && <RevenueTab orgId={org.id} />}
           {tab === 'submissions' && <SubmissionsTab orgId={org.id} />}
           {tab === 'progress' && <ProgressTab orgId={org.id} />}
@@ -368,9 +368,11 @@ function PauseActionRow({ org, updateOrg }: {
   );
 }
 
-function ServicesTab({ orgId }: { orgId: string }) {
+function ServicesTab({ orgId, org }: { orgId: string; org: Organization }) {
   const { data: services = [], isLoading } = useOrgServices(orgId);
   const qc = useQueryClient();
+  const updateOrg = useUpdateOrg();
+  const showOther = org.showOtherServices !== false;
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const [pendingEnable, setPendingEnable] = useState<{ key: ServiceKey; label: string } | null>(null);
 
@@ -437,6 +439,32 @@ function ServicesTab({ orgId }: { orgId: string }) {
 
   return (
     <div className="space-y-6">
+      <div className="card flex items-start gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">Show "More from Serenium" on their dashboard</p>
+          <p className="text-xs text-white/50 mt-1">
+            When on, the client sees the services they don't yet have with a link to ask about adding one.
+            Turn off if you don't want to upsell this client.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showOther}
+          onClick={() => updateOrg.mutate({ id: orgId, patch: { showOtherServices: !showOther } })}
+          disabled={updateOrg.isPending}
+          className={cn(
+            'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+            showOther ? 'bg-orange' : 'bg-white/15',
+          )}
+        >
+          <span className={cn(
+            'inline-block h-5 w-5 transform rounded-full bg-white transition-transform',
+            showOther ? 'translate-x-5' : 'translate-x-0.5',
+          )} />
+        </button>
+      </div>
+
       {disabledServices.length > 0 && (
         <div className="card space-y-2">
           <p className="eyebrow mb-3">Available to enable</p>

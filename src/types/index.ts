@@ -31,6 +31,7 @@ export interface Organization {
   liveAt?: string;              // timestamp set when status flips to 'live'
   churnedAt?: string;           // timestamp set when status flips to 'churned'
   leadSource?: LeadSource;
+  showOtherServices?: boolean;  // controls "More from Serenium" upsell row on client dashboard
   createdAt: string;
 }
 

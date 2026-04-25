@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -21,10 +21,12 @@ export function openWelcomeVideo() {
 
 export function WelcomeVideoModal() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [show, setShow] = useState(false);
-  // Track whether this open is "first login" (should mark seen on dismiss)
-  // or "manual rewatch" (don't touch seen-state - they've already seen it).
   const [manuallyOpened, setManuallyOpened] = useState(false);
+  // Once we've auto-opened (or dismissed) for this session, never auto-open
+  // again - even if React Query cache hasn't yet caught up to the DB write.
+  const autoHandledRef = useRef(false);
 
   const { data: video } = useQuery({
     queryKey: ['welcome_video'],
@@ -45,8 +47,10 @@ export function WelcomeVideoModal() {
 
   // Auto-open on first login: client role + video exists + not yet seen.
   useEffect(() => {
+    if (autoHandledRef.current) return;
     if (!user || user.role !== 'client') return;
     if (!embed || seen === undefined || seen) return;
+    autoHandledRef.current = true;
     setManuallyOpened(false);
     setShow(true);
   }, [user, embed, seen]);
@@ -68,6 +72,7 @@ export function WelcomeVideoModal() {
     // Only mark seen on the first-login auto-open path. Manual rewatches
     // shouldn't change persisted state.
     if (!manuallyOpened && user) {
+      qc.setQueryData(['welcomed', user.id], true);
       markWelcomeSeen(user.id).catch(() => {});
     }
   };

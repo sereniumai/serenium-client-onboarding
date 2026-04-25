@@ -197,8 +197,15 @@ function buildSections({
       const summaries = progress?.perService[s.key] ?? [];
       const done = summaries.filter(x => x.status === 'complete').length;
       const total = summaries.length;
+      // Deep-link past the hero into the first module's edit area so a
+      // sidebar click on a different service drops them straight where they
+      // can start typing instead of re-reading the intro copy.
+      const firstModuleKey = summaries[0]?.moduleKey;
+      const to = firstModuleKey
+        ? `/onboarding/${orgSlug}/services/${s.key}#module-${firstModuleKey}`
+        : `/onboarding/${orgSlug}/services/${s.key}`;
       return {
-        to: `/onboarding/${orgSlug}/services/${s.key}`,
+        to,
         label: getService(s.key)?.label ?? s.key,
         icon: SERVICE_ICON[s.key] ?? Home,
         badge: total > 0 ? `${done}/${total}` : undefined,

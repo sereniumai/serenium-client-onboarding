@@ -9,7 +9,6 @@ import { HeroGlow } from '../../components/HeroGlow';
 import { CircleProgress } from '../../components/CircleProgress';
 import { LatestReportHero } from '../../components/LatestReportHero';
 import { CompleteBanner } from '../../components/CompleteBanner';
-import { PendingReview } from '../../components/PendingReview';
 import { StatusPill } from '../../components/StatusPill';
 import { LoadingState } from '../../components/LoadingState';
 import { timeOfDayGreeting } from '../../lib/greeting';
@@ -104,13 +103,9 @@ export function OnboardingDashboard() {
     return <PausedScreen businessName={org.businessName} status={org.status} />;
   }
   if (org.status === 'live') return <LiveLandingGate org={org} firstName={firstName} userId={user?.id} />;
-  if (onboardingDone) {
-    return (
-      <AppShell>
-        <PendingReview org={org} firstName={firstName} />
-      </AppShell>
-    );
-  }
+  // Even at 100% we keep the dashboard fully editable — clients often need to
+  // come back and tweak answers, and we may circle back asking for more. The
+  // celebration view only fires once Serenium marks them live in admin.
 
   // Reports placeholder shown in hero metadata only, empty until status flips to 'live'.
   const reports: Array<never> = [];
@@ -236,11 +231,13 @@ export function OnboardingDashboard() {
             })}
           </div>
 
-          <OtherSerenumServices
-            unavailableServiceKeys={SELECTABLE_SERVICES
-              .filter(svc => svc.key !== 'business_profile' && !progress.enabledServices.includes(svc.key))
-              .map(s => s.key)}
-          />
+          {org.showOtherServices !== false && (
+            <OtherSerenumServices
+              unavailableServiceKeys={SELECTABLE_SERVICES
+                .filter(svc => svc.key !== 'business_profile' && !progress.enabledServices.includes(svc.key))
+                .map(s => s.key)}
+            />
+          )}
         </section>
       </div>
     </AppShell>

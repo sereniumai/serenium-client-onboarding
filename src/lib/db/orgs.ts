@@ -86,6 +86,7 @@ export interface UpdateOrgInput {
   tags?: string[];
   goLiveDate?: string | null;
   leadSource?: LeadSource | null;
+  showOtherServices?: boolean;
 }
 
 export async function updateOrg(id: string, patch: UpdateOrgInput): Promise<Organization> {
@@ -100,6 +101,7 @@ export async function updateOrg(id: string, patch: UpdateOrgInput): Promise<Orga
   if (patch.tags !== undefined) dbPatch.tags = patch.tags;
   if (patch.goLiveDate !== undefined) dbPatch.go_live_date = patch.goLiveDate;
   if (patch.leadSource !== undefined) dbPatch.lead_source = patch.leadSource;
+  if (patch.showOtherServices !== undefined) dbPatch.show_other_services = patch.showOtherServices;
 
   // Auto-set the BI timestamps on status flips so the Revenue page can compute
   // tenure and churn rate without any extra clicks. Only set if not already

@@ -172,6 +172,30 @@ export function getEnabledModulesForService(snap: OrgSnapshot, serviceKey: Servi
   return svc.modules.filter(m => !disabled.has(m.key) && !moduleIsHidden(snap, serviceKey, m));
 }
 
+/**
+ * True if the module has at least one currently-required gating item (task
+ * or field, after conditionals + admin disables). Used to decide whether to
+ * show a manual "Mark complete" button — auto-complete is impossible when
+ * this returns false.
+ */
+export function moduleHasRequiredItems(snap: OrgSnapshot, svcKey: ServiceKey, moduleKey: string): boolean {
+  const svc = getService(svcKey);
+  if (!svc) return false;
+  const m = svc.modules.find(x => x.key === moduleKey);
+  if (!m) return false;
+  const svcEntry = snap.services.find(s => s.serviceKey === svcKey);
+  const disabledFieldSet = new Set(svcEntry?.disabledFieldKeys ?? []);
+  const reqTasks = (m.tasks ?? []).filter(t => t.required !== false);
+  if (reqTasks.length > 0) return true;
+  const reqFields = (m.fields ?? []).filter(f => {
+    if (!f.required) return false;
+    if (disabledFieldSet.has(`${m.key}.${f.key}`)) return false;
+    if (f.conditional && !evaluate(f.conditional, snap.submissions, `${svcKey}.${m.key}`, { services: snap.services })) return false;
+    return true;
+  });
+  return reqFields.length > 0;
+}
+
 export function moduleIsReady(snap: OrgSnapshot, svcKey: ServiceKey, moduleKey: string): boolean {
   const svc = getService(svcKey);
   if (!svc) return false;
@@ -201,6 +225,11 @@ export function moduleIsReady(snap: OrgSnapshot, svcKey: ServiceKey, moduleKey: 
     const sub = snap.submissions.find(s => s.fieldKey === fieldKey);
     return sub ? submissionIsFilled(f, sub.value, { uploads: snap.uploads, fieldKey }) : false;
   });
+
+  // Modules with no required gating shouldn't auto-complete on entry — that
+  // produced bogus "Section complete" toasts before the user had typed a
+  // single character. Such modules need an explicit manual mark-complete.
+  if (requiredTasks.length === 0 && requiredFields.length === 0) return false;
 
   return tasksDone && fieldsDone;
 }

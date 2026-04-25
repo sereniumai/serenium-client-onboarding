@@ -15,7 +15,7 @@ import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
 import { getService, type ModuleDef } from '../../config/modules';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
-import { getOrgProgress, getEnabledModulesForService, moduleIsAdminLocked, moduleIsReady } from '../../lib/progress';
+import { getOrgProgress, getEnabledModulesForService, moduleIsAdminLocked, moduleIsReady, moduleHasRequiredItems, findNextActionableModule } from '../../lib/progress';
 import { useQuery } from '@tanstack/react-query';
 import { listStepVideos } from '../../lib/db/videos';
 import { sfx } from '../../lib/soundFx';
@@ -29,6 +29,7 @@ export function ServicePage() {
   const navigate = useNavigate();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [showFinal, setShowFinal] = useState(false);
+  const [completedModule, setCompletedModule] = useState<{ title: string; nextHref: string | null; nextLabel: string } | null>(null);
 
   // Scroll to top when landing on a new service. Hash anchors below override
   // this when present (e.g. linking to a specific module).
@@ -78,8 +79,14 @@ export function ServicePage() {
   }
 
   const svcSummaries = progress.perService[svc.key] ?? [];
-  const done = svcSummaries.filter(s => s.status === 'complete').length;
-  const total = svcSummaries.length;
+  // Admin-locked modules (e.g. Call forwarding setup before we've provisioned
+  // the AI receptionist number) can't be finished by the client, so they
+  // shouldn't gate the service-level "Complete" CTA. Counting only the
+  // unlocked modules lets the button enable once everything the client can
+  // touch is done.
+  const completable = svcSummaries.filter(s => s.canStart);
+  const done = completable.filter(s => s.status === 'complete').length;
+  const total = completable.length;
 
   return (
     <AppShell>
@@ -130,9 +137,32 @@ export function ServicePage() {
                   onSetTask={(taskKey, checked) => setTask.mutate({ organizationId: org.id, taskKey, completed: checked, userId: user?.id })}
                   onSetModuleStatus={(status) => setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: m.key, status, userId: user?.id })}
                   onComplete={() => {
-                    // Don't auto-trigger the final celebration anymore. The team
-                    // marks onboarding complete in admin once they've reviewed
-                    // everything; the client gets bumped to "live" mode then.
+                    // If there's still something else to do (in this service or
+                    // another) surface the "nice work, continue to next" modal.
+                    // If this was the very last actionable module across all
+                    // services, skip the modal and just send them back to the
+                    // dashboard — the "we'll review your submission" banner
+                    // there is the right end-state, not another celebration.
+                    const nextInService = modules.find((mm, j) => j > i && snapshot.moduleProgress.find(p => p.serviceKey === svc.key && p.moduleKey === mm.key)?.status !== 'complete');
+                    if (nextInService) {
+                      setCompletedModule({
+                        title: m.title,
+                        nextHref: `/onboarding/${org.slug}/services/${svc.key}#module-${nextInService.key}`,
+                        nextLabel: nextInService.title,
+                      });
+                      return;
+                    }
+                    const nextElsewhere = findNextActionableModule(snapshot, { serviceKey: svc.key, moduleKey: m.key });
+                    if (nextElsewhere) {
+                      setCompletedModule({
+                        title: m.title,
+                        nextHref: `/onboarding/${org.slug}/services/${nextElsewhere.serviceKey}#module-${nextElsewhere.module.key}`,
+                        nextLabel: nextElsewhere.module.title,
+                      });
+                      return;
+                    }
+                    // No work left — head straight to dashboard, no modal.
+                    navigate(`/onboarding/${org.slug}`);
                   }}
                 />
               ))}
@@ -184,7 +214,53 @@ export function ServicePage() {
         firstName={user?.fullName.split(' ')[0] ?? 'there'}
         onContinue={() => { setShowFinal(false); navigate(`/onboarding/${org.slug}`); }}
       />
+
+      <ModuleCompleteModal
+        data={completedModule}
+        firstName={user?.fullName.split(' ')[0] ?? 'there'}
+        onContinue={() => {
+          const dest = completedModule?.nextHref;
+          setCompletedModule(null);
+          if (dest) navigate(dest);
+        }}
+        onClose={() => setCompletedModule(null)}
+      />
     </AppShell>
+  );
+}
+
+function ModuleCompleteModal({ data, firstName, onContinue, onClose }: {
+  data: { title: string; nextHref: string | null; nextLabel: string } | null;
+  firstName: string;
+  onContinue: () => void;
+  onClose: () => void;
+}) {
+  if (!data) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative w-full max-w-md rounded-2xl bg-bg-secondary border border-border-subtle p-6 md:p-7" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start gap-4">
+          <div className="h-10 w-10 rounded-xl bg-success/20 text-success flex items-center justify-center shrink-0">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="eyebrow mb-1.5">Section complete</p>
+            <h2 className="font-display font-black text-xl md:text-2xl tracking-[-0.02em] leading-[1.15] mb-2">
+              Nice work, {firstName}.
+            </h2>
+            <p className="text-sm text-white/65 mb-5">
+              You completed <span className="text-white">{data.title}</span>. Let's keep the momentum up.
+            </p>
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
+              <button onClick={onClose} className="btn-secondary justify-center">Stay here</button>
+              <button onClick={onContinue} className="btn-primary justify-center flex-1">
+                {data.nextHref?.includes('#module-') ? `Continue → ${data.nextLabel}` : data.nextLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -267,6 +343,15 @@ function ModuleSection({
       </div>
 
       <div className="px-5 md:px-7 py-6 space-y-6">
+        {/* Admin-locked notice — module isn't ready for the client yet (e.g.
+            AI receptionist phone setup waiting on us to provision a number).
+            Render an orange callout so it's hard to miss. */}
+        {adminLocked && (module.lockedMessage || module.lockedUntilAdminFlag) && (
+          <div className="rounded-xl border border-orange/40 bg-orange/[0.06] px-4 py-3 text-sm text-white/85">
+            <Markdown>{module.lockedMessage ?? "We'll unlock this section once we've finished setup on our end. We'll email you when it's ready."}</Markdown>
+          </div>
+        )}
+
         {/* Video, only if module has one */}
         {hasVideo && (
           embed ? (
@@ -358,13 +443,30 @@ function ModuleSection({
           </div>
         )}
 
-        {/* Completion state - auto-completes when ready, no button needed */}
-        {complete && (
+        {/* Completion state - auto-completes when all required fields are
+            filled. Modules without any required gating (purely optional
+            sections like social profiles) need a manual mark-complete so the
+            user can move on once they've added what they have. */}
+        {complete ? (
           <div className="pt-2">
             <div className="w-full flex items-center gap-3 rounded-lg border border-success/30 bg-success/5 px-4 py-2.5">
               <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
               <span className="text-sm text-white/80 flex-1">Section complete. Autosaved.</span>
             </div>
+          </div>
+        ) : !readyFor && !adminLocked && !moduleHasRequiredItems(snapshot, serviceKey, module.key) && (enabledFields.length > 0 || (module.tasks?.length ?? 0) > 0) && (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                onSetModuleStatus('complete');
+                sfx.submit();
+                onComplete();
+              }}
+              className="btn-secondary w-full"
+            >
+              Mark this section complete
+            </button>
           </div>
         )}
       </div>

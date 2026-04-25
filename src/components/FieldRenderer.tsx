@@ -145,19 +145,31 @@ function WeeklyAvailabilityField({ field, organizationId, fieldKey, userId, onSt
           <div key={key} className="p-3 rounded-lg border border-border-subtle bg-bg-tertiary/40">
             <div className="flex items-center justify-between gap-3 mb-2">
               <span className="text-sm font-medium text-white/90 w-24 shrink-0">{label}</span>
-              <button
-                type="button"
-                onClick={() => updateDay(key, { closed: !closed })}
-                className={cn(
-                  'text-xs px-2.5 py-1 rounded-md border transition-colors',
-                  closed ? 'bg-white/5 text-white/50 border-border-subtle' : 'bg-orange/10 text-orange border-orange/30'
-                )}
-              >
-                {closed ? 'Closed' : 'Open'}
-              </button>
+              <div className="inline-flex rounded-md border border-border-subtle overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => updateDay(key, { closed: false })}
+                  className={cn(
+                    'px-3 py-1 transition-colors',
+                    !closed ? 'bg-orange text-white font-semibold' : 'bg-transparent text-white/55 hover:text-white/80',
+                  )}
+                >
+                  Open
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateDay(key, { closed: true })}
+                  className={cn(
+                    'px-3 py-1 border-l border-border-subtle transition-colors',
+                    closed ? 'bg-white/15 text-white font-semibold' : 'bg-transparent text-white/55 hover:text-white/80',
+                  )}
+                >
+                  Closed
+                </button>
+              </div>
             </div>
             {!closed && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <label className="text-xs text-white/60">
                   Open
                   <input type="time" value={d.open ?? ''} onChange={e => updateDay(key, { open: e.target.value })} className="input mt-1" />
@@ -165,14 +177,6 @@ function WeeklyAvailabilityField({ field, organizationId, fieldKey, userId, onSt
                 <label className="text-xs text-white/60">
                   Close
                   <input type="time" value={d.close ?? ''} onChange={e => updateDay(key, { close: e.target.value })} className="input mt-1" />
-                </label>
-                <label className="text-xs text-white/60">
-                  Break start <span className="text-white/50">(optional)</span>
-                  <input type="time" value={d.breakStart ?? ''} onChange={e => updateDay(key, { breakStart: e.target.value })} className="input mt-1" />
-                </label>
-                <label className="text-xs text-white/60">
-                  Break end <span className="text-white/50">(optional)</span>
-                  <input type="time" value={d.breakEnd ?? ''} onChange={e => updateDay(key, { breakEnd: e.target.value })} className="input mt-1" />
                 </label>
               </div>
             )}
