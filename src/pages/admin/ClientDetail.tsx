@@ -16,7 +16,7 @@ import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../
 import { useAuth } from '../../auth/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../lib/queryClient';
-import { listInvitationsForOrg, createInvitation, revokeInvitation, buildInviteUrl, sendInvitationEmail } from '../../lib/db/invitations';
+import { listInvitationsForOrg, createInvitation, revokeInvitation, buildInviteUrl, sendInvitationEmail, orgHasBeenContacted } from '../../lib/db/invitations';
 import { enableService, disableService, reorderServices, setDisabledModuleKeys, setDisabledFieldKeys } from '../../lib/db/services';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
@@ -372,19 +372,44 @@ function ServicesTab({ orgId }: { orgId: string }) {
   const { data: services = [], isLoading } = useOrgServices(orgId);
   const qc = useQueryClient();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const [pendingEnable, setPendingEnable] = useState<{ key: ServiceKey; label: string } | null>(null);
 
   const toggle = useMutation({
-    mutationFn: async ({ key, enabled }: { key: ServiceKey; enabled: boolean }) => {
-      if (enabled) await enableService(orgId, key);
-      else await disableService(orgId, key);
+    mutationFn: async ({ key, enabled, notify, label }: { key: ServiceKey; enabled: boolean; notify?: boolean; label?: string }) => {
+      if (enabled) {
+        await enableService(orgId, key);
+        // If admin opted to notify, fire the email after the service is in.
+        // Business Profile is excluded since it's not a billable service the
+        // client thinks of as "added".
+        if (notify && label && key !== 'business_profile') {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
+            if (token) {
+              await fetch('/api/notify-service-added', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+                body: JSON.stringify({ organizationId: orgId, serviceKey: key, serviceLabel: label }),
+              });
+            }
+          } catch (err) {
+            console.warn('[service-added] notify email failed (non-fatal)', err);
+          }
+        }
+      } else {
+        await disableService(orgId, key);
+      }
     },
-    // Force an immediate refetch (not just invalidate) - with our 30s staleTime
-    // an invalidate alone won't redraw child views that are actively mounted
-    // with fresh cache, like the client dashboard if the admin flipped a
-    // service via impersonation. refetchQueries bypasses staleTime.
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       qc.refetchQueries({ queryKey: qk.orgServices(orgId) });
       qc.invalidateQueries({ queryKey: qk.activity(orgId) });
+      if (vars.enabled) {
+        toast.success(
+          vars.notify
+            ? `${vars.label ?? 'Service'} enabled, client notified by email`
+            : `${vars.label ?? 'Service'} enabled silently, client not notified`,
+        );
+      }
     },
   });
 
@@ -424,7 +449,20 @@ function ServicesTab({ orgId }: { orgId: string }) {
                   <p className="font-semibold text-sm">{svc.label}</p>
                   <p className="text-xs text-white/50 truncate">{svc.description}</p>
                 </div>
-                <button onClick={() => toggle.mutate({ key: svc.key, enabled: true })} disabled={toggle.isPending} className="btn-secondary !py-1.5 !px-3 text-xs">
+                <button
+                  onClick={async () => {
+                    // Tracking-only clients (no email ever sent, nobody accepted)
+                    // never get notifications. For real clients we ask first.
+                    const isContacted = await orgHasBeenContacted(orgId).catch(() => false);
+                    if (!isContacted) {
+                      toggle.mutate({ key: svc.key, enabled: true, notify: false, label: svc.label });
+                    } else {
+                      setPendingEnable({ key: svc.key, label: svc.label });
+                    }
+                  }}
+                  disabled={toggle.isPending}
+                  className="btn-secondary !py-1.5 !px-3 text-xs"
+                >
                   Enable
                 </button>
               </div>
@@ -461,6 +499,46 @@ function ServicesTab({ orgId }: { orgId: string }) {
           </DndContext>
         )}
       </div>
+
+      {pendingEnable && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPendingEnable(null)}>
+          <div onClick={e => e.stopPropagation()} className="w-full max-w-md bg-bg-secondary border border-border-subtle rounded-2xl shadow-2xl p-6">
+            <p className="eyebrow mb-2">Enable {pendingEnable.label}</p>
+            <h3 className="font-display font-bold text-xl mb-2">Email the client about this?</h3>
+            <p className="text-sm text-white/65 leading-relaxed mb-5">
+              They'll get an email saying we've added <strong className="text-white">{pendingEnable.label}</strong> to their plan, with a link straight to the new section in the portal. Pick "Just enable" if you'd rather tell them yourself.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  toggle.mutate({ key: pendingEnable.key, enabled: true, notify: true, label: pendingEnable.label });
+                  setPendingEnable(null);
+                }}
+                disabled={toggle.isPending}
+                className="btn-primary"
+              >
+                <Mail className="h-4 w-4" /> Enable + email client
+              </button>
+              <button
+                onClick={() => {
+                  toggle.mutate({ key: pendingEnable.key, enabled: true, notify: false, label: pendingEnable.label });
+                  setPendingEnable(null);
+                }}
+                disabled={toggle.isPending}
+                className="btn-secondary"
+              >
+                Just enable, no email
+              </button>
+              <button
+                onClick={() => setPendingEnable(null)}
+                className="text-xs text-white/45 hover:text-white py-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

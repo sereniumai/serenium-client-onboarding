@@ -87,6 +87,35 @@ export async function sendInvitationEmail(invitationId: string): Promise<void> {
     const { error } = await res.json().catch(() => ({ error: 'Unknown' }));
     throw new Error(error ?? `HTTP ${res.status}`);
   }
+  // Mark the row so we can tell tracking-only clients (no email ever sent)
+  // apart from real clients we've actually contacted. Best-effort.
+  supabase
+    .from('invitations')
+    .update({ email_sent_at: new Date().toISOString() })
+    .eq('id', invitationId)
+    .then(({ error }) => { if (error) console.warn('[invitation] email_sent_at flag failed', error); });
+}
+
+/**
+ * Has anyone from this org ever been emailed an invite, or accepted one?
+ * Tracking-only clients (added in admin without invites) return false and
+ * should never receive any notifications from us.
+ */
+export async function orgHasBeenContacted(organizationId: string): Promise<boolean> {
+  const { data: invs } = await supabase
+    .from('invitations')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .not('email_sent_at', 'is', null)
+    .limit(1);
+  if (invs && invs.length > 0) return true;
+  const { data: members } = await supabase
+    .from('organization_members')
+    .select('user_id')
+    .eq('organization_id', organizationId)
+    .not('accepted_at', 'is', null)
+    .limit(1);
+  return !!(members && members.length > 0);
 }
 
 export async function revokeInvitation(id: string): Promise<void> {
