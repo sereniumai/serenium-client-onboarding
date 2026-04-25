@@ -516,19 +516,21 @@ function SortableServiceRow({ orgId, service, onDisable }: {
             {disabledFieldSet.size > 0 && ` · ${disabledFieldSet.size} field${disabledFieldSet.size === 1 ? '' : 's'} hidden`}
           </p>
         </div>
-        <button
-          onClick={() => setRevenueOpen(true)}
-          className={cn(
-            'inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors',
-            summaryParts.length > 0
-              ? 'border-orange/40 bg-orange/10 text-orange hover:bg-orange/15'
-              : 'border-border-subtle text-white/55 hover:border-white/30 hover:text-white',
-          )}
-          title="Revenue for this service"
-        >
-          <DollarSign className="h-3.5 w-3.5" />
-          {summaryParts.length > 0 ? summaryParts.join(' · ') : 'Add revenue'}
-        </button>
+        {service.serviceKey !== 'business_profile' && (
+          <button
+            onClick={() => setRevenueOpen(true)}
+            className={cn(
+              'inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors',
+              summaryParts.length > 0
+                ? 'border-orange/40 bg-orange/10 text-orange hover:bg-orange/15'
+                : 'border-border-subtle text-white/55 hover:border-white/30 hover:text-white',
+            )}
+            title="Revenue for this service"
+          >
+            <DollarSign className="h-3.5 w-3.5" />
+            {summaryParts.length > 0 ? summaryParts.join(' · ') : 'Add revenue'}
+          </button>
+        )}
         <button
           onClick={() => setExpanded(e => !e)}
           className="inline-flex items-center gap-1 text-xs text-white/60 hover:text-white px-2 py-1 rounded hover:bg-bg-tertiary"
@@ -1749,12 +1751,16 @@ function RevenueTab({ orgId }: { orgId: string }) {
 
   const fmt = (cents: number) => (cents / 100).toLocaleString('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
 
-  if (services.length === 0) {
+  // Business Profile is just info about the business, never a service we
+  // charge for, so exclude it everywhere revenue can be tracked.
+  const billableServices = services.filter(s => s.serviceKey !== 'business_profile');
+
+  if (billableServices.length === 0) {
     return (
       <div className="card text-center py-12">
         <DollarSign className="h-8 w-8 text-white/30 mx-auto mb-3" />
-        <p className="text-white/60">Add services to this client first.</p>
-        <p className="text-xs text-white/40 mt-1">Revenue lines attach to specific services.</p>
+        <p className="text-white/60">No billable services on this client yet.</p>
+        <p className="text-xs text-white/40 mt-1">Revenue lines attach to billable services. Business Profile is excluded since it's just info, not a paid service.</p>
       </div>
     );
   }
@@ -1785,7 +1791,7 @@ function RevenueTab({ orgId }: { orgId: string }) {
           <p className="text-xs text-white/45">Click a service to add or edit lines.</p>
         </div>
         <ul className="divide-y divide-border-subtle">
-          {services.map(s => {
+          {billableServices.map(s => {
             const def = getService(s.serviceKey);
             if (!def) return null;
             const Icon = SERVICE_ICON[s.serviceKey];

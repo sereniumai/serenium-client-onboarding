@@ -142,8 +142,17 @@ export function RevenuePage() {
 
   const activeClients = orgs.filter(o => o.status === 'live').length;
   const arpu = activeClients > 0 ? mrr / activeClients : 0;
-  const topClient = perClient[0];
-  const concentration = topClient && mrr > 0 ? (topClient.mrrContrib / mrr) * 100 : 0;
+
+  // Forecasted MRR = current MRR + sum of future-dated retainers that have
+  // not yet started. Surfaces locked-in growth (e.g. a $300/mo retainer
+  // signed today that kicks in 90 days from now).
+  const futureLockedInMrr = useMemo(() => {
+    const today = todayStr();
+    return lines
+      .filter(l => l.type === 'monthly' && l.startedAt > today && (!l.endedAt || l.endedAt > today))
+      .reduce((s, l) => s + l.amountCents, 0);
+  }, [lines]);
+  const forecastedMrr = mrr + futureLockedInMrr;
   const clientsWithRevenue = perClient.filter(r => r.mrrContrib > 0 || r.ltv > 0);
   const avgServicesPerClient = clientsWithRevenue.length > 0
     ? clientsWithRevenue.reduce((sum, r) => {
@@ -221,10 +230,11 @@ export function RevenuePage() {
               hint="MRR ÷ active clients"
             />
             <MiniStat
-              label="Top client"
-              value={topClient ? topClient.org.businessName.split(' ')[0] : '—'}
+              label="Forecasted MRR"
+              value={fmtCAD(forecastedMrr)}
               icon={TrendingUp}
-              hint={topClient && topClient.mrrContrib > 0 ? `${concentration.toFixed(0)}% of MRR` : 'No clients yet'}
+              accent={futureLockedInMrr > 0 ? 'success' : 'default'}
+              hint={futureLockedInMrr > 0 ? `+${fmtCAD(futureLockedInMrr)} locked in` : 'Once future retainers kick in'}
             />
             <MiniStat
               label="Avg services / client"
