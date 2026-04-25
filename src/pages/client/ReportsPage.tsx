@@ -279,24 +279,23 @@ function ReportFileRow({ file }: { file: import('../../types').ReportFile & { de
   const [open, setOpen] = useState(false);
   const isPdf = file.mimeType === 'application/pdf';
 
-  const ensureUrl = async (): Promise<string> => {
-    if (signedUrl) return signedUrl;
-    const url = await getReportFileSignedUrl(file.fileUrl);
-    setSignedUrl(url);
-    return url;
-  };
-
   const togglePreview = async () => {
     if (open) { setOpen(false); return; }
+    if (signedUrl) { setOpen(true); return; }
     setLoading(true);
-    try { await ensureUrl(); setOpen(true); }
-    finally { setLoading(false); }
+    try {
+      const url = await getReportFileSignedUrl(file.fileUrl, { download: false });
+      setSignedUrl(url);
+      setOpen(true);
+    } finally { setLoading(false); }
   };
 
   const download = async () => {
     setLoading(true);
     try {
-      const url = await ensureUrl();
+      // Force the save dialog by signing with download:true so the browser
+      // doesn't try to render in the same tab.
+      const url = await getReportFileSignedUrl(file.fileUrl, { download: true });
       window.open(url, '_blank', 'noopener,noreferrer');
     } finally {
       setLoading(false);

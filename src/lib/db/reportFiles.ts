@@ -49,8 +49,14 @@ export async function removeReportFile(storagePath: string): Promise<void> {
   await supabase.storage.from(BUCKET).remove([storagePath]).catch(() => {});
 }
 
-export async function getReportFileSignedUrl(storagePath: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(storagePath, 3600);
+export async function getReportFileSignedUrl(storagePath: string, opts?: { download?: boolean }): Promise<string> {
+  // download:false → Supabase serves the file with Content-Disposition: inline
+  // so the browser/iframe renders the PDF instead of triggering a download.
+  // Default to inline (download false) so the in-portal viewer works; the
+  // explicit Download button passes download:true to force the save flow.
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(storagePath, 3600, { download: opts?.download ?? false });
   if (error) throw error;
   if (!data?.signedUrl) throw new Error('No signed URL returned');
   return data.signedUrl;
