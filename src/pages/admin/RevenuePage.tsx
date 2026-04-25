@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Target, Users, Activity, CalendarDays, Pencil } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Activity, CalendarDays } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { LoadingState } from '../../components/LoadingState';
@@ -11,13 +11,10 @@ import {
   computeMRR,
   revenueForMonth,
   revenueYTD,
-  getBusinessGoal,
-  updateBusinessGoal,
 } from '../../lib/db/revenue';
 import { getService } from '../../config/modules';
 import { SERVICE_ICON } from '../../config/serviceIcons';
-import type { Organization, ServiceKey, BusinessGoal } from '../../types';
-import { toast } from 'sonner';
+import type { Organization, ServiceKey } from '../../types';
 import { cn } from '../../lib/cn';
 
 const fmtCAD = (cents: number, opts: { compact?: boolean } = {}) => {
@@ -38,11 +35,6 @@ export function RevenuePage() {
     queryKey: ['revenue', 'all'],
     queryFn: listRevenueLines,
   });
-  const { data: goal } = useQuery({
-    queryKey: ['business-goal'],
-    queryFn: getBusinessGoal,
-  });
-
   const now = new Date();
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth() + 1;
@@ -84,6 +76,40 @@ export function RevenuePage() {
       map[l.serviceKey] = (map[l.serviceKey] ?? 0) + l.amountCents;
     }
     return Object.entries(map)
+      .map(([key, cents]) => ({ key: key as ServiceKey, cents: cents as number }))
+      .sort((a, b) => b.cents - a.cents);
+  }, [lines]);
+
+  // Lead source counts: how many clients came from each source.
+  const leadCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const o of orgs) {
+      const key = o.leadSource ?? 'unknown';
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return LEAD_ORDER
+      .map(source => ({ source, count: counts[source] ?? 0 }))
+      .filter(x => x.count > 0);
+  }, [orgs]);
+
+  // Total earned per service across the lifetime of the agency: every
+  // one-time billed plus the accrued sum of every monthly retainer line for
+  // its active months. Drives the "where the money has come from" picture.
+  const earningsByService = useMemo(() => {
+    const totals: Partial<Record<ServiceKey, number>> = {};
+    for (const l of lines) {
+      if (l.serviceKey === 'business_profile') continue;
+      if (l.type === 'one_time') {
+        totals[l.serviceKey] = (totals[l.serviceKey] ?? 0) + l.amountCents;
+        continue;
+      }
+      const start = new Date(l.startedAt + 'T00:00:00Z');
+      const stop = l.endedAt ? new Date(l.endedAt + 'T00:00:00Z') : new Date();
+      if (stop <= start) continue;
+      const months = (stop.getUTCFullYear() - start.getUTCFullYear()) * 12 + (stop.getUTCMonth() - start.getUTCMonth());
+      if (months > 0) totals[l.serviceKey] = (totals[l.serviceKey] ?? 0) + l.amountCents * months;
+    }
+    return Object.entries(totals)
       .map(([key, cents]) => ({ key: key as ServiceKey, cents: cents as number }))
       .sort((a, b) => b.cents - a.cents);
   }, [lines]);
@@ -194,9 +220,6 @@ export function RevenuePage() {
             <p className="text-white/55 text-sm mt-1.5">Where your money comes from, where you're heading.</p>
           </div>
 
-          {/* GOAL HERO */}
-          {goal && <GoalHero goal={goal} mrr={mrr} monthly={monthly} />}
-
           {/* METRIC CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-10">
             <MetricCard
@@ -243,11 +266,10 @@ export function RevenuePage() {
               hint="Across paying clients"
             />
             <MiniStat
-              label="Goal"
-              value={goal ? `${((mrr / goal.targetMrrCents) * 100).toFixed(0)}%` : '—'}
-              icon={Target}
-              accent={goal && mrr / goal.targetMrrCents >= 0.5 ? 'success' : 'default'}
-              hint={goal ? `to ${fmtCAD(goal.targetMrrCents, { compact: true })}` : ''}
+              label="Active retainers"
+              value={String(lines.filter(l => l.type === 'monthly' && l.startedAt <= todayStr() && (!l.endedAt || l.endedAt > todayStr())).length)}
+              icon={CalendarDays}
+              hint="Monthly retainers billing right now"
             />
           </div>
 
@@ -259,26 +281,47 @@ export function RevenuePage() {
                 <h2 className="font-display font-bold text-xl">Revenue trend</h2>
               </div>
             </div>
-            <p className="text-xs text-white/50 mb-4">Total billed each month, with MRR overlay (orange line) and goal line (dashed).</p>
-            <RevenueChart monthly={monthly} goalCents={goal?.targetMrrCents ?? 0} />
+            <p className="text-xs text-white/50 mb-4">Total billed each month, with MRR overlay as the orange line.</p>
+            <RevenueChart monthly={monthly} />
           </section>
 
-          {/* SERVICE MIX */}
-          {serviceMix.length > 0 && (
+          {/* WHERE MONEY COMES FROM (per service) */}
+          {(serviceMix.length > 0 || earningsByService.length > 0) && (
             <section className="card mb-10">
-              <p className="eyebrow mb-1">Right now</p>
-              <h2 className="font-display font-bold text-xl mb-4">Service mix · MRR</h2>
-              <ServiceMixBars mix={serviceMix} total={mrr} />
+              <p className="eyebrow mb-1">Where the money comes from</p>
+              <h2 className="font-display font-bold text-xl mb-1">Earned by service</h2>
+              <p className="text-xs text-white/50 mb-5">Total earned to date per service (one-times + accrued retainer months). Business Profile excluded since it's not a billable service.</p>
+              {earningsByService.length > 0 ? (
+                <ServiceEarningsBars earnings={earningsByService} />
+              ) : (
+                <p className="text-sm text-white/45">No revenue logged yet.</p>
+              )}
+
+              {serviceMix.length > 0 && (
+                <div className="mt-7 pt-6 border-t border-border-subtle">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-3">Current MRR mix · what's billing right now</p>
+                  <ServiceMixBars mix={serviceMix} total={mrr} />
+                </div>
+              )}
             </section>
           )}
 
-          {/* LEAD SOURCE */}
-          {leadMix.length > 0 && (
+          {/* WHERE LEADS COME FROM */}
+          {(leadCounts.length > 0 || leadMix.length > 0) && (
             <section className="card mb-10">
-              <p className="eyebrow mb-1">Year-to-date</p>
-              <h2 className="font-display font-bold text-xl mb-1">Where revenue comes from</h2>
-              <p className="text-xs text-white/50 mb-4">% of YTD revenue by lead source. Tells you which channel is paying.</p>
-              <LeadSourceMix mix={leadMix} />
+              <p className="eyebrow mb-1">Where leads come from</p>
+              <h2 className="font-display font-bold text-xl mb-1">Lead source breakdown</h2>
+              <p className="text-xs text-white/50 mb-5">How many clients came from each channel, and the YTD revenue each channel produced.</p>
+
+              <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-3">Number of clients · all-time</p>
+              <LeadCountBars counts={leadCounts} totalClients={orgs.length} />
+
+              {leadMix.length > 0 && (
+                <div className="mt-7 pt-6 border-t border-border-subtle">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-3">Revenue by lead source · year-to-date</p>
+                  <LeadSourceMix mix={leadMix} />
+                </div>
+              )}
             </section>
           )}
 
@@ -308,133 +351,6 @@ export function RevenuePage() {
         </div>
       </div>
     </AppShell>
-  );
-}
-
-// ─── GOAL HERO ─────────────────────────────────────────────────────────────
-
-function GoalHero({ goal, mrr, monthly }: { goal: BusinessGoal; mrr: number; monthly: Array<{ revenue: number; mrr: number }> }) {
-  const qc = useQueryClient();
-  const [editing, setEditing] = useState(false);
-  const [target, setTarget] = useState(String(goal.targetMrrCents / 100));
-  const [date, setDate] = useState(goal.targetDate);
-  const update = useMutation({
-    mutationFn: () => updateBusinessGoal(goal.id, {
-      targetMrrCents: Math.round(Number(target) * 100),
-      targetDate: date,
-    }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['business-goal'] });
-      toast.success('Goal updated');
-      setEditing(false);
-    },
-    onError: (e: Error) => toast.error('Save failed', { description: e.message }),
-  });
-
-  const pct = goal.targetMrrCents > 0 ? Math.min(100, (mrr / goal.targetMrrCents) * 100) : 0;
-  const remaining = Math.max(0, goal.targetMrrCents - mrr);
-  const today = new Date();
-  const targetDt = new Date(goal.targetDate + 'T23:59:59Z');
-  const monthsLeft = Math.max(0,
-    (targetDt.getUTCFullYear() - today.getUTCFullYear()) * 12 + (targetDt.getUTCMonth() - today.getUTCMonth())
-  );
-  const neededPerMonth = monthsLeft > 0 ? remaining / monthsLeft : remaining;
-
-  // Pace: avg MRR growth per month over last 6 months
-  const last6 = monthly.slice(-6);
-  const paceMrr = last6.length >= 2 ? (last6[last6.length - 1].mrr - last6[0].mrr) / Math.max(1, last6.length - 1) : 0;
-  const projection = mrr + paceMrr * monthsLeft;
-  const onPace = projection >= goal.targetMrrCents;
-
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      className="rounded-2xl bg-gradient-to-br from-orange/[0.08] via-orange/[0.03] to-transparent border border-orange/30 p-6 md:p-8 mb-10 overflow-hidden relative"
-    >
-      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-orange/10 blur-3xl pointer-events-none" />
-      <div className="relative flex items-start justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-orange/20 text-orange flex items-center justify-center shrink-0">
-            <Target className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-orange font-bold mb-0.5">The goal</p>
-            <h2 className="font-display font-black text-2xl md:text-3xl tracking-[-0.025em]">
-              {fmtCAD(goal.targetMrrCents)}<span className="text-white/45 font-normal"> MRR</span> by {new Date(goal.targetDate + 'T00:00:00Z').toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </h2>
-          </div>
-        </div>
-        {!editing && (
-          <button onClick={() => setEditing(true)} className="text-xs text-white/55 hover:text-white inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-bg-tertiary">
-            <Pencil className="h-3.5 w-3.5" /> Edit goal
-          </button>
-        )}
-        {editing && (
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-2">
-              <div>
-                <label className="text-[10px] uppercase tracking-wider text-white/45 font-semibold mb-1 block">Target MRR</label>
-                <input className="input !py-1.5 text-sm w-32" type="number" value={target} onChange={e => setTarget(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-[10px] uppercase tracking-wider text-white/45 font-semibold mb-1 block">By</label>
-                <input className="input !py-1.5 text-sm" type="date" value={date} onChange={e => setDate(e.target.value)} />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setEditing(false)} className="text-xs text-white/55 hover:text-white px-3 py-1.5">Cancel</button>
-              <button onClick={() => update.mutate()} disabled={update.isPending} className="btn-primary !py-1.5 !px-3 text-xs">Save</button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Progress */}
-      <div className="relative">
-        <div className="flex items-baseline justify-between mb-2 gap-3">
-          <p className="font-display font-black text-3xl md:text-5xl tracking-[-0.03em] tabular-nums">{fmtCAD(mrr)}</p>
-          <p className="text-sm text-white/55 tabular-nums">{pct.toFixed(0)}% of goal</p>
-        </div>
-        <div className="h-3 rounded-full bg-bg-tertiary overflow-hidden mb-5">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${pct}%` }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            className="h-full bg-gradient-to-r from-orange to-orange-hover rounded-full"
-          />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-1">Still to add</p>
-            <p className="font-display font-bold text-xl tabular-nums">{fmtCAD(remaining)}</p>
-            <p className="text-[11px] text-white/40 mt-1">In monthly recurring revenue.</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-1">New MRR to add each month</p>
-            <p className="font-display font-bold text-xl tabular-nums">
-              {monthsLeft > 0 ? fmtCAD(neededPerMonth) : '—'}
-            </p>
-            <p className="text-[11px] text-white/40 mt-1">{monthsLeft > 0 ? `For ${monthsLeft} months to hit ${fmtCAD(goal.targetMrrCents, { compact: true })}.` : 'Goal date passed.'}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-1">Projected by goal date</p>
-            <p className={cn(
-              'font-display font-bold text-xl tabular-nums',
-              paceMrr > 0 ? (onPace ? 'text-success' : 'text-warning') : 'text-white/40',
-            )}>
-              {paceMrr > 0 ? fmtCAD(projection) : 'Need data'}
-            </p>
-            <p className="text-[11px] text-white/40 mt-1">
-              {paceMrr > 0
-                ? (onPace ? 'On track to hit the goal.' : 'Behind, pick up the pace.')
-                : 'Add a few months of MRR to see your trajectory.'}
-            </p>
-          </div>
-        </div>
-      </div>
-    </motion.section>
   );
 }
 
@@ -482,7 +398,7 @@ function MetricCard({ label, value, icon: Icon, accent = 'default', footnote, fo
 
 // ─── REVENUE CHART (no external lib) ───────────────────────────────────────
 
-function RevenueChart({ monthly, goalCents }: { monthly: Array<{ label: string; revenue: number; mrr: number }>; goalCents: number }) {
+function RevenueChart({ monthly }: { monthly: Array<{ label: string; revenue: number; mrr: number }> }) {
   const W = 800;
   const H = 240;
   const PAD_L = 50;
@@ -492,7 +408,7 @@ function RevenueChart({ monthly, goalCents }: { monthly: Array<{ label: string; 
   const innerW = W - PAD_L - PAD_R;
   const innerH = H - PAD_T - PAD_B;
 
-  const maxRev = Math.max(goalCents, ...monthly.map(m => Math.max(m.revenue, m.mrr)));
+  const maxRev = Math.max(1, ...monthly.map(m => Math.max(m.revenue, m.mrr)));
   const yScale = (cents: number) => PAD_T + innerH - (cents / Math.max(1, maxRev)) * innerH;
   const xScale = (i: number) => PAD_L + (innerW * i) / Math.max(1, monthly.length - 1);
 
@@ -515,18 +431,6 @@ function RevenueChart({ monthly, goalCents }: { monthly: Array<{ label: string; 
             </g>
           );
         })}
-        {/* Goal dashed line */}
-        {goalCents > 0 && (
-          <g>
-            <line
-              x1={PAD_L} y1={yScale(goalCents)} x2={W - PAD_R} y2={yScale(goalCents)}
-              stroke="#FF6B1F" strokeWidth="1" strokeDasharray="3 4" opacity="0.6"
-            />
-            <text x={W - PAD_R - 4} y={yScale(goalCents) - 5} textAnchor="end" fill="#FF6B1F" fontSize="10" fontWeight="600">
-              Goal · {fmtCAD(goalCents, { compact: true })}
-            </text>
-          </g>
-        )}
         {/* Revenue bars */}
         {monthly.map((m, i) => {
           const x = xScale(i) - barW / 2;
@@ -593,17 +497,89 @@ function ServiceMixBars({ mix, total }: { mix: Array<{ key: ServiceKey; cents: n
   );
 }
 
+// ─── SERVICE EARNINGS (cumulative, lifetime) ──────────────────────────────
+
+function ServiceEarningsBars({ earnings }: { earnings: Array<{ key: ServiceKey; cents: number }> }) {
+  const max = Math.max(...earnings.map(e => e.cents), 1);
+  const total = earnings.reduce((s, e) => s + e.cents, 0);
+  return (
+    <div className="space-y-3">
+      {earnings.map(e => {
+        const def = getService(e.key);
+        if (!def) return null;
+        const Icon = SERVICE_ICON[e.key];
+        const widthPct = (e.cents / max) * 100;
+        const sharePct = total > 0 ? (e.cents / total) * 100 : 0;
+        return (
+          <div key={e.key}>
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <div className="h-7 w-7 rounded-lg bg-orange/10 text-orange flex items-center justify-center shrink-0">
+                <Icon className="h-3.5 w-3.5" />
+              </div>
+              <p className="text-sm font-medium flex-1 truncate">{def.label}</p>
+              <p className="text-sm tabular-nums font-semibold">{fmtCAD(e.cents)}</p>
+              <p className="text-xs text-white/45 tabular-nums w-12 text-right">{sharePct.toFixed(0)}%</p>
+            </div>
+            <div className="h-2 ml-9 rounded-full bg-bg-tertiary overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${widthPct}%` }}
+                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                className="h-full bg-gradient-to-r from-orange to-orange-hover rounded-full"
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── LEAD SOURCE COUNTS (clients per source) ──────────────────────────────
+
+function LeadCountBars({ counts, totalClients }: { counts: Array<{ source: string; count: number }>; totalClients: number }) {
+  const max = Math.max(...counts.map(c => c.count), 1);
+  return (
+    <div className="space-y-2.5">
+      {counts.map(c => {
+        const widthPct = (c.count / max) * 100;
+        const sharePct = totalClients > 0 ? (c.count / totalClients) * 100 : 0;
+        return (
+          <div key={c.source}>
+            <div className="flex items-center gap-2.5 mb-1">
+              <p className="text-sm font-medium flex-1">{LEAD_LABEL[c.source] ?? c.source}</p>
+              <p className="text-sm tabular-nums font-semibold">{c.count}</p>
+              <p className="text-xs text-white/45 tabular-nums w-12 text-right">{sharePct.toFixed(0)}%</p>
+            </div>
+            <div className="h-2 rounded-full bg-bg-tertiary overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${widthPct}%` }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="h-full bg-success rounded-full"
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── LEAD SOURCE MIX ───────────────────────────────────────────────────────
 
 const LEAD_LABEL: Record<string, string> = {
+  facebook_ad: 'Facebook ads',
+  google_ads: 'Google Ads',
   referral: 'Referral',
-  facebook_ad: 'Facebook ad',
-  cold_outbound: 'Cold outbound',
-  website: 'Website',
+  outreach: 'Outreach',
+  socials: 'Socials',
+  networking: 'Networking',
   other: 'Other',
   unsure: 'Unsure / not tracked',
   unknown: 'Not set',
 };
+const LEAD_ORDER = ['facebook_ad', 'google_ads', 'referral', 'outreach', 'socials', 'networking', 'other', 'unsure', 'unknown'];
 
 function LeadSourceMix({ mix }: { mix: Array<{ source: string; cents: number }> }) {
   const total = mix.reduce((s, m) => s + m.cents, 0);

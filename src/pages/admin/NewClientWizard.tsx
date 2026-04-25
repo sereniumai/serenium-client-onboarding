@@ -130,10 +130,12 @@ export function NewClientWizard() {
               <Field label="How did they find us?">
                 <select className="input" value={leadSource} onChange={e => setLeadSource(e.target.value as LeadSource | '')}>
                   <option value="">Pick one (optional)</option>
+                  <option value="facebook_ad">Facebook ads</option>
+                  <option value="google_ads">Google Ads</option>
                   <option value="referral">Referral</option>
-                  <option value="facebook_ad">Facebook ad</option>
-                  <option value="cold_outbound">Cold outbound</option>
-                  <option value="website">Website</option>
+                  <option value="outreach">Outreach</option>
+                  <option value="socials">Socials</option>
+                  <option value="networking">Networking</option>
                   <option value="unsure">Unsure / not tracked</option>
                   <option value="other">Other</option>
                 </select>
