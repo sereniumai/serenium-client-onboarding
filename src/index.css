@@ -114,6 +114,12 @@
 
   /* Welcome modal hardcoded near-black surface needs to flip in light mode. */
   html[data-theme="light"] .bg-\[\#0d0d0d\] { background-color: #FFFFFF; }
+
+  /* Syne tops out at 800. Map font-black to 800 when font-display is active so
+     headings actually render in Syne instead of falling back to Inter for 900. */
+  .font-display.font-black,
+  .font-display .font-black { font-weight: 800; }
+  .font-display { font-family: 'Syne', 'Inter', system-ui, sans-serif; letter-spacing: -0.025em; }
 }
 
 @layer components {
