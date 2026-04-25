@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import type { RevenueLine, BusinessGoal, ServiceKey, RevenueType } from '../../types';
+import type { RevenueLine, BusinessGoal, ServiceKey, RevenueType, LeadSourceSpend, LeadSource } from '../../types';
 
 interface Row {
   id: string;
@@ -202,4 +202,61 @@ export function revenueYTD(lines: RevenueLine[], year: number): number {
   let total = 0;
   for (let m = 1; m <= upTo; m++) total += revenueForMonth(lines, year, m);
   return total;
+}
+
+// ─── Lead source spend (CAC inputs) ────────────────────────────────────────
+
+interface SpendRow {
+  source: string;
+  monthly_spend_cents: number;
+  since: string;
+  notes: string | null;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+function toSpend(r: SpendRow): LeadSourceSpend {
+  return {
+    source: r.source as LeadSource,
+    monthlySpendCents: r.monthly_spend_cents,
+    since: r.since,
+    notes: r.notes,
+    updatedAt: r.updated_at,
+    updatedBy: r.updated_by,
+  };
+}
+
+export async function listLeadSourceSpend(): Promise<LeadSourceSpend[]> {
+  const { data, error } = await supabase
+    .from('lead_source_spend')
+    .select('*');
+  if (error) throw error;
+  return ((data ?? []) as SpendRow[]).map(toSpend);
+}
+
+export async function upsertLeadSourceSpend(args: {
+  source: LeadSource;
+  monthlySpendCents: number;
+  since?: string;
+  notes?: string | null;
+}): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from('lead_source_spend')
+    .upsert({
+      source: args.source,
+      monthly_spend_cents: args.monthlySpendCents,
+      since: args.since ?? new Date().toISOString().slice(0, 10),
+      notes: args.notes ?? null,
+      updated_by: user?.id ?? null,
+    }, { onConflict: 'source' });
+  if (error) throw error;
+}
+
+export async function deleteLeadSourceSpend(source: LeadSource): Promise<void> {
+  const { error } = await supabase
+    .from('lead_source_spend')
+    .delete()
+    .eq('source', source);
+  if (error) throw error;
 }

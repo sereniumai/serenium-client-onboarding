@@ -52,6 +52,15 @@ export interface RevenueLine {
   createdBy: string | null;
 }
 
+export interface LeadSourceSpend {
+  source: LeadSource;
+  monthlySpendCents: number;
+  since: string;          // ISO date
+  notes: string | null;
+  updatedAt: string;
+  updatedBy: string | null;
+}
+
 export interface BusinessGoal {
   id: string;
   targetMrrCents: number;
