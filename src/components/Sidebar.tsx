@@ -1,6 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, Volume2, VolumeX, Moon, Sun } from 'lucide-react';
+import { LogOut, Menu, X, Volume2, VolumeX, Moon, Sun, User } from 'lucide-react';
 import { getTheme, setTheme } from '../lib/theme';
 import type { LucideIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -91,8 +91,8 @@ export function Sidebar({ sections, children, footerExtra }: {
             className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-bg-tertiary/60 transition-colors group"
             title="Account settings"
           >
-            <div className="h-8 w-8 rounded-full bg-orange/15 text-orange flex items-center justify-center text-xs font-bold shrink-0">
-              {user.fullName.split(' ').map(n => n[0]).slice(0, 2).join('')}
+            <div className="h-8 w-8 rounded-lg bg-orange/10 text-orange flex items-center justify-center shrink-0">
+              <User className="h-4 w-4" strokeWidth={2.2} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate leading-tight">{user.fullName}</p>

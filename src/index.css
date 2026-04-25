@@ -101,6 +101,16 @@
   html[data-theme="light"] .bg-white\/10 { background-color: rgba(0, 0, 0, 0.06); }
   html[data-theme="light"] .bg-white\/15 { background-color: rgba(0, 0, 0, 0.09); }
   html[data-theme="light"] .bg-white\/20 { background-color: rgba(0, 0, 0, 0.12); }
+  html[data-theme="light"] .bg-white\/\[0\.04\] { background-color: rgba(0, 0, 0, 0.04); }
+  html[data-theme="light"] .bg-white\/\[0\.02\] { background-color: rgba(0, 0, 0, 0.02); }
+  html[data-theme="light"] .bg-white\/\[0\.03\] { background-color: rgba(0, 0, 0, 0.03); }
+  html[data-theme="light"] .bg-white\/\[0\.08\] { background-color: rgba(0, 0, 0, 0.08); }
+
+  /* Logo: source AVIF is white-on-transparent. In light mode, invert to black. */
+  html[data-theme="light"] .brand-logo { filter: invert(1) hue-rotate(180deg); }
+
+  /* Welcome modal hardcoded near-black surface needs to flip in light mode. */
+  html[data-theme="light"] .bg-\[\#0d0d0d\] { background-color: #FFFFFF; }
 }
 
 @layer components {

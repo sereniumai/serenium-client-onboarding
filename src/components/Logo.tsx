@@ -5,7 +5,7 @@ export function Logo({ className }: { className?: string }) {
     <img
       src="/serenium.avif"
       alt="Serenium"
-      className={cn('h-7 w-auto select-none', className)}
+      className={cn('brand-logo h-7 w-auto select-none', className)}
       draggable={false}
     />
   );
