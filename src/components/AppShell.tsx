@@ -10,12 +10,13 @@ import { AiHelperChat } from './AiHelperChat';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ImpersonationBanner } from './ImpersonationBanner';
 import { WelcomeVideoModal, openWelcomeVideo } from './WelcomeVideoModal';
+import { ReportsVideoModal, openReportsVideo } from './ReportsVideoModal';
 import { useAuth } from '../auth/AuthContext';
 import { useOrgsForUser } from '../hooks/useOrgs';
 import { useOrgSnapshot } from '../hooks/useOnboarding';
 import { getOrgProgress } from '../lib/progress';
 import { hasUnreadChangelog } from '../lib/changelog';
-import { getWelcomeVideo } from '../lib/db/welcomeVideo';
+import { getWelcomeVideo, getReportsVideo } from '../lib/db/welcomeVideo';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -47,6 +48,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const hasWelcomeVideo = !!welcomeVideo?.videoUrl;
 
+  const { data: reportsVideo } = useQuery({
+    queryKey: ['reports_video'],
+    queryFn: getReportsVideo,
+    enabled: user?.role === 'client',
+  });
+  const hasReportsVideo = !!reportsVideo?.videoUrl;
+
   const sections = buildSections({
     userRole: user?.role,
     orgSlug,
@@ -56,6 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     progress,
     editingMode: isClientInsideOnboarding,
     hasWelcomeVideo,
+    hasReportsVideo,
   });
 
   // Auth / public routes render without the shell chrome
@@ -100,12 +109,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       {showAiChat && <AiHelperChat />}
       {user.role === 'client' && !isLive && <WelcomeVideoModal />}
+      {user.role === 'client' && isLive && <ReportsVideoModal />}
     </div>
   );
 }
 
 function buildSections({
-  userRole, orgSlug, onboardingDone, isLive, hasUnreadWhatsNew, progress, editingMode, hasWelcomeVideo,
+  userRole, orgSlug, onboardingDone, isLive, hasUnreadWhatsNew, progress, editingMode, hasWelcomeVideo, hasReportsVideo,
 }: {
   userRole: 'admin' | 'client' | undefined;
   orgSlug: string | null;
@@ -115,6 +125,7 @@ function buildSections({
   progress: ReturnType<typeof getOrgProgress> | null;
   editingMode: boolean;
   hasWelcomeVideo: boolean;
+  hasReportsVideo: boolean;
 }): SidebarSection[] {
   if (userRole === 'admin') {
     return [
@@ -140,7 +151,7 @@ function buildSections({
       {
         title: 'Content',
         items: [
-          { to: '/admin/welcome-video', label: 'Welcome video', icon: Sparkles },
+          { to: '/admin/welcome-video', label: 'Client videos', icon: Sparkles },
           { to: '/admin/videos', label: 'Step videos', icon: Video },
         ],
       },
@@ -178,6 +189,9 @@ function buildSections({
         title: 'Your account',
         items: [
           { to: `/onboarding/${orgSlug}/reports`, label: 'Reports', icon: FileBarChart2, end: true },
+          ...(hasReportsVideo
+            ? [{ label: 'Reports walkthrough', icon: PlayCircle, onClick: openReportsVideo }]
+            : []),
         ],
       },
     ];

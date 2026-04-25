@@ -5,6 +5,11 @@ export interface WelcomeVideoMeta {
   updatedAt: string;
 }
 
+export interface ReportsVideoMeta {
+  videoUrl: string | null;
+  updatedAt: string;
+}
+
 export async function getWelcomeVideo(): Promise<WelcomeVideoMeta | null> {
   const { data, error } = await supabase
     .from('welcome_video')
@@ -82,6 +87,65 @@ export async function resetAllWelcomeSeen(): Promise<number> {
 export async function hasSeenWelcome(userId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('welcomed_users')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Reports dashboard video — mirrors the welcome video shape on a separate URL
+// slot + seen-state table so live clients get their own intro video.
+// ────────────────────────────────────────────────────────────────────────────
+
+export async function getReportsVideo(): Promise<ReportsVideoMeta | null> {
+  const { data, error } = await supabase
+    .from('welcome_video')
+    .select('reports_video_url, updated_at')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const r = data as Record<string, unknown>;
+  return {
+    videoUrl:  (r.reports_video_url as string | null) ?? null,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+export async function setReportsVideoUrl(url: string): Promise<ReportsVideoMeta> {
+  const { data, error } = await supabase
+    .from('welcome_video')
+    .upsert({ id: 1, reports_video_url: url.trim() || null, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+    .select('reports_video_url, updated_at')
+    .single();
+  if (error) throw error;
+  const r = data as Record<string, unknown>;
+  return {
+    videoUrl:  (r.reports_video_url as string | null) ?? null,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+export async function clearReportsVideo(): Promise<void> {
+  const { error } = await supabase.from('welcome_video')
+    .update({ reports_video_url: null, updated_at: new Date().toISOString() })
+    .eq('id', 1);
+  if (error) throw error;
+}
+
+export async function markReportsVideoSeen(userId: string): Promise<void> {
+  const { error } = await supabase.from('reports_video_seen').upsert({
+    user_id: userId,
+    seen_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' });
+  if (error) throw error;
+}
+
+export async function hasSeenReportsVideo(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('reports_video_seen')
     .select('user_id')
     .eq('user_id', userId)
     .maybeSingle();

@@ -8,7 +8,7 @@ const ITEMS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/clients/new', label: 'New client', icon: UserPlus, end: false },
   { to: '/admin/videos', label: 'Step videos', icon: Video, end: false },
-  { to: '/admin/welcome-video', label: 'Welcome video', icon: Sparkles, end: false },
+  { to: '/admin/welcome-video', label: 'Client videos', icon: Sparkles, end: false },
   { to: '/admin/ai-conversations', label: 'AI chats', icon: MessageCircle, end: false },
   { to: '/admin/settings/followups', label: 'Follow-ups', icon: Mail, end: false },
 ];
