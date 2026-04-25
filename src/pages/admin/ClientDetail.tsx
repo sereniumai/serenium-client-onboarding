@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Trash2, Copy, Mail, AlertTriangle, MessageCircle as MessageCircleIcon, Eye, Plus } from 'lucide-react';
+import { useParams, Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { ChevronLeft, Trash2, Copy, Mail, AlertTriangle, MessageCircle as MessageCircleIcon, Eye, Plus, Bell, Check, RotateCcw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
@@ -28,13 +28,15 @@ import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey, OrgStatus, Upload } from '../../types';
 import { cn } from '../../lib/cn';
 
-type Tab = 'overview' | 'services' | 'submissions' | 'progress' | 'reports' | 'activity' | 'users' | 'ai';
+type Tab = 'overview' | 'services' | 'submissions' | 'progress' | 'reports' | 'activity' | 'users' | 'ai' | 'flagged';
 
 export function ClientDetail() {
   const { orgSlug } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: org, isLoading, isError, error } = useOrgBySlug(orgSlug);
-  const [tab, setTab] = useState<Tab>('overview');
+  const initialTab = (searchParams.get('tab') as Tab) || 'overview';
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [followupOpen, setFollowupOpen] = useState(false);
 
   if (!orgSlug) return <Navigate to="/admin" replace />;
@@ -98,6 +100,7 @@ export function ClientDetail() {
             <TabBtn active={tab === 'reports'} onClick={() => setTab('reports')}>Reports</TabBtn>
             <TabBtn active={tab === 'activity'} onClick={() => setTab('activity')}>Activity</TabBtn>
             <TabBtn active={tab === 'ai'} onClick={() => setTab('ai')}>AI chats</TabBtn>
+            <TabBtn active={tab === 'flagged'} onClick={() => setTab('flagged')}>Flagged</TabBtn>
             <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>Users</TabBtn>
           </div>
 
@@ -108,6 +111,7 @@ export function ClientDetail() {
           {tab === 'reports' && <ReportsTab orgId={org.id} />}
           {tab === 'activity' && <ActivityTab orgId={org.id} />}
           {tab === 'ai' && <AiChatsTab orgId={org.id} />}
+          {tab === 'flagged' && <FlaggedTab orgId={org.id} primaryContactEmail={org.primaryContactEmail} />}
           {tab === 'users' && <UsersTab orgId={org.id} />}
 
           {followupOpen && (
@@ -1443,3 +1447,121 @@ function AiChatsTab({ orgId }: { orgId: string }) {
   );
 }
 
+
+function FlaggedTab({ orgId, primaryContactEmail }: { orgId: string; primaryContactEmail?: string }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ['aria-escalations', orgId],
+    queryFn: async () => {
+      const { listEscalationsForOrg } = await import('../../lib/db/escalations');
+      return listEscalationsForOrg(orgId);
+    },
+  });
+
+  const handleResolve = async (id: string) => {
+    if (!user) return;
+    try {
+      const { resolveEscalation } = await import('../../lib/db/escalations');
+      await resolveEscalation(id, user.id);
+      qc.invalidateQueries({ queryKey: ['aria-escalations', orgId] });
+      qc.invalidateQueries({ queryKey: ['aria-escalations-open'] });
+      toast.success('Marked resolved');
+    } catch (err) {
+      toast.error("Couldn't mark resolved", { description: (err as Error).message });
+    }
+  };
+  const handleReopen = async (id: string) => {
+    try {
+      const { reopenEscalation } = await import('../../lib/db/escalations');
+      await reopenEscalation(id);
+      qc.invalidateQueries({ queryKey: ['aria-escalations', orgId] });
+      qc.invalidateQueries({ queryKey: ['aria-escalations-open'] });
+    } catch (err) {
+      toast.error("Couldn't reopen", { description: (err as Error).message });
+    }
+  };
+
+  if (isLoading) return <LoadingState variant="inline" label="Loading flagged questions…" />;
+  if (items.length === 0) {
+    return (
+      <div className="card text-center py-12">
+        <Bell className="h-8 w-8 text-white/30 mx-auto mb-3" />
+        <p className="text-white/60">No flagged questions yet.</p>
+        <p className="text-xs text-white/40 mt-1">Aria flags a question here when she can't answer and asks the team to help.</p>
+      </div>
+    );
+  }
+
+  const open = items.filter(i => !i.resolvedAt);
+  const resolved = items.filter(i => i.resolvedAt);
+
+  return (
+    <div className="space-y-6">
+      {open.length > 0 && (
+        <section>
+          <h3 className="font-semibold text-sm mb-3 text-white">Open ({open.length})</h3>
+          <ul className="space-y-3">
+            {open.map(e => (
+              <li key={e.id} className="card !p-4">
+                <div className="flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-white/45">
+                      {new Date(e.createdAt).toLocaleString()}
+                      {e.pageContext && <> · on the "{e.pageContext}" step</>}
+                    </p>
+                    <p className="text-sm text-white mt-1.5 whitespace-pre-wrap">{e.question}</p>
+                    {e.contextSnippet && (
+                      <details className="mt-3">
+                        <summary className="text-xs text-white/50 cursor-pointer hover:text-white/75">Aria's reply</summary>
+                        <p className="text-xs text-white/65 mt-2 whitespace-pre-wrap bg-bg-tertiary/50 rounded-lg p-3">{e.contextSnippet}</p>
+                      </details>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2 shrink-0">
+                    {primaryContactEmail && (
+                      <a
+                        href={`mailto:${primaryContactEmail}?subject=${encodeURIComponent(`Re: ${e.question.slice(0, 60)}`)}&body=${encodeURIComponent(`Hey,\n\nThanks for the question through the portal:\n\n> ${e.question}\n\n`)}`}
+                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md bg-orange text-white font-medium hover:bg-orange-hover"
+                      >
+                        <Mail className="h-3.5 w-3.5" /> Reply by email
+                      </a>
+                    )}
+                    <button
+                      onClick={() => handleResolve(e.id)}
+                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md border border-border-subtle hover:border-white/30 hover:bg-white/5 text-white/80"
+                    >
+                      <Check className="h-3.5 w-3.5" /> Resolve
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {resolved.length > 0 && (
+        <section>
+          <h3 className="font-semibold text-sm mb-3 text-white/60">Resolved ({resolved.length})</h3>
+          <ul className="space-y-2">
+            {resolved.map(e => (
+              <li key={e.id} className="card !p-3 flex items-start gap-3 opacity-70">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-white/40">{new Date(e.createdAt).toLocaleString()}</p>
+                  <p className="text-sm text-white/75 mt-0.5 line-clamp-2">{e.question}</p>
+                </div>
+                <button
+                  onClick={() => handleReopen(e.id)}
+                  className="text-xs text-white/50 hover:text-white inline-flex items-center gap-1 px-2 py-1"
+                  title="Reopen"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}

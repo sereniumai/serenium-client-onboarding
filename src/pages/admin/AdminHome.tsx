@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Plus, Activity, Rocket, Search, ArrowUp, ArrowDown, ArrowUpDown, Loader2 } from 'lucide-react';
+import { Users, Plus, Activity, Rocket, Search, ArrowUp, ArrowDown, ArrowUpDown, Loader2, Bell, Check } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { StatusPill as SystemStatusPill } from '../../components/StatusPill';
 import { OrgStatusPill } from '../../components/OrgStatusPill';
 import { useAllOrgs } from '../../hooks/useOrgs';
+import { useAuth } from '../../auth/AuthContext';
+import { listOpenEscalations, resolveEscalation } from '../../lib/db/escalations';
 import { cn } from '../../lib/cn';
 
 type Filter = 'all' | 'onboarding' | 'live';
@@ -14,6 +18,22 @@ type SortDir = 'asc' | 'desc';
 
 export function AdminHome() {
   const { data: orgs = [], isLoading, isError, error } = useAllOrgs();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: escalations = [] } = useQuery({
+    queryKey: ['aria-escalations-open'],
+    queryFn: listOpenEscalations,
+  });
+  const handleResolve = async (id: string) => {
+    if (!user) return;
+    try {
+      await resolveEscalation(id, user.id);
+      qc.invalidateQueries({ queryKey: ['aria-escalations-open'] });
+      toast.success('Marked resolved');
+    } catch (err) {
+      toast.error("Couldn't mark resolved", { description: (err as Error).message });
+    }
+  };
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('business');
@@ -92,6 +112,56 @@ export function AdminHome() {
             <div className="card border-error/40 bg-error/5 mb-8">
               <p className="font-semibold text-error mb-1">Couldn't load clients</p>
               <p className="text-sm text-white/70">{(error as Error)?.message ?? 'Unknown error'}</p>
+            </div>
+          )}
+
+          {escalations.length > 0 && (
+            <div className="card border-orange/30 bg-orange/5 mb-8 md:mb-10 !p-0 overflow-hidden">
+              <div className="px-5 py-3 border-b border-orange/20 flex items-center gap-2">
+                <Bell className="h-4 w-4 text-orange" />
+                <span className="text-sm font-semibold text-white">
+                  {escalations.length === 1 ? 'Aria flagged a question' : `Aria flagged ${escalations.length} questions`}
+                </span>
+                <span className="ml-auto text-xs text-white/45">Reply by email, then mark resolved.</span>
+              </div>
+              <ul className="divide-y divide-border-subtle">
+                {escalations.slice(0, 5).map(e => {
+                  const orgRow = orgs.find(o => o.id === e.organizationId);
+                  return (
+                    <li key={e.id} className="px-5 py-4 flex items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm">
+                          <span className="font-semibold text-white">{orgRow?.businessName ?? 'Unknown client'}</span>
+                          {e.pageContext && <span className="text-white/40"> · {e.pageContext}</span>}
+                          <span className="text-white/35"> · {timeAgo(e.createdAt)}</span>
+                        </div>
+                        <p className="text-sm text-white/75 mt-1 line-clamp-2">{e.question}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {orgRow && (
+                          <Link
+                            to={`/admin/clients/${orgRow.slug}?tab=flagged`}
+                            className="text-xs text-orange hover:text-orange-hover font-medium px-2.5 py-1.5"
+                          >
+                            Open client →
+                          </Link>
+                        )}
+                        <button
+                          onClick={() => handleResolve(e.id)}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md border border-border-subtle hover:border-white/30 hover:bg-white/5 text-white/75"
+                        >
+                          <Check className="h-3.5 w-3.5" /> Resolve
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {escalations.length > 5 && (
+                <div className="px-5 py-2.5 border-t border-border-subtle text-xs text-white/50">
+                  + {escalations.length - 5} more, open each client to see them.
+                </div>
+              )}
             </div>
           )}
 
@@ -207,6 +277,17 @@ function StatCard({ icon: Icon, label, value, active, onClick }: {
   );
 }
 
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 function PlanBadge({ plan }: { plan: 'starter' | 'pro' | 'custom' }) {
   const styles: Record<typeof plan, string> = {

@@ -19,6 +19,8 @@ import {
   setThreadTitle,
   deriveThreadTitle,
   saveMessage,
+  isAriaEscalation,
+  logAriaEscalation,
 } from '../lib/aiHelper';
 import { ARIA } from '../config/personas';
 import { suggestionsForContext } from './aiSuggestions';
@@ -143,6 +145,18 @@ export function AiHelperChat() {
       });
       qc.invalidateQueries({ queryKey: ['ai-chat', activeThreadId] });
       qc.invalidateQueries({ queryKey: ['ai-threads', user.id] });
+
+      // If Aria escalated, log it + email the Serenium team. Fire-and-forget;
+      // failures don't block the chat.
+      if (org?.id && isAriaEscalation(reply)) {
+        void logAriaEscalation({
+          organizationId: org.id,
+          threadId: activeThreadId,
+          question: content,
+          contextSnippet: reply.slice(0, 1200),
+          pageContext: currentContext,
+        });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       console.error('[chat] send failed', err);

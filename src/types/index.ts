@@ -229,6 +229,20 @@ export interface AiChatMessage {
   createdAt: string;
 }
 
+// --- Aria escalations: questions Aria flagged to the Serenium team ---
+export interface AriaEscalation {
+  id: string;
+  organizationId: string;
+  userId: string;
+  threadId: string | null;
+  question: string;
+  contextSnippet: string | null;
+  pageContext: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+}
+
 // --- Analytics mode: PDF reports uploaded to the chat ---
 export interface AnalyticsUpload {
   id: string;

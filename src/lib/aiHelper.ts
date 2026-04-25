@@ -114,6 +114,54 @@ export async function saveMessage(args: {
   return appendChatMessage(args);
 }
 
+// ─── Escalation detection ──────────────────────────────────────────────────
+
+/**
+ * Returns true when Aria's reply suggests she's escalating the question to
+ * the Serenium team (vs. answering it herself). We use this to fire the
+ * team notification email + log the row.
+ *
+ * Tuned to be moderately strict: false-positives spam the team inbox, false-
+ * negatives leave clients waiting. Phrases match the system-prompt language.
+ */
+export function isAriaEscalation(reply: string): boolean {
+  const t = reply.toLowerCase();
+  const patterns: RegExp[] = [
+    /flag(?:ging)?\s+(?:this|it|that|your\s+question)\s+(?:to|with|for)\s+(?:the\s+)?(?:serenium\s+)?team/,
+    /i'?ll\s+(?:flag|let|loop|raise|ping|pass)\s+(?:this|it|that)?\s*(?:to|in|with|on|along\s+to)\s+(?:the\s+)?(?:serenium\s+)?team/,
+    /i'?ll\s+let\s+the\s+(?:serenium\s+)?team\s+know/,
+    /the\s+(?:serenium\s+)?team\s+(?:can|will|should)\s+(?:help|sort|handle|track|reach\s+out|get\s+back)/,
+    /i'?ll\s+(?:reach\s+out|escalate)\s+to\s+the\s+(?:serenium\s+)?team/,
+  ];
+  return patterns.some(p => p.test(t));
+}
+
+export async function logAriaEscalation(args: {
+  organizationId: string;
+  threadId?: string | null;
+  question: string;
+  contextSnippet?: string | null;
+  pageContext?: string | null;
+}): Promise<void> {
+  const { supabase } = await import('./supabase');
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) return;
+
+  try {
+    await fetch('/api/log-aria-escalation', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(args),
+    });
+  } catch (err) {
+    console.warn('[aria escalation] log failed (non-fatal)', err);
+  }
+}
+
 /** Auto-derive a thread title from the first user message. ~40 char cap. */
 export function deriveThreadTitle(firstUserMessage: string): string {
   const cleaned = firstUserMessage.trim().replace(/\s+/g, ' ');
