@@ -226,10 +226,6 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
         </div>
       )}
 
-      {(org.status === 'live' || org.status === 'paused') && (
-        <PauseActionCard org={org} updateOrg={updateOrg} />
-      )}
-
       <div className="card space-y-4">
         <p className="eyebrow">Business details</p>
         <LabeledInput label="Business name" value={businessName} onChange={setBusinessName} />
@@ -254,12 +250,23 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
         </div>
       </div>
 
-      <div className="card border-error/30">
-        <p className="eyebrow text-error mb-2">Danger zone</p>
-        <p className="text-sm text-white/60 mb-4">Permanently delete this client and all their data. This cannot be undone.</p>
-        <button onClick={() => setShowDeleteConfirm(true)} disabled={deleteOrg.isPending} className="btn-danger !py-2 !px-4">
-          <Trash2 className="h-4 w-4" /> {deleteOrg.isPending ? 'Deleting…' : 'Delete client'}
-        </button>
+      <div className="card border-error/30 space-y-5">
+        <div>
+          <p className="eyebrow text-error mb-1">Danger zone</p>
+          <p className="text-xs text-white/55">Admin-only actions. Pausing is reversible. Deleting is permanent.</p>
+        </div>
+
+        {(org.status === 'live' || org.status === 'paused') && (
+          <PauseActionRow org={org} updateOrg={updateOrg} />
+        )}
+
+        <div className="border-t border-error/20 pt-5">
+          <p className="text-sm font-semibold text-white mb-1">Delete this client</p>
+          <p className="text-xs text-white/55 mb-3">Permanently removes the organisation, all submissions, all uploads, and revokes access for every invited user. Cannot be undone.</p>
+          <button onClick={() => setShowDeleteConfirm(true)} disabled={deleteOrg.isPending} className="btn-danger !py-2 !px-4">
+            <Trash2 className="h-4 w-4" /> {deleteOrg.isPending ? 'Deleting…' : 'Delete client'}
+          </button>
+        </div>
       </div>
 
       <ConfirmDialog
@@ -276,7 +283,7 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
   );
 }
 
-function PauseActionCard({ org, updateOrg }: {
+function PauseActionRow({ org, updateOrg }: {
   org: NonNullable<ReturnType<typeof useOrgBySlug>['data']>;
   updateOrg: ReturnType<typeof useUpdateOrg>;
 }) {
@@ -295,30 +302,19 @@ function PauseActionCard({ org, updateOrg }: {
     }
   };
   return (
-    <div className={cn(
-      'card flex items-start gap-4',
-      isPaused ? 'border-warning/30 bg-warning/5' : 'border-border-subtle',
-    )}>
-      <div className={cn(
-        'h-10 w-10 rounded-xl flex items-center justify-center shrink-0',
-        isPaused ? 'bg-warning/15 text-warning' : 'bg-bg-tertiary/60 text-white/65',
-      )}>
-        <span className="font-display font-bold text-base">{isPaused ? 'II' : 'I'}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold">{isPaused ? 'Currently paused' : 'Pause this account'}</p>
-        <p className="text-xs text-white/60 mt-0.5">
-          {isPaused
-            ? 'Logins are blocked, monthly retainers ended. Reactivate any time, all data is preserved.'
-            : 'Stops their portal access and ends every active monthly retainer today. Use this when a client takes a break, all data + reports stay safe so you can flip them back on later.'}
-        </p>
-      </div>
+    <div>
+      <p className="text-sm font-semibold text-white mb-1">{isPaused ? 'Reactivate this client' : 'Pause this client'}</p>
+      <p className="text-xs text-white/55 mb-3">
+        {isPaused
+          ? 'Currently paused. Logins are blocked and monthly retainers are ended. Reactivate any time, all data is preserved.'
+          : 'Stops their portal access and ends every active monthly retainer today. Use when a client takes a break — all data, reports, and history stay safe so you can flip them back on later. Reversible.'}
+      </p>
       <button
         onClick={onAction}
         disabled={updateOrg.isPending}
-        className={cn(isPaused ? 'btn-primary' : 'btn-secondary', 'shrink-0')}
+        className={cn(isPaused ? 'btn-primary' : 'btn-secondary', '!py-2 !px-4')}
       >
-        {updateOrg.isPending ? '…' : isPaused ? 'Reactivate' : 'Pause account'}
+        {updateOrg.isPending ? '…' : isPaused ? 'Reactivate client' : 'Pause client'}
       </button>
     </div>
   );

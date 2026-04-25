@@ -141,6 +141,16 @@ export function RevenuePage() {
   }, [orgs, lines]);
 
   const activeClients = orgs.filter(o => o.status === 'live').length;
+  const arpu = activeClients > 0 ? mrr / activeClients : 0;
+  const topClient = perClient[0];
+  const concentration = topClient && mrr > 0 ? (topClient.mrrContrib / mrr) * 100 : 0;
+  const clientsWithRevenue = perClient.filter(r => r.mrrContrib > 0 || r.ltv > 0);
+  const avgServicesPerClient = clientsWithRevenue.length > 0
+    ? clientsWithRevenue.reduce((sum, r) => {
+        const orgServices = new Set(lines.filter(l => l.organizationId === r.org.id).map(l => l.serviceKey));
+        return sum + orgServices.size;
+      }, 0) / clientsWithRevenue.length
+    : 0;
   const churnedLast30 = orgs.filter(o => {
     if (o.status !== 'churned' || !o.churnedAt) return false;
     const days = (Date.now() - new Date(o.churnedAt).getTime()) / (1000 * 60 * 60 * 24);
@@ -199,6 +209,35 @@ export function RevenuePage() {
               value={fmtCAD(ytd)}
               icon={TrendingUp}
               footnote={`${monthly.filter(m => m.year === year).length} month${monthly.filter(m => m.year === year).length === 1 ? '' : 's'} of revenue`}
+            />
+          </div>
+
+          {/* SECONDARY STATS */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+            <MiniStat
+              label="ARPU"
+              value={fmtCAD(arpu)}
+              icon={Users}
+              hint="MRR ÷ active clients"
+            />
+            <MiniStat
+              label="Top client"
+              value={topClient ? topClient.org.businessName.split(' ')[0] : '—'}
+              icon={TrendingUp}
+              hint={topClient && topClient.mrrContrib > 0 ? `${concentration.toFixed(0)}% of MRR` : 'No clients yet'}
+            />
+            <MiniStat
+              label="Avg services / client"
+              value={avgServicesPerClient > 0 ? avgServicesPerClient.toFixed(1) : '—'}
+              icon={Activity}
+              hint="Across paying clients"
+            />
+            <MiniStat
+              label="Goal"
+              value={goal ? `${((mrr / goal.targetMrrCents) * 100).toFixed(0)}%` : '—'}
+              icon={Target}
+              accent={goal && mrr / goal.targetMrrCents >= 0.5 ? 'success' : 'default'}
+              hint={goal ? `to ${fmtCAD(goal.targetMrrCents, { compact: true })}` : ''}
             />
           </div>
 
@@ -549,7 +588,8 @@ const LEAD_LABEL: Record<string, string> = {
   cold_outbound: 'Cold outbound',
   website: 'Website',
   other: 'Other',
-  unknown: 'Unknown',
+  unsure: 'Unsure / not tracked',
+  unknown: 'Not set',
 };
 
 function LeadSourceMix({ mix }: { mix: Array<{ source: string; cents: number }> }) {

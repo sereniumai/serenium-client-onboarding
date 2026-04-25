@@ -14,7 +14,7 @@ export interface Profile {
 }
 
 export type OrgPlan = 'starter' | 'pro' | 'custom';
-export type LeadSource = 'referral' | 'facebook_ad' | 'cold_outbound' | 'website' | 'other';
+export type LeadSource = 'referral' | 'facebook_ad' | 'cold_outbound' | 'website' | 'other' | 'unsure';
 
 export interface Organization {
   id: string;
