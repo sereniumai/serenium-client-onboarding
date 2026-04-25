@@ -980,6 +980,7 @@ function AdminSetupCard({ orgId }: { orgId: string }) {
 
   const toggleFlag = useMutation({
     mutationFn: async (value: boolean) => {
+      const wasOff = !aiReceptionistReady;
       const { setAdminFlag } = await import('../../lib/db/progress');
       await setAdminFlag(orgId, 'ai_receptionist_ready_for_connection', value);
       supabase.from('activity_log').insert({
@@ -987,10 +988,29 @@ function AdminSetupCard({ orgId }: { orgId: string }) {
         action: 'admin_config_changed',
         metadata: { type: 'ai_receptionist_ready', value },
       }).then(({ error }) => { if (error) console.warn('[activity] flag log failed', error); });
+
+      // On false -> true, send the client an email letting them know their AI
+      // receptionist is ready to wire up. Skip silently if the endpoint is
+      // unreachable or the org has no contact email — log toggle still succeeds.
+      if (wasOff && value) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+          if (token) {
+            await fetch('/api/notify-ai-ready', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+              body: JSON.stringify({ organizationId: orgId }),
+            });
+          }
+        } catch (err) {
+          console.warn('[ai-ready] notify email failed (non-fatal)', err);
+        }
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, value) => {
       qc.invalidateQueries({ queryKey: qk.adminFlags(orgId) });
-      toast.success('Setup flag updated');
+      toast.success(value ? 'AI ready, client notified by email' : 'Setup flag updated');
     },
     onError: (err: Error) => toast.error('Save failed', { description: err.message }),
   });

@@ -25,6 +25,7 @@ import { videoEmbedUrl } from '../../lib/videoEmbed';
 import { moduleIsReady, findNextActionableModule, submissionIsFilled } from '../../lib/progress';
 import { useQuery } from '@tanstack/react-query';
 import { listStepVideos } from '../../lib/db/videos';
+import { getRetellNumber } from '../../lib/db/retellNumbers';
 import type { ServiceKey } from '../../types';
 
 export function ModulePage() {
@@ -40,6 +41,11 @@ export function ModulePage() {
   const setModStatus = useSetModuleStatus();
   const setTask = useSetTaskCompletion();
   const { data: stepVideos = [] } = useQuery({ queryKey: ['step_videos'], queryFn: listStepVideos });
+  const { data: retellNumber = null } = useQuery({
+    queryKey: ['retell', org?.id],
+    queryFn: () => getRetellNumber(org!.id),
+    enabled: !!org?.id,
+  });
 
   const svc = serviceKey ? getService(serviceKey as ServiceKey) : null;
   const mod = svc && moduleKey ? getModule(svc.key, moduleKey) : null;
@@ -248,7 +254,16 @@ export function ModulePage() {
               return null;
             })()}
 
-            {/* Retell forwarding number block returns in Phase 6 (retell_numbers port). */}
+            {/* Retell phone number, shown on the phone_number_setup module
+                once admin has assigned a number to this org. Surfaces the
+                exact number to forward to (or use directly) inline. */}
+            {retellNumber && mod.key === 'phone_number_setup' && (
+              <div className="rounded-2xl border border-orange/30 bg-orange/5 p-5 mb-8">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-orange font-bold mb-1">Your AI phone number</p>
+                <p className="font-display font-black text-3xl tracking-[-0.02em] text-white tabular-nums">{retellNumber}</p>
+                <p className="text-sm text-white/60 mt-2">Forward your existing line to this number, or use it directly on your ads, site, and business cards. The AI is live the moment forwarding is wired up.</p>
+              </div>
+            )}
 
             {/* WHY WE ASK - differentiator: every other agency just asks; we explain */}
             {mod.whyWeAsk && (
