@@ -29,7 +29,7 @@ See full test plans in sections 4 (Admin) and 5 (Client) below.
 - [ ] Re-read every service's `description` and `marketingDescription` after the work this session
 - [ ] Re-read every module's `whyWeAsk` (when written, see section 2.1)
 - [ ] Re-read every module's `instructions` for tone consistency
-- [ ] No em dashes anywhere (`grep -r "—" src/config/modules.ts` should return nothing)
+- [x] No em dashes anywhere (`grep -r "—" src/config/modules.ts` should return nothing)
 
 ---
 
@@ -39,44 +39,44 @@ See full test plans in sections 4 (Admin) and 5 (Client) below.
 Infrastructure is built; copy is what's missing. 6 modules already seeded as voice examples. Pattern: one-sentence answer to *"why does Serenium need this?"* — outcome-focused, never just "for our records."
 
 Modules still needing copy:
-- [ ] business_profile.services_offered
-- [ ] business_profile.unique_selling_points
-- [ ] business_profile.financing
-- [ ] business_profile.team_members
-- [ ] business_profile.main_business_email
-- [ ] business_profile.physical_address
-- [ ] business_profile.business_hours_module
-- [ ] business_profile.legal_business_name
-- [ ] business_profile.social_profiles
-- [ ] business_profile.year_founded
-- [ ] business_profile.tagline
-- [ ] facebook_ads.prerequisites
-- [ ] facebook_ads.grant_access
-- [ ] google_ads.account_state
-- [ ] google_ads.customer_id
-- [ ] google_ads.mcc_link
-- [ ] google_business_profile.profile_state
-- [ ] google_business_profile.ownership
-- [ ] google_business_profile.manager_access
-- [ ] ai_sms.purpose_goal
-- [ ] ai_sms.operational
-- [ ] ai_sms.emergency_handling
-- [ ] ai_sms.casl
-- [ ] ai_sms.booking
-- [ ] ai_sms.booking_notifications
-- [ ] ai_sms.ghl_calendar_setup
-- [ ] ai_receptionist.purpose_goal
-- [ ] ai_receptionist.email_summaries
-- [ ] ai_receptionist.human_transfer
-- [ ] ai_receptionist.emergency_handling
-- [ ] ai_receptionist.phone_number_setup
-- [ ] website.purpose_goal
-- [ ] website.brand_and_design
-- [ ] website.brand_assets
-- [ ] website.lead_form_and_routing
-- [ ] website.domain_and_hosting
-- [ ] website.cms_access
-- [ ] website.analytics_and_search_console
+- [x] business_profile.services_offered
+- [x] business_profile.unique_selling_points
+- [x] business_profile.financing
+- [x] business_profile.team_members
+- [x] business_profile.main_business_email
+- [x] business_profile.physical_address
+- [x] business_profile.business_hours_module
+- [x] business_profile.legal_business_name
+- [x] business_profile.social_profiles
+- [x] business_profile.year_founded
+- [x] business_profile.tagline
+- [x] facebook_ads.prerequisites
+- [x] facebook_ads.grant_access
+- [x] google_ads.account_state
+- [x] google_ads.customer_id
+- [x] google_ads.mcc_link
+- [x] google_business_profile.profile_state
+- [x] google_business_profile.ownership
+- [x] google_business_profile.manager_access
+- [x] ai_sms.purpose_goal
+- [x] ai_sms.operational
+- [x] ai_sms.emergency_handling
+- [x] ai_sms.casl
+- [x] ai_sms.booking
+- [x] ai_sms.booking_notifications
+- [x] ai_sms.ghl_calendar_setup
+- [x] ai_receptionist.purpose_goal
+- [x] ai_receptionist.email_summaries
+- [x] ai_receptionist.human_transfer
+- [x] ai_receptionist.emergency_handling
+- [x] ai_receptionist.phone_number_setup
+- [x] website.purpose_goal
+- [x] website.brand_and_design
+- [x] website.brand_assets
+- [x] website.lead_form_and_routing
+- [x] website.domain_and_hosting
+- [x] website.cms_access
+- [x] website.analytics_and_search_console
 
 ### 2.2 Service description sweep
 - [ ] Walk every service description for tone alignment with the "FOMO outcome" voice
@@ -256,9 +256,9 @@ Run as a real client. Create a test org via admin, copy the invite link, open in
 - [ ] Field saves, banner remains "Module complete"
 
 ### 5.8 Conditional logic
-- [ ] business_profile.emergency_service → "Yes" unlocks AI SMS / AI Receptionist emergency handling modules
-- [ ] business_profile.emergency_service → "No" hides those
-- [ ] google_business_profile.profile_state → "Yes verified" unlocks ownership + manager_access
+- [x] business_profile.emergency_service → "Yes" unlocks AI SMS / AI Receptionist emergency handling modules
+- [x] business_profile.emergency_service → "No" hides those
+- [x] google_business_profile.profile_state → "Yes verified" unlocks ownership + manager_access
 - [ ] "Yes unverified" → ownership only (manager_access stays hidden)
 - [ ] "No" / "Not sure" → just shows the help message, no further modules
 

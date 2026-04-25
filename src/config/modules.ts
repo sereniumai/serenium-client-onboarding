@@ -156,12 +156,14 @@ const BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'services_offered',
       title: 'Services offered',
+      whyWeAsk: 'These are what we will write your ads, your website pages, and your AI scripts around. The clearer you list them (full re-roof vs. repair vs. siding vs. eavestrough) the better we can match each lead to what you actually want to sell.',
       estimatedMinutes: 5,
       fields: [{ key: 'services_offered', label: 'Service name + brief description', type: 'repeatable', required: true }],
     },
     {
       key: 'unique_selling_points',
       title: 'Unique selling points',
+      whyWeAsk: 'Every roofer in your city offers "quality work and good prices". What you say here is what we use as the headline of your ads and the hero of your website, so the more specific and honest the better. Family-run since 1998 beats "trusted local roofer" every time.',
       estimatedMinutes: 3,
       fields: [{ key: 'usps', label: 'What makes you different from competitors?', type: 'textarea', required: true }],
     },
@@ -181,6 +183,7 @@ const BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'financing',
       title: 'Financing options',
+      whyWeAsk: 'A new roof is a five-figure decision. When the AI hears "that\'s a lot of money", it can offer 0% financing or monthly plans on the spot, which is one of the biggest conversion levers we have. Tell us if you offer it and who through.',
       estimatedMinutes: 2,
       fields: [
         { key: 'financing_offered', label: 'Do you offer financing?', type: 'select', options: ['Yes', 'No'], required: true, tooltip: 'If Yes, your AI will mention financing when price comes up, a common conversion booster for bigger roof jobs.' },
@@ -205,18 +208,21 @@ const BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'team_members',
       title: 'Team members',
+      whyWeAsk: 'Faces convert. A "Meet the team" section with real headshots and short bios outperforms a generic "About us" page in every test we have run. We use these on your site, in retargeting ads, and on Google Business Profile posts.',
       estimatedMinutes: 10,
       fields: [{ key: 'team_members', label: 'Name, role, years of experience, short bio, headshot', type: 'repeatable' }],
     },
     {
       key: 'main_business_email',
       title: 'Main business email',
+      whyWeAsk: 'This is where every lead summary, booking confirmation, and monthly report will land in your inbox. Use the address you actually check, not a "info@" you forget about, otherwise hot leads can sit unread.',
       estimatedMinutes: 1,
       fields: [{ key: 'primary_email', label: 'Primary business email', type: 'email', required: true, validate: validateEmail }],
     },
     {
       key: 'physical_address',
       title: 'Physical address',
+      whyWeAsk: 'Google Business Profile, Local Service Ads, and the "Contact" section of your site all need a real Canadian address. It also tells Google where the centre of your service map should sit, which directly affects who sees you in local search.',
       estimatedMinutes: 2,
       fields: [{
         key: 'business_address',
@@ -234,6 +240,7 @@ const BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'business_hours_module',
       title: 'Business hours',
+      whyWeAsk: 'Your hours decide when a lead gets routed to a real person versus the AI taking a message, when ads pause, and what shows on your Google Business Profile. Be honest about reality, not what you wish your hours were.',
       estimatedMinutes: 3,
       fields: [{
         key: 'business_hours',
@@ -247,12 +254,14 @@ const BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'legal_business_name',
       title: 'Legal business name',
+      whyWeAsk: 'This goes on contracts, your website footer, your privacy policy, CASL email footers, and Google Business Profile verification paperwork. It needs to match what is on your business registration exactly.',
       estimatedMinutes: 1,
       fields: [{ key: 'legal_business_name', label: 'Legal entity name', type: 'text', required: true, helpText: 'Used on contracts, website footer, GBP verification, privacy policy.' }],
     },
     {
       key: 'social_profiles',
       title: 'Social profiles',
+      whyWeAsk: 'When a homeowner Googles your business name they end up on these pages. We link them from your site and your Google Business Profile, and we cross-post your monthly ad video to whichever ones you have. Skip the ones you don\'t actually use.',
       estimatedMinutes: 4,
       instructions: 'Paste links to any of these platforms where you have a presence. All optional, skip the ones you don\'t use.',
       fields: [
@@ -268,12 +277,14 @@ const BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'year_founded',
       title: 'Year founded',
+      whyWeAsk: '"Est. 2012" reads as more credible than "we have been around for 13 years" and never goes stale. We use it in your site footer, ad copy, and the AI\'s answer when callers ask how long you have been in business.',
       estimatedMinutes: 1,
       fields: [{ key: 'year_founded', label: 'Year the business was founded', type: 'number', placeholder: 'e.g. 2012', helpText: 'Stable value for "Est. 2012" branding, years_in_business drifts, year_founded doesn\'t.' }],
     },
     {
       key: 'tagline',
       title: 'Tagline or slogan',
+      whyWeAsk: 'A short line we can repeat across your site hero, ad headlines, and email signatures. Don\'t worry if you don\'t have one yet, we can write you a few options based on the rest of your Business Profile.',
       estimatedMinutes: 1,
       fields: [{ key: 'tagline_or_slogan', label: 'Tagline', type: 'text', helpText: 'Used as consistent hero copy across website and ads.' }],
     },
@@ -292,6 +303,7 @@ const FACEBOOK_ADS: ServiceDef = {
     {
       key: 'prerequisites',
       title: 'Pre-requisite checks',
+      whyWeAsk: 'Meta requires a Business Manager (a free Facebook account that owns your Page, Pixel, and Ad Account) before any agency can run ads on your behalf. We need to know what you already have so we either jump straight into sharing access or help you set the missing pieces up first.',
       estimatedMinutes: 3,
       instructions: `Before Serenium can run ads, we need to partner with your Meta Business Manager. A couple of quick questions first.`,
       fields: [
@@ -311,6 +323,7 @@ const FACEBOOK_ADS: ServiceDef = {
     {
       key: 'grant_access',
       title: 'Grant Serenium partner access',
+      whyWeAsk: 'This is the access we need to actually launch and optimise your Meta ads. You stay the owner of everything, your Page, your Pixel, your Ad Account, we are added as a partner so we can build campaigns and pull performance data. Pull the access at any time and we are out.',
       estimatedMinutes: 5,
       instructions: `Add Serenium as a partner in your Business Manager, then share these assets with us. Our BM ID: **1304001774825587**
 
@@ -365,6 +378,7 @@ const GOOGLE_ADS: ServiceDef = {
     {
       key: 'account_state',
       title: 'Account state',
+      whyWeAsk: 'Old Google Ads accounts carry quality scores and conversion history that brand-new accounts don\'t, which means lower cost-per-click. If you have one, we link to it instead of starting from scratch. If you don\'t, we make one for you.',
       estimatedMinutes: 2,
       fields: [
         { key: 'google_ads_account_exists', label: 'Do you already have a Google Ads account?', type: 'select', required: true, options: ['Yes', 'No', 'Not sure'], tooltip: 'Pick "Not sure" if you ran ads years ago but can\'t remember. We\'ll look it up before creating a new one, old accounts keep valuable history.' },
@@ -376,6 +390,7 @@ const GOOGLE_ADS: ServiceDef = {
     {
       key: 'customer_id',
       title: 'Customer ID',
+      whyWeAsk: 'Your 10-digit Google Ads Customer ID is how we identify your specific account when we send a Manager link request. Without it the link request goes to the wrong place, or to no one. Two minutes to find, saves a week of back-and-forth.',
       estimatedMinutes: 2,
       conditional: { path: 'google_ads.account_state.google_ads_account_exists', op: 'eq', value: 'Yes' },
       instructions: `We need your **10-digit Google Ads Customer ID** to send an MCC link request. Log into Google Ads, the number appears in the top-right of every screen, formatted like **123-456-7890**.`,
@@ -386,6 +401,7 @@ const GOOGLE_ADS: ServiceDef = {
     {
       key: 'mcc_link',
       title: 'Accept MCC link request',
+      whyWeAsk: 'Accepting our Manager Account (MCC) link is how Google grants us permission to optimise your campaigns without taking ownership of your account. You can revoke it from the same screen any time. Until you accept it, we can\'t actually run anything.',
       estimatedMinutes: 2,
       conditional: { path: 'google_ads.account_state.google_ads_account_exists', op: 'eq', value: 'Yes' },
       instructions: `Serenium sends a Manager Account (MCC) link request once we have your Customer ID. Accept it in **Google Ads → Tools & settings → Access and security → Managers**.`,
@@ -408,6 +424,7 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'profile_state',
       title: 'Profile state',
+      whyWeAsk: 'Your Google Business Profile is the listing that shows up when someone searches your name or "roofer near [city]". We need to know if it exists, is verified, or needs creating from scratch, because each path requires different help from us.',
       estimatedMinutes: 2,
       fields: [
         { key: 'gbp_profile_exists', label: 'Do you have a Google Business Profile?', type: 'select', required: true, options: ['Yes verified', 'Yes unverified', 'No', 'Not sure'] },
@@ -422,6 +439,7 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'ownership',
       title: 'Confirm ownership',
+      whyWeAsk: 'A surprising number of roofers find that an old contractor or marketing company still owns their Google Business Profile. We need you to confirm it is genuinely yours before we touch it, otherwise we end up working on the wrong listing.',
       estimatedMinutes: 1,
       conditional: { any: [
         { path: 'google_business_profile.profile_state.gbp_profile_exists', op: 'eq', value: 'Yes verified' },
@@ -434,6 +452,7 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'manager_access',
       title: 'Grant Manager access',
+      whyWeAsk: 'Manager access lets us post updates, reply to reviews, and add photos to your listing without you having to log in every time. It does not give us ownership, you can remove us with one click, and we can never delete the profile.',
       estimatedMinutes: 3,
       conditional: { path: 'google_business_profile.profile_state.gbp_profile_exists', op: 'eq', value: 'Yes verified' },
       instructions: `In your Google Business Profile dashboard → **Users** → **Add users** → add \`contact@sereniumai.com\` as a **Manager**.`,
@@ -459,6 +478,7 @@ const AI_SMS: ServiceDef = {
     {
       key: 'purpose_goal',
       title: 'Purpose & goal',
+      whyWeAsk: 'There is a different optimal AI strategy for "book every lead an estimate" versus "qualify hard, only book serious buyers". Telling us your single most important outcome means we can tune the AI for that one number.',
       estimatedMinutes: 2,
       fields: [
         {
@@ -513,6 +533,7 @@ const AI_SMS: ServiceDef = {
     {
       key: 'operational',
       title: 'Operational',
+      whyWeAsk: 'Speed-to-lead beats every other conversion lever. Telling us your target response time, when to disqualify, and who picks up if the AI hits a wall keeps the AI fast on the easy stuff and never strands a real lead with no response.',
       estimatedMinutes: 5,
       fields: [
         {
@@ -542,6 +563,7 @@ const AI_SMS: ServiceDef = {
     {
       key: 'emergency_handling',
       title: 'Emergency handling',
+      whyWeAsk: 'You told us in Business Profile that you handle emergencies. This is where we tell the AI exactly what an emergency looks like in your words and where to escalate it instantly. The faster you get a leak call, the higher chance you win the job.',
       estimatedMinutes: 4,
       conditional: { path: 'business_profile.emergency_service.emergency_offered', op: 'eq', value: 'Yes' },
       fields: [
@@ -564,6 +586,7 @@ const AI_SMS: ServiceDef = {
     {
       key: 'casl',
       title: 'CASL compliance (existing site)',
+      whyWeAsk: 'Canadian law (CASL) requires explicit consent before any AI-assisted SMS follow-up, with fines up to $10M per violation. If we are not building you a new site, you need to add the consent language to your existing one yourself. We give you the exact wording.',
       estimatedMinutes: 5,
       // Skip this module when Serenium is building the client's new site,
       // CASL language ships baked into the new site automatically.
@@ -585,6 +608,7 @@ const AI_SMS: ServiceDef = {
     {
       key: 'booking',
       title: 'Booking',
+      whyWeAsk: 'Whatever calendar you already use, we work with it. The list of info the AI captures before booking is the same info that ends up in the booking notification you receive, so you can show up to the estimate already prepared.',
       estimatedMinutes: 4,
       fields: [
         {
@@ -626,6 +650,7 @@ const AI_SMS: ServiceDef = {
     {
       key: 'booking_notifications',
       title: 'Booking notifications',
+      whyWeAsk: 'When the AI books an estimate, we ping you the moment it happens, not in a daily digest. Tell us how you want to be told (SMS, email, or both) and who on your team should get it.',
       estimatedMinutes: 4,
       fields: [
         { key: 'notification_method', label: 'How do you want to be notified?', type: 'multiselect', required: true, options: ['SMS', 'Email', 'Both'] },
@@ -641,6 +666,7 @@ const AI_SMS: ServiceDef = {
     {
       key: 'ghl_calendar_setup',
       title: 'Connect your Google Calendar',
+      whyWeAsk: 'This is the actual handshake that lets the AI drop a real appointment on your calendar without double-booking. The 10 minutes you spend here is the difference between "AI texts about a lead" and "AI books the lead while you are on a roof".',
       estimatedMinutes: 10,
       videoUrl: 'https://www.youtube.com/watch?v=KcdUwD3I5ms',
       instructions: `Connect your Google Calendar so the AI can book estimates straight in, and set your weekly availability.`,
@@ -670,6 +696,7 @@ const AI_RECEPTIONIST: ServiceDef = {
     {
       key: 'purpose_goal',
       title: 'Purpose & goal',
+      whyWeAsk: 'There are two completely different ways to use a phone AI: qualify the caller and warm-transfer them to you, or capture the info and let you call them back. Tell us which one you want and we tune the whole behaviour around it.',
       estimatedMinutes: 2,
       fields: [
         {
@@ -710,6 +737,7 @@ const AI_RECEPTIONIST: ServiceDef = {
     {
       key: 'email_summaries',
       title: 'Email summaries',
+      whyWeAsk: 'Every call the AI takes ends with a summary email so you can act fast without listening back. Tell us who should get it and what to capture, and a hot lead will land in your inbox within seconds of hanging up.',
       estimatedMinutes: 4,
       instructions: `Every call ends with an email summary. Pick the recipients and the info that should always appear in the email.`,
       fields: [
@@ -741,6 +769,7 @@ const AI_RECEPTIONIST: ServiceDef = {
     {
       key: 'human_transfer',
       title: 'Human transfer behaviour',
+      whyWeAsk: 'Some callers will always insist on a real person, no matter how good the AI is. Telling us when to transfer (and to who at what hours) is what stops a frustrated caller from hanging up and dialling your competitor.',
       estimatedMinutes: 3,
       fields: [
         { key: 'retell_human_request_handling', label: 'When callers ask for a human', type: 'select', required: true, options: ['Transfer call', 'Always take message'] },
@@ -750,6 +779,7 @@ const AI_RECEPTIONIST: ServiceDef = {
     {
       key: 'emergency_handling',
       title: 'Emergency handling',
+      whyWeAsk: 'Emergency calls are the highest-intent calls you will ever get. The AI needs to recognise the keywords ("leak", "tarp", "storm", "water coming through") instantly and route the call to whoever can act fast, even if that is your cell at midnight.',
       estimatedMinutes: 3,
       conditional: { path: 'business_profile.emergency_service.emergency_offered', op: 'eq', value: 'Yes' },
       fields: [
@@ -760,6 +790,7 @@ const AI_RECEPTIONIST: ServiceDef = {
     {
       key: 'phone_number_setup',
       title: 'Phone number implementation',
+      whyWeAsk: 'This is the final connection that makes the AI live. Either we forward your existing business line to the AI (most common) or we give you a brand new Serenium number to use everywhere. Either way the AI starts answering calls the moment this is wired.',
       estimatedMinutes: 10,
       lockedUntilAdminFlag: 'ai_receptionist_ready_for_connection',
       lockedMessage: "This step unlocks once we've built your AI. We'll let you know when it's ready.",
@@ -847,6 +878,7 @@ const WEBSITE: ServiceDef = {
     {
       key: 'purpose_goal',
       title: 'Purpose & goal',
+      whyWeAsk: 'A site built to win phone calls looks completely different from one built for self-service bookings. Telling us what you want the site to do shapes every layout decision, every CTA, and every conversion path we wire up.',
       estimatedMinutes: 2,
       fields: [{
         key: 'website_primary_goal',
@@ -864,6 +896,7 @@ const WEBSITE: ServiceDef = {
     {
       key: 'brand_and_design',
       title: 'Brand & design',
+      whyWeAsk: 'Colours, fonts, and a few "I love this" reference sites give our designers a real starting point instead of a guess. The 3-sites-you-like exercise saves about a week of revision rounds, so spend a few minutes finding ones that genuinely feel like the standard you want.',
       estimatedMinutes: 12,
       fields: [
         { key: 'website_primary_color', label: 'Primary brand colour', type: 'color', required: true },
@@ -878,6 +911,7 @@ const WEBSITE: ServiceDef = {
     {
       key: 'brand_assets',
       title: 'Brand assets and content',
+      whyWeAsk: 'Real photos of your jobs, your trucks, and your team beat stock photography on every metric. Drop a Drive folder so our designers can pick the best shots, no need to caption or organise them, just get the raw files to us.',
       estimatedMinutes: 10,
       fields: [
         {
@@ -902,6 +936,7 @@ const WEBSITE: ServiceDef = {
     {
       key: 'lead_form_and_routing',
       title: 'Lead form & routing',
+      whyWeAsk: 'The lead form is the single most important element on your site, every other piece of design exists to drive people to it. Telling us what fields you want, what the CTA should say, and where the submission lands wires the whole conversion engine.',
       estimatedMinutes: 6,
       fields: [
         { key: 'lead_form_fields', label: 'Fields on the lead form', type: 'multiselect', required: true, options: ['Name', 'Phone', 'Email', 'Service needed', 'Timeframe', 'Address'] },
@@ -916,6 +951,7 @@ const WEBSITE: ServiceDef = {
     {
       key: 'domain_and_hosting',
       title: 'Domain & hosting',
+      whyWeAsk: 'Your domain is your most valuable digital asset. We need to know who currently controls it, where the site is hosted today, and whether your business email is tied to either, so we can plan a clean cutover with zero downtime and no broken inboxes.',
       estimatedMinutes: 5,
       fields: [
         { key: 'current_domain', label: 'Domain name', type: 'text', required: true, placeholder: 'surewestroofing.ca', validate: validateDomain },
@@ -967,6 +1003,7 @@ const WEBSITE: ServiceDef = {
     {
       key: 'cms_access',
       title: 'Existing site / CMS access',
+      whyWeAsk: 'If we are replacing an existing WordPress (or other CMS) site, we need temporary admin access to grab the content, redirect the old URLs, and avoid losing any SEO juice you have built up. Once the new site is live, you can revoke us with one click.',
       estimatedMinutes: 5,
       fields: [
         { key: 'has_current_site', label: 'Do you have a current website?', type: 'select', required: true, options: ['Yes', 'No'] },
@@ -980,6 +1017,7 @@ const WEBSITE: ServiceDef = {
     {
       key: 'analytics_and_search_console',
       title: 'Analytics & Search Console',
+      whyWeAsk: 'Without Google Analytics and Search Console properly set up, we are flying blind on what is actually working. These two tools are how we prove the ads, the AI, and the site are paying for themselves every month, and how we know what to double down on.',
       estimatedMinutes: 7,
       instructions: `Two quick checks. If you already have these set up, you'll add **contact@sereniumai.com** with the permissions shown. If you don't have them yet, Serenium sets them up as part of your site build.`,
       fields: [
