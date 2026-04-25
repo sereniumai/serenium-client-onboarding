@@ -7,6 +7,7 @@ import { FieldRenderer } from '../../components/FieldRenderer';
 import { SaveIndicator } from '../../components/SaveIndicator';
 import { Markdown } from '../../components/Markdown';
 import { FinalCelebration } from '../../components/FinalCelebration';
+import confetti from 'canvas-confetti';
 import { ConditionalLinkBlock } from '../../components/ConditionalLinkBlock';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
@@ -127,15 +128,41 @@ export function ServicePage() {
             </div>
 
             {/* BOTTOM CTA */}
-            <div className="mt-12 pt-6 border-t border-border-subtle flex items-center justify-between gap-4">
-              <Link to={`/onboarding/${org.slug}`} className="btn-secondary">
+            <div className="mt-12 pt-6 border-t border-border-subtle flex flex-col-reverse md:flex-row items-stretch md:items-center justify-between gap-3">
+              <Link to={`/onboarding/${org.slug}`} className="btn-secondary justify-center">
                 <ChevronLeft className="h-4 w-4" /> Back to dashboard
               </Link>
-              {done === total && total > 0 && (
-                <span className="inline-flex items-center gap-2 text-success font-medium">
-                  <CheckCircle2 className="h-5 w-5" /> All submitted
-                </span>
-              )}
+              {(() => {
+                const allDone = done === total && total > 0;
+                if (allDone) {
+                  return (
+                    <button
+                      onClick={() => {
+                        sfx.milestone();
+                        confetti({
+                          particleCount: 90,
+                          spread: 90,
+                          origin: { y: 0.5 },
+                          colors: ['#FF6B1F', '#FF7A35', '#FFD4BA', '#ffffff'],
+                          zIndex: 9999,
+                        });
+                        setTimeout(() => navigate(`/onboarding/${org.slug}`), 700);
+                      }}
+                      className="btn-primary justify-center"
+                    >
+                      <CheckCircle2 className="h-4 w-4" /> Complete {svc.label}
+                    </button>
+                  );
+                }
+                return (
+                  <button
+                    disabled
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg bg-bg-tertiary text-white/45 font-semibold text-sm cursor-not-allowed"
+                  >
+                    {done} of {total} sections done
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>
