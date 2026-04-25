@@ -30,7 +30,7 @@ import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey, OrgStatus, Upload } from '../../types';
 import { cn } from '../../lib/cn';
 
-type Tab = 'overview' | 'services' | 'submissions' | 'progress' | 'reports' | 'activity' | 'users' | 'ai' | 'flagged';
+type Tab = 'overview' | 'services' | 'revenue' | 'submissions' | 'progress' | 'reports' | 'activity' | 'users' | 'ai' | 'flagged';
 
 export function ClientDetail() {
   const { orgSlug } = useParams();
@@ -97,6 +97,7 @@ export function ClientDetail() {
           <div className="border-b border-border-subtle mb-6 flex gap-1 overflow-x-auto">
             <TabBtn active={tab === 'overview'} onClick={() => setTab('overview')}>Overview</TabBtn>
             <TabBtn active={tab === 'services'} onClick={() => setTab('services')}>Services</TabBtn>
+            <TabBtn active={tab === 'revenue'} onClick={() => setTab('revenue')}>Revenue</TabBtn>
             <TabBtn active={tab === 'submissions'} onClick={() => setTab('submissions')}>Submitted info</TabBtn>
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')}>Progress</TabBtn>
             <TabBtn active={tab === 'reports'} onClick={() => setTab('reports')}>Reports</TabBtn>
@@ -108,6 +109,7 @@ export function ClientDetail() {
 
           {tab === 'overview' && <OverviewTab org={org} onDelete={() => navigate('/admin')} />}
           {tab === 'services' && <ServicesTab orgId={org.id} />}
+          {tab === 'revenue' && <RevenueTab orgId={org.id} />}
           {tab === 'submissions' && <SubmissionsTab orgId={org.id} />}
           {tab === 'progress' && <ProgressTab orgId={org.id} />}
           {tab === 'reports' && <ReportsTab orgId={org.id} />}
@@ -1692,5 +1694,136 @@ function FlaggedTab({ orgId, primaryContactEmail }: { orgId: string; primaryCont
         </section>
       )}
     </div>
+  );
+}
+
+function RevenueTab({ orgId }: { orgId: string }) {
+  const { data: services = [] } = useOrgServices(orgId);
+  const { data: lines = [] } = useQuery({
+    queryKey: ['revenue', orgId],
+    queryFn: () => listLinesForOrg(orgId),
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  const activeMonthly = lines.filter(l => l.type === 'monthly' && l.startedAt <= today && (!l.endedAt || l.endedAt > today));
+  const futureMonthly = lines.filter(l => l.type === 'monthly' && l.startedAt > today);
+  const oneTimes = lines.filter(l => l.type === 'one_time');
+  const mrr = activeMonthly.reduce((s, l) => s + l.amountCents, 0);
+  const futureMrr = futureMonthly.reduce((s, l) => s + l.amountCents, 0);
+  const totalEarned = oneTimes.reduce((s, l) => s + l.amountCents, 0)
+    + lines.filter(l => l.type === 'monthly').reduce((s, l) => {
+      const start = new Date(l.startedAt + 'T00:00:00Z');
+      const stop = l.endedAt ? new Date(l.endedAt + 'T00:00:00Z') : new Date();
+      if (stop <= start) return s;
+      const months = (stop.getUTCFullYear() - start.getUTCFullYear()) * 12 + (stop.getUTCMonth() - start.getUTCMonth());
+      return s + (months > 0 ? l.amountCents * months : 0);
+    }, 0);
+
+  const fmt = (cents: number) => (cents / 100).toLocaleString('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
+
+  if (services.length === 0) {
+    return (
+      <div className="card text-center py-12">
+        <DollarSign className="h-8 w-8 text-white/30 mx-auto mb-3" />
+        <p className="text-white/60">Add services to this client first.</p>
+        <p className="text-xs text-white/40 mt-1">Revenue lines attach to specific services.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="card !p-4">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1.5">Current MRR</p>
+          <p className="font-display font-black text-3xl tracking-[-0.02em] tabular-nums text-orange">{fmt(mrr)}</p>
+          <p className="text-xs text-white/45 mt-1">{activeMonthly.length} active retainer{activeMonthly.length === 1 ? '' : 's'}</p>
+        </div>
+        <div className="card !p-4">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1.5">Locked-in future MRR</p>
+          <p className="font-display font-black text-3xl tracking-[-0.02em] tabular-nums">{fmt(futureMrr)}</p>
+          <p className="text-xs text-white/45 mt-1">{futureMonthly.length} retainer{futureMonthly.length === 1 ? '' : 's'} starting later</p>
+        </div>
+        <div className="card !p-4">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1.5">Total earned to date</p>
+          <p className="font-display font-black text-3xl tracking-[-0.02em] tabular-nums">{fmt(totalEarned)}</p>
+          <p className="text-xs text-white/45 mt-1">{oneTimes.length} one-time{oneTimes.length === 1 ? '' : 's'} + accrued retainers</p>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="flex items-baseline justify-between mb-1">
+          <p className="eyebrow">Per service</p>
+          <p className="text-xs text-white/45">Click a service to add or edit lines.</p>
+        </div>
+        <ul className="divide-y divide-border-subtle">
+          {services.map(s => {
+            const def = getService(s.serviceKey);
+            if (!def) return null;
+            const Icon = SERVICE_ICON[s.serviceKey];
+            const svcLines = lines.filter(l => l.serviceKey === s.serviceKey);
+            const svcMonthly = svcLines.filter(l => l.type === 'monthly' && l.startedAt <= today && (!l.endedAt || l.endedAt > today));
+            const svcOneTime = svcLines.filter(l => l.type === 'one_time');
+            const monthlyTotal = svcMonthly.reduce((sum, l) => sum + l.amountCents, 0);
+            const oneTimeTotal = svcOneTime.reduce((sum, l) => sum + l.amountCents, 0);
+            return (
+              <ServiceRevenueRow
+                key={s.serviceKey}
+                orgId={orgId}
+                serviceKey={s.serviceKey}
+                serviceLabel={def.label}
+                Icon={Icon}
+                monthlyTotal={monthlyTotal}
+                oneTimeTotal={oneTimeTotal}
+                lineCount={svcLines.length}
+              />
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function ServiceRevenueRow({ orgId, serviceKey, serviceLabel, Icon, monthlyTotal, oneTimeTotal, lineCount }: {
+  orgId: string;
+  serviceKey: ServiceKey;
+  serviceLabel: string;
+  Icon: typeof DollarSign;
+  monthlyTotal: number;
+  oneTimeTotal: number;
+  lineCount: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const fmt = (cents: number) => (cents / 100).toLocaleString('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
+  return (
+    <li>
+      <button onClick={() => setOpen(true)} className="w-full flex items-center gap-3 py-3 hover:bg-bg-tertiary/30 -mx-3 px-3 rounded-lg transition-colors text-left">
+        <div className="h-9 w-9 rounded-lg bg-orange/10 text-orange flex items-center justify-center shrink-0">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">{serviceLabel}</p>
+          <p className="text-xs text-white/50">
+            {lineCount === 0
+              ? 'No revenue logged'
+              : <>
+                  {monthlyTotal > 0 && <span className="text-orange/85">{fmt(monthlyTotal)}/mo</span>}
+                  {monthlyTotal > 0 && oneTimeTotal > 0 && <span className="text-white/30 mx-1.5">·</span>}
+                  {oneTimeTotal > 0 && <span>{fmt(oneTimeTotal)} one-time</span>}
+                </>}
+          </p>
+        </div>
+        <span className="text-xs text-orange font-semibold">
+          {lineCount === 0 ? '+ Add' : 'Edit →'}
+        </span>
+      </button>
+      <ServiceRevenueEditor
+        orgId={orgId}
+        serviceKey={serviceKey}
+        serviceLabel={serviceLabel}
+        open={open}
+        onClose={() => setOpen(false)}
+      />
+    </li>
   );
 }
