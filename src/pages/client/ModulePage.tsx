@@ -166,10 +166,6 @@ export function ModulePage() {
   /* eslint-disable-next-line */
   celebrateCompletionRef.current = celebrateCompletion;
 
-  const markIncomplete = () => {
-    setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'in_progress', userId: user?.id });
-  };
-
   const goNext = () => {
     setShowComplete(false);
     if (next) navigate(`/onboarding/${org.slug}/services/${nextSvcKey}/${next.key}`);
@@ -358,11 +354,8 @@ export function ModulePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold">Module complete</p>
-                    <p className="text-xs text-white/55">Your answers autosaved. The Serenium team can see them now.</p>
+                    <p className="text-xs text-white/55">Your answers are saved. Change anything above and we autosave it.</p>
                   </div>
-                  <button onClick={markIncomplete} className="text-xs text-white/60 hover:text-white underline underline-offset-2 shrink-0">
-                    Edit again
-                  </button>
                 </div>
               ) : (
                 <ModuleCompletionPanel

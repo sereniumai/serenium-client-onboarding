@@ -257,8 +257,8 @@ function OtherSerenumServices({ unavailableServiceKeys }: { unavailableServiceKe
           const Icon = SERVICE_ICON[key];
           return (
             <li key={key} className="group flex items-center gap-4 py-4">
-              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-white/[0.04] text-white/55 group-hover:bg-orange/10 group-hover:text-orange transition-colors">
-                <Icon className="h-4 w-4" />
+              <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-orange/10 text-orange">
+                <Icon className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-base text-white/90 group-hover:text-white transition-colors">{svc.label}</p>
