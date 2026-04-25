@@ -133,7 +133,7 @@ function renderInviteEmail({ businessName, inviteeName, inviteUrl, inviterName }
         <tr><td>
           <p style="margin:0 0 4px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#FF6B1F;font-weight:700;">Welcome aboard</p>
           <h1 style="margin:0 0 18px;font-size:26px;font-weight:800;letter-spacing:-0.025em;color:#fff;">Let's go, ${helloName}.</h1>
-          <p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;"><strong style="color:#fff;">${inviterFirst} from Serenium</strong> just set up your private client portal. This is where the work happens, and where everything we build for <strong style="color:#fff;">${safeBusiness}</strong> comes together.</p>
+          <p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;">${inviterFirst} from Serenium just set up your private client portal. This is where the work happens, and where everything we build for ${safeBusiness} comes together.</p>
           <p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;">Log in any time, save as you go, pick up exactly where you left off.</p>
           <p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;">A quick tip, open this on a desktop or laptop where you can give it your full attention. The answers you give shape everything we build for you, so it's worth doing properly.</p>
           <p style="margin:0 0 24px;color:rgba(255,255,255,0.78);font-size:15px;">We're genuinely excited to get started. Click below to set your password and dive in.</p>

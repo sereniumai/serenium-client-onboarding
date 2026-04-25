@@ -70,7 +70,7 @@ export function invitationEmail({
   const html = shell(`
     <p style="font-size: 13px; color: ${orange}; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; margin: 0 0 12px;">Welcome aboard</p>
     <h1 style="font-size: 28px; font-weight: 900; letter-spacing: -0.025em; line-height: 1.15; margin: 0 0 16px;">Let's go, ${hello}.</h1>
-    <p style="color: ${muted}; line-height: 1.6; margin: 0 0 12px;"><strong style="color: #fff;">${inviter}</strong> just set up your private client portal. This is where the work happens, and where everything we build for <strong style="color: #fff;">${businessName}</strong> comes together.</p>
+    <p style="color: ${muted}; line-height: 1.6; margin: 0 0 12px;">${inviter} just set up your private client portal. This is where the work happens, and where everything we build for ${businessName} comes together.</p>
     <p style="color: ${muted}; line-height: 1.6; margin: 0 0 12px;">Log in any time, save as you go, pick up exactly where you left off.</p>
     <p style="color: ${muted}; line-height: 1.6; margin: 0 0 16px;">We're genuinely excited to get started. Click below to set your password and dive in.</p>
     ${button(acceptUrl, 'Open your portal')}
