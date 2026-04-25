@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Trash2, Copy, Mail, AlertTriangle, MessageCircle as MessageCircleIcon, Eye, Plus, Bell, Check, RotateCcw, DollarSign } from 'lucide-react';
+import { ChevronLeft, Trash2, Copy, Mail, AlertTriangle, MessageCircle as MessageCircleIcon, Eye, Plus, Bell, Check, RotateCcw, DollarSign, Sparkles } from 'lucide-react';
 import { ServiceRevenueEditor } from '../../components/admin/ServiceRevenueEditor';
 import { listLinesForOrg, endActiveLinesForService } from '../../lib/db/revenue';
 import { supabase } from '../../lib/supabase';
@@ -1746,11 +1746,23 @@ function FlaggedTab({ orgId, primaryContactEmail }: { orgId: string; primaryCont
 }
 
 function RevenueTab({ orgId }: { orgId: string }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isNewClient = searchParams.get('newclient') === '1';
   const { data: services = [] } = useOrgServices(orgId);
   const { data: lines = [] } = useQuery({
     queryKey: ['revenue', orgId],
     queryFn: () => listLinesForOrg(orgId),
   });
+  const { data: org } = useQuery({
+    queryKey: qk.org(orgId),
+    queryFn: () => import('../../lib/db/orgs').then(m => m.getOrgById(orgId)),
+  });
+  const updateOrg = useUpdateOrg();
+  const dismissNewClient = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('newclient');
+    setSearchParams(next, { replace: true });
+  };
   const today = new Date().toISOString().slice(0, 10);
   const activeMonthly = lines.filter(l => l.type === 'monthly' && l.startedAt <= today && (!l.endedAt || l.endedAt > today));
   const futureMonthly = lines.filter(l => l.type === 'monthly' && l.startedAt > today);
@@ -1772,18 +1784,62 @@ function RevenueTab({ orgId }: { orgId: string }) {
   // charge for, so exclude it everywhere revenue can be tracked.
   const billableServices = services.filter(s => s.serviceKey !== 'business_profile');
 
-  if (billableServices.length === 0) {
-    return (
-      <div className="card text-center py-12">
-        <DollarSign className="h-8 w-8 text-white/30 mx-auto mb-3" />
-        <p className="text-white/60">No billable services on this client yet.</p>
-        <p className="text-xs text-white/40 mt-1">Revenue lines attach to billable services. Business Profile is excluded since it's just info, not a paid service.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5">
+      {isNewClient && (
+        <div className="card border-orange/40 bg-orange/[0.04] flex items-start gap-4">
+          <div className="h-10 w-10 rounded-xl bg-orange/15 text-orange flex items-center justify-center shrink-0">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold">Quick set-up</p>
+            <p className="text-xs text-white/60 mt-0.5">Set how this client found you and what you're charging. Both can be edited any time.</p>
+          </div>
+          <button onClick={dismissNewClient} className="text-xs text-white/55 hover:text-white px-3 py-1.5 rounded-md border border-border-subtle hover:border-white/30 shrink-0">
+            Set up later
+          </button>
+        </div>
+      )}
+
+      <div className="card">
+        <p className="eyebrow mb-1">How they found us</p>
+        <p className="text-xs text-white/55 mb-3">Used in the Revenue page lead source breakdown to see which channel is producing real customers.</p>
+        <select
+          className="input"
+          value={org?.leadSource ?? ''}
+          onChange={async (e) => {
+            const value = e.target.value;
+            try {
+              await updateOrg.mutateAsync({
+                id: orgId,
+                patch: { leadSource: (value || null) as import('../../types').LeadSource | null },
+              });
+              toast.success('Lead source saved');
+            } catch (err) {
+              toast.error('Save failed', { description: (err as Error).message });
+            }
+          }}
+        >
+          <option value="">Not set</option>
+          <option value="facebook_ad">Facebook ads</option>
+          <option value="google_ads">Google Ads</option>
+          <option value="referral">Referral</option>
+          <option value="outreach">Outreach</option>
+          <option value="socials">Socials</option>
+          <option value="networking">Networking</option>
+          <option value="unsure">Unsure / not tracked</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      {billableServices.length === 0 ? (
+        <div className="card text-center py-12">
+          <DollarSign className="h-8 w-8 text-white/30 mx-auto mb-3" />
+          <p className="text-white/60">No billable services on this client yet.</p>
+          <p className="text-xs text-white/40 mt-1">Revenue lines attach to billable services. Business Profile is excluded since it's just info, not a paid service.</p>
+        </div>
+      ) : (
+      <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="card !p-4">
           <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1.5">Current MRR</p>
@@ -1832,6 +1888,8 @@ function RevenueTab({ orgId }: { orgId: string }) {
           })}
         </ul>
       </div>
+      </>
+      )}
     </div>
   );
 }

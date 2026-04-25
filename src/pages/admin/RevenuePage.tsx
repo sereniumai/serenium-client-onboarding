@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Users, Activity, CalendarDays } from 'lucide-react';
@@ -150,9 +150,22 @@ export function RevenuePage() {
     return days <= 30;
   }).length;
   const churnRate30 = activeClients + churnedLast30 > 0 ? (churnedLast30 / (activeClients + churnedLast30)) * 100 : 0;
-  const churnedClients = orgs.filter(o => o.status === 'churned' && o.liveAt && o.churnedAt);
-  const avgLifetime = churnedClients.length > 0
-    ? churnedClients.reduce((sum, o) => sum + ((new Date(o.churnedAt!).getTime() - new Date(o.liveAt!).getTime()) / (1000 * 60 * 60 * 24)), 0) / churnedClients.length
+  // Broader "average tenure": from when each client started (live_at, falling
+  // back to created_at) up to today for active/onboarding ones, or up to
+  // churned_at for clients who left. Captures retention even before anyone
+  // has churned, which the strict churned-only metric couldn't.
+  const tenureSamples = orgs
+    .map(o => {
+      const start = o.liveAt ?? o.createdAt;
+      if (!start) return null;
+      const startMs = new Date(start).getTime();
+      const endMs = o.churnedAt ? new Date(o.churnedAt).getTime() : Date.now();
+      const days = (endMs - startMs) / (1000 * 60 * 60 * 24);
+      return days >= 0 ? days : null;
+    })
+    .filter((d): d is number => d !== null);
+  const avgLifetime = tenureSamples.length > 0
+    ? tenureSamples.reduce((s, d) => s + d, 0) / tenureSamples.length
     : null;
 
   if (isLoading) {
@@ -306,11 +319,11 @@ export function RevenuePage() {
                 tooltip="Percentage of clients who churned in the last 30 days, out of all who were active at any point in that window. Anything under 5% is healthy for an agency. Above 5% = investigate why."
               />
               <MiniStat
-                label="Avg client lifetime"
+                label="Avg client tenure"
                 value={avgLifetime !== null ? `${Math.round(avgLifetime)} days` : '—'}
                 icon={CalendarDays}
-                hint={avgLifetime === null ? 'Need 1+ churned client' : undefined}
-                tooltip="Average number of days a churned client stayed with you (from the day you marked them live to the day they churned). Higher means you keep clients longer. Becomes meaningful after several have churned."
+                hint={avgLifetime !== null && avgLifetime >= 30 ? `~${(avgLifetime / 30).toFixed(1)} months` : avgLifetime === null ? 'No clients yet' : undefined}
+                tooltip="Average days each client has been with you. For active and paused clients, counted from their live date (or sign-up date) up to today. For churned clients, from live to churn. Gives you a real sense of how long the typical client stays, even before anyone has left."
               />
             </div>
             <ClientLtvTable rows={perClient} />
@@ -366,7 +379,7 @@ function MetricCard({ label, value, icon: Icon, accent = 'default', footnote, fo
 
 // ─── REVENUE CHART (no external lib) ───────────────────────────────────────
 
-function RevenueChart({ monthly }: { monthly: Array<{ label: string; revenue: number; mrr: number }> }) {
+function RevenueChart({ monthly }: { monthly: Array<{ label: string; revenue: number; mrr: number; year: number; month: number }> }) {
   const W = 800;
   const H = 240;
   const PAD_L = 50;
@@ -381,8 +394,13 @@ function RevenueChart({ monthly }: { monthly: Array<{ label: string; revenue: nu
   const xScale = (i: number) => PAD_L + (innerW * i) / Math.max(1, monthly.length - 1);
 
   const barW = (innerW / monthly.length) * 0.55;
+  const colW = innerW / monthly.length;
+  const monthName = (year: number, month: number) =>
+    new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('en-CA', { month: 'long', year: 'numeric' });
 
   const mrrPath = monthly.map((m, i) => `${i === 0 ? 'M' : 'L'}${xScale(i)},${yScale(m.mrr)}`).join(' ');
+
+  const [hover, setHover] = useState<number | null>(null);
 
   return (
     <div className="w-full overflow-x-auto">
@@ -399,7 +417,7 @@ function RevenueChart({ monthly }: { monthly: Array<{ label: string; revenue: nu
             </g>
           );
         })}
-        {/* Revenue bars */}
+        {/* Revenue bars + month labels with values printed on top */}
         {monthly.map((m, i) => {
           const x = xScale(i) - barW / 2;
           const y = yScale(m.revenue);
@@ -408,24 +426,79 @@ function RevenueChart({ monthly }: { monthly: Array<{ label: string; revenue: nu
               <rect
                 x={x} y={y}
                 width={barW} height={Math.max(2, PAD_T + innerH - y)}
-                fill="rgba(255,107,31,0.30)"
+                fill={hover === i ? 'rgba(255,107,31,0.55)' : 'rgba(255,107,31,0.30)'}
                 rx="2"
               />
+              {(hover === i || m.revenue > 0) && (
+                <text
+                  x={xScale(i)}
+                  y={y - 4}
+                  textAnchor="middle"
+                  fill={hover === i ? '#FF6B1F' : 'rgba(255,255,255,0.55)'}
+                  fontSize="9"
+                  fontWeight="600"
+                >
+                  {fmtCAD(m.revenue, { compact: true })}
+                </text>
+              )}
             </g>
           );
         })}
         {/* MRR line */}
         <path d={mrrPath} stroke="#FF6B1F" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         {monthly.map((m, i) => (
-          <circle key={i} cx={xScale(i)} cy={yScale(m.mrr)} r="3" fill="#FF6B1F" />
+          <circle
+            key={i}
+            cx={xScale(i)}
+            cy={yScale(m.mrr)}
+            r={hover === i ? 5 : 3}
+            fill="#FF6B1F"
+            stroke={hover === i ? 'white' : 'none'}
+            strokeWidth={hover === i ? 1.5 : 0}
+          />
         ))}
         {/* X axis labels */}
         {monthly.map((m, i) => (
-          <text key={i} x={xScale(i)} y={H - 8} textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize="10">
+          <text key={i} x={xScale(i)} y={H - 8} textAnchor="middle" fill={hover === i ? '#FF6B1F' : 'rgba(255,255,255,0.45)'} fontSize="10" fontWeight={hover === i ? 600 : 400}>
             {m.label}
           </text>
         ))}
+        {/* Hover hit-areas spanning each column. Transparent so they don't paint, but capture the mouse. */}
+        {monthly.map((_, i) => (
+          <rect
+            key={`hit-${i}`}
+            x={xScale(i) - colW / 2}
+            y={PAD_T}
+            width={colW}
+            height={innerH}
+            fill="transparent"
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(prev => (prev === i ? null : prev))}
+          >
+            <title>
+              {monthName(monthly[i].year, monthly[i].month)}
+              {`\n  Revenue: ${fmtCAD(monthly[i].revenue)}`}
+              {`\n  MRR end of month: ${fmtCAD(monthly[i].mrr)}`}
+            </title>
+          </rect>
+        ))}
       </svg>
+
+      {/* Hover detail card under the chart */}
+      <div className="mt-3 flex flex-wrap gap-3 text-xs">
+        {hover !== null && (
+          <>
+            <span className="text-white/55">{monthName(monthly[hover].year, monthly[hover].month)}</span>
+            <span className="text-white/30">·</span>
+            <span><span className="text-white/45">Billed </span><strong className="text-orange tabular-nums">{fmtCAD(monthly[hover].revenue)}</strong></span>
+            <span className="text-white/30">·</span>
+            <span><span className="text-white/45">MRR end of month </span><strong className="text-white tabular-nums">{fmtCAD(monthly[hover].mrr)}</strong></span>
+          </>
+        )}
+        {hover === null && (
+          <span className="text-white/40">Hover any month for details. Bars = total billed that month, line = MRR at month-end.</span>
+        )}
+      </div>
     </div>
   );
 }

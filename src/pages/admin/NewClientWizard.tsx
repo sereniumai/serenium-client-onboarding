@@ -82,7 +82,9 @@ export function NewClientWizard() {
       toast.success(`${org.businessName} created`, {
         description: `${services.length} ${services.length === 1 ? 'service' : 'services'} · ${final.length} ${final.length === 1 ? 'user' : 'users'} invited`,
       });
-      navigate(`/admin/clients/${org.slug}`);
+      // Land on the Revenue tab so admin can set rates immediately, with a
+      // 'newclient=1' flag that surfaces a 'Set up now or later' banner.
+      navigate(`/admin/clients/${org.slug}?tab=revenue&newclient=1`);
     } catch (err) {
       toast.error('Could not create client', { description: (err as Error).message });
     }
