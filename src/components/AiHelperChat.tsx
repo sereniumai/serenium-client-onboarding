@@ -37,6 +37,9 @@ export function AiHelperChat() {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
+  const [threadSearch, setThreadSearch] = useState('');
+  const [flaggedIds, setFlaggedIds] = useState<Set<string>>(new Set());
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -176,9 +179,6 @@ export function AiHelperChat() {
     }
   };
 
-  const [threadSearch, setThreadSearch] = useState('');
-
-  const [flaggedIds, setFlaggedIds] = useState<Set<string>>(new Set());
   const handleFlagToTeam = async (assistantMsg: { id: string; content: string; context?: string | null }) => {
     if (!org?.id || flaggedIds.has(assistantMsg.id)) return;
     // Mark optimistically so the button locks immediately even if the request is slow.
@@ -206,7 +206,6 @@ export function AiHelperChat() {
     }
   };
 
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const runDeleteThread = async () => {
     if (!pendingDeleteId) return;
     const id = pendingDeleteId;

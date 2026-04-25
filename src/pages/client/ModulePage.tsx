@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 
 import { ConditionalLinkBlock } from '../../components/ConditionalLinkBlock';
+import { PresenceBanner } from '../../components/PresenceBanner';
+import { usePresence } from '../../hooks/usePresence';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
@@ -41,6 +43,14 @@ export function ModulePage() {
 
   const svc = serviceKey ? getService(serviceKey as ServiceKey) : null;
   const mod = svc && moduleKey ? getModule(svc.key, moduleKey) : null;
+
+  // Presence: warn when another teammate is on the same module.
+  const presenceKey = org && svc && mod ? `presence:${org.id}:${svc.key}:${mod.key}` : null;
+  const otherEditors = usePresence({
+    channelKey: presenceKey,
+    userId: user?.id ?? null,
+    name: user?.fullName ?? 'Someone',
+  });
 
   // Auto-complete only on the false→true ready transition. Editing a saved
   // module flips it to in_progress; we don't want to immediately bounce it
@@ -186,7 +196,10 @@ export function ModulePage() {
               <Link to={`/onboarding/${org.slug}`} className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white">
                 <ChevronLeft className="h-4 w-4" /> Dashboard
               </Link>
-              <SaveIndicator status={saveStatus} />
+              <div className="flex items-center gap-3">
+                <PresenceBanner others={otherEditors} />
+                <SaveIndicator status={saveStatus} />
+              </div>
             </div>
 
             {/* HERO */}

@@ -143,7 +143,7 @@ const BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'service_areas',
       title: 'Service areas',
-      whyWeAsk: 'Your ads, Google Business listing, and AI receptionist all need to know where you actually work - so we only spend ad budget on people in your service zone, and the AI never books a job two hours outside it.',
+      whyWeAsk: 'Your ads, Google Business listing, and AI receptionist all need to know where you actually work, so we only spend ad budget on people in your service zone and the AI never books a job outside your coverage area.',
       estimatedMinutes: 3,
       fields: [{
         key: 'service_areas',
@@ -527,7 +527,7 @@ const AI_SMS: ServiceDef = {
           options: ['Share ranges', 'Share specifics', 'Always punt to human'],
           helpText: 'Most roofers pick "punt to human".',
         },
-        { key: 'sms_ai_never_say', label: 'Guardrails, things the AI should NEVER say', type: 'textarea', required: true, tooltip: 'Hard limits. Examples: never guarantee a price, never commit to a specific date without checking the calendar, never discuss competitors by name.' },
+        { key: 'sms_ai_never_say', label: 'Guardrails, things the AI should NEVER say', type: 'textarea', required: true, tooltip: "Hard limits. Examples: don't guarantee prices, don't commit to a specific date without checking the calendar, don't mention competitors by name." },
       ],
     },
     {
@@ -642,7 +642,7 @@ const AI_SMS: ServiceDef = {
             'Preferred appointment time',
             'How they heard about the company',
           ],
-          helpText: 'Drives both the qualification script AND the content of booking notifications.',
+          helpText: 'Drives both the qualification script and the content of booking notifications.',
         },
         { key: 'sms_booking_info_custom', label: 'Anything else the AI should capture?', type: 'textarea' },
       ],
@@ -711,7 +711,7 @@ const AI_RECEPTIONIST: ServiceDef = {
     {
       key: 'scripts_behaviour',
       title: 'Scripts & question flow',
-      whyWeAsk: 'The greeting and questions you give us here are exactly what your AI receptionist will say to every caller, in your voice. Think of this as briefing a new front-desk hire on day one - the more specific you are, the more it sounds like you.',
+      whyWeAsk: 'The greeting and questions you give us here are exactly what your AI receptionist will say to every caller, in your voice. Think of this as briefing a new front-desk hire on day one. The more specific you are, the more it sounds like you.',
       estimatedMinutes: 15,
       fields: [
         {
@@ -936,7 +936,7 @@ const WEBSITE: ServiceDef = {
     {
       key: 'lead_form_and_routing',
       title: 'Lead form & routing',
-      whyWeAsk: 'The lead form is the single most important element on your site, every other piece of design exists to drive people to it. Telling us what fields you want, what the CTA should say, and where the submission lands wires the whole conversion engine.',
+      whyWeAsk: 'The lead form is the single most important element on your site. Every other piece of design exists to drive people to it. Telling us what fields you want, what the CTA should say, and where the submission lands wires the whole conversion engine.',
       estimatedMinutes: 6,
       fields: [
         { key: 'lead_form_fields', label: 'Fields on the lead form', type: 'multiselect', required: true, options: ['Name', 'Phone', 'Email', 'Service needed', 'Timeframe', 'Address'] },
@@ -984,7 +984,7 @@ const WEBSITE: ServiceDef = {
     {
       key: 'registrar_delegation',
       title: 'Registrar / DNS delegation',
-      whyWeAsk: 'To launch your new site without downtime, we need temporary DNS access at your domain registrar (GoDaddy, Namecheap, etc.). We never transfer your domain - it stays in your name - we just point it at the new site when go-live day comes.',
+      whyWeAsk: 'To launch your new site without downtime, we need temporary DNS access at your domain registrar (GoDaddy, Namecheap, etc.). We never transfer your domain. It stays in your name, we just point it at the new site when go-live day comes.',
       estimatedMinutes: 8,
       instructions: `Add **contact@sereniumai.com** to your registrar with admin / DNS-edit permissions. Pick your registrar below, we'll show you a walkthrough.`,
       fields: [
