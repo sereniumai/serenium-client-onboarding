@@ -127,7 +127,7 @@ export function OnboardingDashboard() {
               <h1 className="font-display font-black text-[clamp(1.875rem,5vw,3.25rem)] leading-[1.02] tracking-[-0.035em] mb-3">
                 {timeOfDayGreeting()}, <span className="text-orange">{firstName}</span>.
               </h1>
-              <p className="text-white/55 text-base md:text-lg max-w-xl leading-relaxed">{motivation(progress.overall, reports.length > 0)}</p>
+              <p className="text-white/55 text-base md:text-lg max-w-2xl leading-relaxed">{motivation(progress.overall, reports.length > 0)}</p>
 
               {!onboardingDone && resume && (
                 <Link
