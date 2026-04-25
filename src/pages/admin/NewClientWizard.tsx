@@ -29,6 +29,7 @@ export function NewClientWizard() {
   // Additional users only. The primary contact (from step 1) is auto-included
   // as the first owner; no need to retype it here.
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [sendInviteEmails, setSendInviteEmails] = useState(true);
 
   const toggleSvc = (k: ServiceKey) => setServices(s => s.includes(k) ? s.filter(x => x !== k) : [...s, k]);
   const toggleModule = (svcKey: ServiceKey, modKey: string, on: boolean) => {
@@ -78,9 +79,12 @@ export function NewClientWizard() {
         services,
         serviceModules: disabledModules,
         users: final,
+        sendInviteEmails,
       });
       toast.success(`${org.businessName} created`, {
-        description: `${services.length} ${services.length === 1 ? 'service' : 'services'} · ${final.length} ${final.length === 1 ? 'user' : 'users'} invited`,
+        description: sendInviteEmails
+          ? `${services.length} ${services.length === 1 ? 'service' : 'services'} · invite emails sent to ${final.length} user${final.length === 1 ? '' : 's'}`
+          : `${services.length} ${services.length === 1 ? 'service' : 'services'} · no emails sent yet, send manually from the Users tab when ready`,
       });
       // Land on the Revenue tab so admin can set rates immediately, with a
       // 'newclient=1' flag that surfaces a 'Set up now or later' banner.
@@ -267,6 +271,26 @@ export function NewClientWizard() {
                 className="inline-flex items-center gap-1.5 text-sm text-orange hover:text-orange-hover font-medium">
                 <Plus className="h-4 w-4" /> Add another user
               </button>
+
+              {/* Notify-now-or-later toggle */}
+              <div className="pt-5 mt-5 border-t border-border-subtle">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={sendInviteEmails}
+                    onChange={e => setSendInviteEmails(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-2 border-white/55 bg-white/[0.04] checked:bg-orange checked:border-orange accent-orange shrink-0"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">Send the invite email now</p>
+                    <p className="text-xs text-white/55 mt-0.5">
+                      {sendInviteEmails
+                        ? 'Each user gets an email straight away with their portal link.'
+                        : 'Users are created but no email goes out. You can send each invite manually later from the client\'s Users tab.'}
+                    </p>
+                  </div>
+                </label>
+              </div>
 
               {/* Summary */}
               <div className="pt-5 mt-5 border-t border-border-subtle">

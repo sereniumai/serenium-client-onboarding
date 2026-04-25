@@ -270,15 +270,16 @@ export function RevenuePage() {
                 <p className="eyebrow">Earnings by service</p>
                 <FieldTooltip text="Total earned to date per service: every one-time payment plus the accrued sum of every monthly retainer for the months it's been active. Business Profile excluded since it's not a billable service." />
               </div>
-              <h2 className="font-display font-bold text-base mb-4">Where money comes from</h2>
-              {earningsByService.length > 0
-                ? <ColumnChart bars={earningsByService.map(e => ({
-                    key: e.key,
-                    label: getService(e.key)?.label.split(' ')[0] ?? e.key,
-                    value: e.cents,
-                    formatted: fmtCAD(e.cents, { compact: true }),
-                  }))} />
-                : <EmptyChart text="No revenue logged yet." />}
+              <h2 className="font-display font-bold text-lg mb-4">Where money comes from</h2>
+              <BreakdownRows
+                rows={earningsByService.map(e => ({
+                  key: e.key,
+                  label: getService(e.key)?.label ?? e.key,
+                  value: e.cents,
+                  formatted: fmtCAD(e.cents),
+                }))}
+                emptyText="No revenue logged yet. Add a retainer or one-time on any client's Revenue tab."
+              />
             </section>
 
             <section className="card">
@@ -286,15 +287,17 @@ export function RevenuePage() {
                 <p className="eyebrow">Clients per source</p>
                 <FieldTooltip text="How many clients came from each lead source. Helps you spot which channel is producing real customers (vs just calls). Set the source on a client's Overview tab." />
               </div>
-              <h2 className="font-display font-bold text-base mb-4">Where leads come from</h2>
-              {leadCounts.length > 0
-                ? <ColumnChart bars={leadCounts.map(c => ({
-                    key: c.source,
-                    label: shortLeadLabel(c.source),
-                    value: c.count,
-                    formatted: String(c.count),
-                  }))} colour="success" />
-                : <EmptyChart text="No clients yet." />}
+              <h2 className="font-display font-bold text-lg mb-4">Where leads come from</h2>
+              <BreakdownRows
+                rows={leadCounts.map(c => ({
+                  key: c.source,
+                  label: leadFullLabel(c.source),
+                  value: c.count,
+                  formatted: `${c.count} ${c.count === 1 ? 'client' : 'clients'}`,
+                }))}
+                colour="success"
+                emptyText="No clients yet. Set the lead source on each client's Revenue tab."
+              />
             </section>
           </div>
 
@@ -503,7 +506,7 @@ function RevenueChart({ monthly }: { monthly: Array<{ label: string; revenue: nu
   );
 }
 
-// ─── COMPACT COLUMN CHART ──────────────────────────────────────────────────
+// ─── BREAKDOWN ROWS (visual horizontal stat rows) ─────────────────────────
 
 const LEAD_LABEL: Record<string, string> = {
   facebook_ad: 'Facebook ads',
@@ -518,55 +521,62 @@ const LEAD_LABEL: Record<string, string> = {
 };
 const LEAD_ORDER = ['facebook_ad', 'google_ads', 'referral', 'outreach', 'socials', 'networking', 'other', 'unsure', 'unknown'];
 
-function shortLeadLabel(source: string): string {
-  switch (source) {
-    case 'facebook_ad': return 'Facebook';
-    case 'google_ads': return 'Google';
-    case 'referral': return 'Referral';
-    case 'outreach': return 'Outreach';
-    case 'socials': return 'Socials';
-    case 'networking': return 'Network';
-    case 'other': return 'Other';
-    case 'unsure': return 'Unsure';
-    case 'unknown': return 'Not set';
-    default: return source;
-  }
+function leadFullLabel(source: string): string {
+  return LEAD_LABEL[source] ?? source;
 }
 
-function ColumnChart({ bars, colour = 'orange' }: {
-  bars: Array<{ key: string; label: string; value: number; formatted: string }>;
+interface BreakdownRow {
+  key: string;
+  label: string;
+  value: number;
+  formatted: string;
+}
+
+function BreakdownRows({ rows, colour = 'orange', emptyText }: {
+  rows: BreakdownRow[];
   colour?: 'orange' | 'success';
+  emptyText: string;
 }) {
-  const max = Math.max(...bars.map(b => b.value), 1);
-  const fillClass = colour === 'success'
-    ? 'bg-gradient-to-t from-success/80 to-success'
-    : 'bg-gradient-to-t from-orange/80 to-orange';
+  if (rows.length === 0) {
+    return <div className="py-8 text-center text-sm text-white/40">{emptyText}</div>;
+  }
+  const total = rows.reduce((s, r) => s + r.value, 0);
+  const max = Math.max(...rows.map(r => r.value), 1);
+  const tint = colour === 'success'
+    ? { fill: 'bg-gradient-to-r from-success/40 via-success/60 to-success', text: 'text-success', dot: 'bg-success' }
+    : { fill: 'bg-gradient-to-r from-orange/40 via-orange/60 to-orange', text: 'text-orange', dot: 'bg-orange' };
+
   return (
-    <div className="flex items-end gap-2 h-40 pt-3">
-      {bars.map(b => {
-        const heightPct = (b.value / max) * 100;
+    <div className="space-y-3">
+      {rows.map((r, idx) => {
+        const widthPct = (r.value / max) * 100;
+        const sharePct = total > 0 ? (r.value / total) * 100 : 0;
         return (
-          <div key={b.key} className="flex-1 min-w-0 flex flex-col items-center gap-1.5">
-            <p className="text-[11px] tabular-nums font-semibold text-white whitespace-nowrap">{b.formatted}</p>
-            <div className="flex-1 w-full flex items-end">
-              <motion.div
-                initial={{ height: 0 }}
-                animate={{ height: `${Math.max(2, heightPct)}%` }}
-                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className={cn('w-full rounded-t-md', fillClass)}
-              />
+          <motion.div
+            key={r.key}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: idx * 0.04, ease: [0.16, 1, 0.3, 1] }}
+            className="relative rounded-xl border border-border-subtle bg-bg-tertiary/30 hover:border-orange/30 transition-colors p-4 overflow-hidden"
+          >
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${widthPct}%` }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className={cn('absolute inset-y-0 left-0 opacity-25', tint.fill)}
+            />
+            <div className="relative flex items-center gap-3">
+              <div className={cn('h-2 w-2 rounded-full shrink-0', tint.dot)} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{r.label}</p>
+                <p className="text-[10px] uppercase tracking-wider text-white/45 mt-0.5 tabular-nums">{sharePct.toFixed(0)}% of total</p>
+              </div>
+              <p className={cn('text-lg font-display font-black tabular-nums', tint.text)}>{r.formatted}</p>
             </div>
-            <p className="text-[10px] text-white/55 truncate w-full text-center" title={b.label}>{b.label}</p>
-          </div>
+          </motion.div>
         );
       })}
     </div>
-  );
-}
-
-function EmptyChart({ text }: { text: string }) {
-  return (
-    <div className="h-40 flex items-center justify-center text-sm text-white/40">{text}</div>
   );
 }
 

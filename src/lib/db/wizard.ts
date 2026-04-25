@@ -26,6 +26,9 @@ export interface CreateClientInput {
   /** Opt-out list of module keys per service. Absent = all modules included. */
   serviceModules?: Partial<Record<ServiceKey, string[]>>;
   users: { fullName: string; email: string; role: MemberRole }[];
+  /** When false, invitations are still created (link-shareable) but no email
+   *  goes out. Admin can send each invite manually later from the Users tab. */
+  sendInviteEmails?: boolean;
 }
 
 export async function createClient(input: CreateClientInput): Promise<Organization> {
@@ -92,12 +95,14 @@ export async function createClient(input: CreateClientInput): Promise<Organizati
 
     // Invitations for each user. Skip empty emails.
     const validUsers = input.users.filter(u => u.email.trim());
+    const sendEmails = input.sendInviteEmails !== false;
     for (const u of validUsers) {
       await createInvitation({
         organizationId: org.id,
         email: u.email,
         fullName: u.fullName || undefined,
         role: u.role,
+        sendEmail: sendEmails,
       });
     }
 
