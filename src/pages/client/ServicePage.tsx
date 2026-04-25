@@ -15,7 +15,7 @@ import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
 import { getService, type ModuleDef } from '../../config/modules';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
-import { getOrgProgress, getEnabledModulesForService, moduleIsAdminLocked, moduleIsReady, moduleHasRequiredItems, findNextActionableModule } from '../../lib/progress';
+import { getOrgProgress, getEnabledModulesForService, moduleIsAdminLocked, moduleIsReady, moduleHasRequiredItems } from '../../lib/progress';
 import { useQuery } from '@tanstack/react-query';
 import { listStepVideos } from '../../lib/db/videos';
 import { sfx } from '../../lib/soundFx';
@@ -29,7 +29,6 @@ export function ServicePage() {
   const navigate = useNavigate();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [showFinal, setShowFinal] = useState(false);
-  const [completedModule, setCompletedModule] = useState<{ title: string; nextHref: string | null; nextLabel: string } | null>(null);
 
   // Scroll to top when landing on a new service. Hash anchors below override
   // this when present (e.g. linking to a specific module).
@@ -100,7 +99,6 @@ export function ServicePage() {
 
             {/* SERVICE HERO */}
             <div className="mb-8">
-              <p className="eyebrow mb-3">{svc.label}</p>
               <h1 className="font-display font-black text-[clamp(1.75rem,5vw,3rem)] leading-[1.05] tracking-[-0.025em] mb-3">
                 {svc.label === 'Business Profile' ? 'Tell us about your business.' : svc.label}
               </h1>
@@ -137,32 +135,9 @@ export function ServicePage() {
                   onSetTask={(taskKey, checked) => setTask.mutate({ organizationId: org.id, taskKey, completed: checked, userId: user?.id })}
                   onSetModuleStatus={(status) => setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: m.key, status, userId: user?.id })}
                   onComplete={() => {
-                    // If there's still something else to do (in this service or
-                    // another) surface the "nice work, continue to next" modal.
-                    // If this was the very last actionable module across all
-                    // services, skip the modal and just send them back to the
-                    // dashboard — the "we'll review your submission" banner
-                    // there is the right end-state, not another celebration.
-                    const nextInService = modules.find((mm, j) => j > i && snapshot.moduleProgress.find(p => p.serviceKey === svc.key && p.moduleKey === mm.key)?.status !== 'complete');
-                    if (nextInService) {
-                      setCompletedModule({
-                        title: m.title,
-                        nextHref: `/onboarding/${org.slug}/services/${svc.key}#module-${nextInService.key}`,
-                        nextLabel: nextInService.title,
-                      });
-                      return;
-                    }
-                    const nextElsewhere = findNextActionableModule(snapshot, { serviceKey: svc.key, moduleKey: m.key });
-                    if (nextElsewhere) {
-                      setCompletedModule({
-                        title: m.title,
-                        nextHref: `/onboarding/${org.slug}/services/${nextElsewhere.serviceKey}#module-${nextElsewhere.module.key}`,
-                        nextLabel: nextElsewhere.module.title,
-                      });
-                      return;
-                    }
-                    // No work left — head straight to dashboard, no modal.
-                    navigate(`/onboarding/${org.slug}`);
+                    // No completion modal — Adam wants the user to stay
+                    // exactly where they are, see the green "Section complete"
+                    // banner inline, and choose for themselves when to move on.
                   }}
                 />
               ))}
@@ -215,52 +190,7 @@ export function ServicePage() {
         onContinue={() => { setShowFinal(false); navigate(`/onboarding/${org.slug}`); }}
       />
 
-      <ModuleCompleteModal
-        data={completedModule}
-        firstName={user?.fullName.split(' ')[0] ?? 'there'}
-        onContinue={() => {
-          const dest = completedModule?.nextHref;
-          setCompletedModule(null);
-          if (dest) navigate(dest);
-        }}
-        onClose={() => setCompletedModule(null)}
-      />
     </AppShell>
-  );
-}
-
-function ModuleCompleteModal({ data, firstName, onContinue, onClose }: {
-  data: { title: string; nextHref: string | null; nextLabel: string } | null;
-  firstName: string;
-  onContinue: () => void;
-  onClose: () => void;
-}) {
-  if (!data) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative w-full max-w-md rounded-2xl bg-bg-secondary border border-border-subtle p-6 md:p-7" onClick={e => e.stopPropagation()}>
-        <div className="flex items-start gap-4">
-          <div className="h-10 w-10 rounded-xl bg-success/20 text-success flex items-center justify-center shrink-0">
-            <CheckCircle2 className="h-5 w-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="eyebrow mb-1.5">Section complete</p>
-            <h2 className="font-display font-black text-xl md:text-2xl tracking-[-0.02em] leading-[1.15] mb-2">
-              Nice work, {firstName}.
-            </h2>
-            <p className="text-sm text-white/65 mb-5">
-              You completed <span className="text-white">{data.title}</span>. Let's keep the momentum up.
-            </p>
-            <div className="flex flex-col-reverse sm:flex-row gap-2">
-              <button onClick={onClose} className="btn-secondary justify-center">Stay here</button>
-              <button onClick={onContinue} className="btn-primary justify-center flex-1">
-                {data.nextHref?.includes('#module-') ? `Continue → ${data.nextLabel}` : data.nextLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
