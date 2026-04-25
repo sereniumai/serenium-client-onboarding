@@ -84,8 +84,9 @@ export function NewClientWizard() {
     // Primary contact is always the first owner. Extra users follow.
     const primaryUser = { fullName: primaryName.trim(), email: primaryEmail.trim(), role: 'owner' as const };
     const final = [primaryUser, ...validExtras.filter(u => u.email.trim().toLowerCase() !== primaryEmail.trim().toLowerCase())];
+    let org: Awaited<ReturnType<typeof createClient.mutateAsync>>;
     try {
-      const org = await createClient.mutateAsync({
+      org = await createClient.mutateAsync({
         businessName: businessName.trim(),
         primaryContactName: primaryName.trim(),
         primaryContactEmail: primaryEmail.trim(),
@@ -96,11 +97,17 @@ export function NewClientWizard() {
         users: final,
         sendInviteEmails,
       });
+    } catch (err) {
+      toast.error('Could not create client', { description: (err as Error).message });
+      return;
+    }
 
-      // Save revenue lines now that the org exists. Skip empty/invalid amounts
-      // silently — admin can fix them on the Revenue tab.
-      const validLines = revenueLines.filter(l => Number(l.amount) > 0);
-      if (validLines.length > 0) {
+    // Past this point the org exists. Anything that fails below is a soft
+    // follow-up — log it but always navigate to the new client so admin
+    // doesn't see "Could not create" while the client sits in the list.
+    const validLines = revenueLines.filter(l => Number(l.amount) > 0);
+    if (validLines.length > 0) {
+      try {
         const { createRevenueLine } = await import('../../lib/db/revenue');
         for (const l of validLines) {
           try {
@@ -115,19 +122,20 @@ export function NewClientWizard() {
             console.warn('[wizard] revenue line save failed', err);
           }
         }
+      } catch (err) {
+        console.warn('[wizard] revenue module load failed', err);
       }
+    }
 
+    try {
       toast.success(`${org.businessName} created`, {
         description: sendInviteEmails
           ? `${services.length} ${services.length === 1 ? 'service' : 'services'} · ${validLines.length > 0 ? `${validLines.length} revenue line${validLines.length === 1 ? '' : 's'} · ` : ''}invite emails sent to ${final.length} user${final.length === 1 ? '' : 's'}`
           : `${services.length} ${services.length === 1 ? 'service' : 'services'} · ${validLines.length > 0 ? `${validLines.length} revenue line${validLines.length === 1 ? '' : 's'} · ` : ''}no emails sent yet, send manually from the Users tab when ready`,
       });
-      // Land on the Revenue tab so admin can set rates immediately, with a
-      // 'newclient=1' flag that surfaces a 'Set up now or later' banner.
-      navigate(`/admin/clients/${org.slug}?tab=revenue&newclient=1`);
-    } catch (err) {
-      toast.error('Could not create client', { description: (err as Error).message });
-    }
+    } catch { /* toast failure is cosmetic, don't block navigation */ }
+
+    navigate(`/admin/clients/${org.slug}?tab=revenue&newclient=1`);
   };
 
   return (
