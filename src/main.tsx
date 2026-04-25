@@ -69,6 +69,20 @@ window.addEventListener('error', (e) => {
   window.location.reload();
 });
 
+// Stale HTML referencing a stylesheet hash that no longer exists on the CDN.
+// Same recovery as a missing JS chunk: reload once to fetch fresh index.html.
+// Resource-load errors only fire in capture phase, hence the `true`.
+window.addEventListener('error', (e) => {
+  const target = e.target as HTMLElement | null;
+  if (!target || target.tagName !== 'LINK') return;
+  const link = target as HTMLLinkElement;
+  if (link.rel !== 'stylesheet') return;
+  if (!link.href || !link.href.includes('/assets/')) return;
+  if (sessionStorage.getItem(CHUNK_RELOAD_KEY)) return;
+  sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+  window.location.reload();
+}, true);
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
