@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { useAuth } from '../auth/AuthContext';
 import { getWelcomeVideo, hasSeenWelcome, markWelcomeSeen } from '../lib/db/welcomeVideo';
 import { videoEmbedUrl } from '../lib/videoEmbed';
@@ -70,10 +71,18 @@ export function WelcomeVideoModal() {
   const dismiss = () => {
     setShow(false);
     // Only mark seen on the first-login auto-open path. Manual rewatches
-    // shouldn't change persisted state.
+    // shouldn't change persisted state. Same trigger: only fire the
+    // welcome-confetti on first dismissal, not on rewatch close.
     if (!manuallyOpened && user) {
       qc.setQueryData(['welcomed', user.id], true);
       markWelcomeSeen(user.id).catch(() => {});
+      confetti({
+        particleCount: 90,
+        spread: 90,
+        origin: { y: 0.5 },
+        colors: ['#FF6B1F', '#FF7A35', '#FFD4BA', '#ffffff'],
+        zIndex: 9999,
+      });
     }
   };
   const modalRef = useModal(show, dismiss);
