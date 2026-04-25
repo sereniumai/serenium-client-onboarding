@@ -129,8 +129,7 @@ export function NewClientWizard() {
               <p className="text-sm text-white/60 mb-2">Pick the services this client is onboarding for. For each enabled service, pick only the steps you actually need, unchecked steps won't appear in their portal.</p>
 
               {SELECTABLE_SERVICES.map(s => {
-                const alwaysOn = s.key === 'business_profile';
-                const on = services.includes(s.key) || alwaysOn;
+                const on = services.includes(s.key);
                 const Icon = SERVICE_ICON[s.key];
                 const svc = getService(s.key)!;
                 const disabledSet = new Set(disabledModules[s.key] ?? []);
@@ -142,11 +141,8 @@ export function NewClientWizard() {
                   )}>
                     <button
                       type="button"
-                      onClick={() => { if (!alwaysOn) toggleSvc(s.key); }}
-                      className={cn(
-                        'w-full flex items-center gap-4 p-5 text-left transition-colors',
-                        alwaysOn ? 'cursor-default' : 'hover:bg-bg-tertiary/30 cursor-pointer',
-                      )}
+                      onClick={() => toggleSvc(s.key)}
+                      className="w-full flex items-center gap-4 p-5 text-left transition-colors hover:bg-bg-tertiary/30 cursor-pointer"
                     >
                       <div className={cn('h-11 w-11 rounded-xl flex items-center justify-center shrink-0',
                         on ? 'bg-orange text-white' : 'bg-bg-tertiary text-white/60')}>
@@ -158,11 +154,9 @@ export function NewClientWizard() {
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         {on && <span className="text-xs text-white/50 tabular-nums">{activeCount} / {svc.modules.length} steps</span>}
-                        {alwaysOn && <span className="text-[10px] uppercase tracking-wider text-orange font-semibold">Always included</span>}
                         <div className={cn(
                           'h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0',
                           on ? 'bg-orange border-orange' : 'border-white/30',
-                          alwaysOn && 'opacity-50'
                         )}>
                           {on && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
                         </div>
