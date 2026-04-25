@@ -1,11 +1,10 @@
 import { type ReactNode, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, Volume2, VolumeX, Moon, Sun, User } from 'lucide-react';
+import { LogOut, Menu, X, Moon, Sun, User, ChevronRight } from 'lucide-react';
 import { getTheme, setTheme } from '../lib/theme';
 import type { LucideIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Logo } from './Logo';
-import { soundsEnabled, setSoundsEnabled } from '../lib/soundFx';
 import { useAuth } from '../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/cn';
@@ -38,7 +37,6 @@ export function Sidebar({ sections, children, footerExtra }: {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const [sound, setSound] = useState(soundsEnabled());
   const [theme, setThemeState] = useState(getTheme());
 
   const toggleTheme = () => {
@@ -83,49 +81,44 @@ export function Sidebar({ sections, children, footerExtra }: {
         {children}
       </nav>
 
-      <div className="border-t border-border-subtle px-3 py-3 space-y-2">
+      <div className="border-t border-border-subtle px-3 py-4 space-y-3">
         {user && (
           <Link
             to="/account"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-bg-tertiary/60 transition-colors group"
+            className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-bg-tertiary/60 transition-colors group"
             title="Account settings"
           >
-            <div className="h-8 w-8 rounded-lg bg-orange/10 text-orange flex items-center justify-center shrink-0">
-              <User className="h-4 w-4" strokeWidth={2.2} />
+            <div className="h-10 w-10 rounded-xl bg-orange/10 text-orange flex items-center justify-center shrink-0 group-hover:bg-orange/15 transition-colors">
+              <User className="h-5 w-5" strokeWidth={2.2} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate leading-tight">{user.fullName}</p>
-              <p className="text-[11px] text-white/50 truncate group-hover:text-white/70 transition-colors">Account settings →</p>
+              <p className="text-base font-semibold text-white truncate leading-tight">{user.fullName}</p>
+              <p className="text-xs text-white/55 truncate group-hover:text-white/75 transition-colors mt-0.5">Account settings</p>
             </div>
+            <ChevronRight className="h-4 w-4 text-white/30 group-hover:text-orange group-hover:translate-x-0.5 transition-all shrink-0" />
           </Link>
         )}
-        <div className="flex gap-1">
+        <div className="flex gap-2">
           <button
             onClick={toggleTheme}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium text-white/60 hover:bg-bg-tertiary hover:text-white transition-colors"
-            title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-bg-tertiary/40 border border-border-subtle text-sm font-medium text-white/75 hover:bg-bg-tertiary hover:text-white hover:border-border-emphasis transition-all"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
-            {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-          </button>
-          <button
-            onClick={() => { const next = !sound; setSoundsEnabled(next); setSound(next); }}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium text-white/60 hover:bg-bg-tertiary hover:text-white transition-colors"
-            title={sound ? 'Sound on' : 'Sound off'}
-            aria-label={sound ? 'Mute sound effects' : 'Enable sound effects'}
-          >
-            {sound ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+            {theme === 'dark'
+              ? <><Sun className="h-4 w-4" /> Light</>
+              : <><Moon className="h-4 w-4" /> Dark</>}
           </button>
           <button
             onClick={handleSignOut}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium text-white/60 hover:bg-bg-tertiary hover:text-white transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-bg-tertiary/40 border border-border-subtle text-sm font-medium text-white/75 hover:bg-error/10 hover:text-error hover:border-error/40 transition-all"
             aria-label="Sign out"
           >
-            <LogOut className="h-3.5 w-3.5" />
+            <LogOut className="h-4 w-4" /> Sign out
           </button>
         </div>
-        <p className="text-[9px] text-white/25 tabular-nums mt-2 text-center" title="Deployed commit">
+        <p className="text-[9px] text-white/25 tabular-nums text-center pt-1" title="Deployed commit">
           build {((import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA as string | undefined) ?? 'local').slice(0, 7)}
         </p>
       </div>

@@ -146,9 +146,21 @@
   }
 
   .input {
-    @apply w-full px-4 py-3 rounded-lg bg-bg-tertiary border border-border-subtle text-white placeholder:text-white/30
+    @apply w-full px-4 py-3.5 rounded-lg bg-bg-tertiary border border-border-subtle text-white placeholder:text-white/30
            transition-colors duration-150 focus:outline-none focus:border-orange focus:ring-2 focus:ring-orange/30;
   }
+
+  /* Premium select: hide native chevron, paint our own. More padding-right
+     so the value never collides with the icon. */
+  select.input {
+    @apply appearance-none pr-12 cursor-pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23FF6B1F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 14px 14px;
+  }
+  select.input:hover { @apply border-orange/40; }
+  select.input::-ms-expand { display: none; }
 
   .label {
     @apply block text-xs font-semibold uppercase tracking-wider text-white/60 mb-2;

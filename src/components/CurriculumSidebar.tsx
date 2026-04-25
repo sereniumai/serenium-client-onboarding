@@ -12,6 +12,10 @@ import { cn } from '../lib/cn';
 export function CurriculumSidebar({ organizationId, orgSlug }: { organizationId: string; orgSlug: string }) {
   const { serviceKey: activeSvc, moduleKey: activeMod } = useParams();
   const { snapshot } = useOrgSnapshot(organizationId);
+  // Only one service group can be expanded at a time. Default to the
+  // service the client is currently inside; clicking another collapses
+  // the rest. Clicking the active one toggles it closed.
+  const [openService, setOpenService] = useState<string | null>(activeSvc ?? null);
   if (!snapshot) return null;
   const progress = getOrgProgress(snapshot);
 
@@ -49,7 +53,8 @@ export function CurriculumSidebar({ organizationId, orgSlug }: { organizationId:
             orgSlug={orgSlug}
             done={done}
             total={summaries.length}
-            defaultOpen={svcActive}
+            isOpen={openService === svcKey}
+            onToggle={() => setOpenService(prev => prev === svcKey ? null : svcKey)}
           />
         );
       })}
@@ -58,7 +63,7 @@ export function CurriculumSidebar({ organizationId, orgSlug }: { organizationId:
 }
 
 function ServiceGroup({
-  svcKey, svcLabel, modules, activeModule, orgSlug, done, total, defaultOpen,
+  svcKey, svcLabel, modules, activeModule, orgSlug, done, total, isOpen, onToggle,
 }: {
   svcKey: ServiceKey;
   svcLabel: string;
@@ -67,16 +72,17 @@ function ServiceGroup({
   orgSlug: string;
   done: number;
   total: number;
-  defaultOpen?: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen ?? true);
+  const open = isOpen;
   const Icon = SERVICE_ICON[svcKey];
   const pct = Math.round((done / total) * 100);
 
   return (
     <div>
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={onToggle}
         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-bg-tertiary/60 transition-colors group"
       >
         <div className="h-8 w-8 rounded-lg bg-orange/10 text-orange flex items-center justify-center shrink-0">
