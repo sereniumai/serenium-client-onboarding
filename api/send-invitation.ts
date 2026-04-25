@@ -79,14 +79,16 @@ export default async function handler(req: Request): Promise<Response> {
   const portalBase = (body.portalUrl || 'https://clients.sereniumai.com').replace(/\/$/, '');
   const inviteUrl = `${portalBase}/register?invite=${encodeURIComponent(i.token)}`;
 
-  // 4. Send via Resend.
-  const inviterFirstName = ((profile as { full_name: string }).full_name ?? 'Serenium').split(' ')[0];
-  const subject = `${inviterFirstName} from Serenium just invited you, ${i.organizations.business_name} is about to take off`;
+  // 4. Send via Resend. Always sent under the founder's name (Rob), regardless
+  // of which admin clicked the button. Clients should always feel they're
+  // hearing from the same person.
+  const INVITER_FIRST = 'Rob';
+  const subject = `${INVITER_FIRST} from Serenium just invited you, ${i.organizations.business_name} is about to take off`;
   const html = renderInviteEmail({
     businessName: i.organizations.business_name,
     inviteeName: i.full_name,
     inviteUrl,
-    inviterName: (profile as { full_name: string }).full_name ?? 'Serenium',
+    inviterName: INVITER_FIRST,
   });
 
   const resp = await fetch('https://api.resend.com/emails', {
