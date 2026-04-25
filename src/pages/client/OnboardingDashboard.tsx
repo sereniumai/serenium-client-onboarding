@@ -15,13 +15,14 @@ import { timeOfDayGreeting } from '../../lib/greeting';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot } from '../../hooks/useOnboarding';
-import { getOrgProgress } from '../../lib/progress';
+import { getOrgProgress, moduleIsAdminLocked } from '../../lib/progress';
 import { getService, SELECTABLE_SERVICES } from '../../config/modules';
 import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { ServiceKey } from '../../types';
 import { cn } from '../../lib/cn';
 
-function motivation(pct: number, hasReports: boolean) {
+function motivation(pct: number, hasReports: boolean, awaitingProvisioning: boolean) {
+  if (awaitingProvisioning) return "Everything you can do is done. We're provisioning the last pieces on our end and will let you know the moment they're ready.";
   if (pct === 0) return "A few quick steps to give us what we need to launch your campaigns.";
   if (pct < 30)  return "Good start. Keep moving through the sections below.";
   if (pct < 60)  return "You're past the halfway mark. A few more to go.";
@@ -132,7 +133,7 @@ export function OnboardingDashboard() {
               <h1 className="font-display font-black text-[clamp(1.875rem,5vw,3.25rem)] leading-[1.02] tracking-[-0.035em] mb-3">
                 {timeOfDayGreeting()}, <span className="text-orange">{firstName}</span>.
               </h1>
-              <p className="text-white/55 text-base md:text-lg max-w-2xl leading-relaxed">{motivation(progress.overall, reports.length > 0)}</p>
+              <p className="text-white/55 text-base md:text-lg max-w-2xl leading-relaxed">{motivation(progress.overall, reports.length > 0, !onboardingDone && !resume)}</p>
 
               {!onboardingDone && resume && (
                 <Link
@@ -294,6 +295,7 @@ function findLastTouchedModule(snapshot: import('../../lib/progress').OrgSnapsho
     if (!svc || !mod) continue;
     const mp = snapshot.moduleProgress.find(p => p.serviceKey === svcKey && p.moduleKey === modKey);
     if (mp?.status === 'complete') continue; // Skip completed modules, we want something to resume.
+    if (moduleIsAdminLocked(snapshot, mod)) continue; // Don't point users at sections we still need to provision.
     return {
       serviceKey: svc.key,
       moduleKey: mod.key,
@@ -309,7 +311,7 @@ function findLastTouchedModule(snapshot: import('../../lib/progress').OrgSnapsho
   if (firstInProgress) {
     const svc = getService(firstInProgress.serviceKey);
     const mod = svc?.modules.find(m => m.key === firstInProgress.moduleKey);
-    if (svc && mod) {
+    if (svc && mod && !moduleIsAdminLocked(snapshot, mod)) {
       return {
         serviceKey: svc.key,
         moduleKey: mod.key,

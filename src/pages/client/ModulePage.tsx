@@ -27,6 +27,7 @@ import { moduleIsReady, findNextActionableModule, submissionIsFilled } from '../
 import { useQuery } from '@tanstack/react-query';
 import { listStepVideos } from '../../lib/db/videos';
 import { getRetellNumber } from '../../lib/db/retellNumbers';
+import { formatPhone } from '../../lib/formatPhone';
 import type { ServiceKey } from '../../types';
 
 export function ModulePage() {
@@ -264,7 +265,7 @@ export function ModulePage() {
             {retellNumber && mod.key === 'phone_number_setup' && (
               <div className="rounded-2xl border border-orange/30 bg-orange/5 p-5 mb-8">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-orange font-bold mb-1">Your AI phone number</p>
-                <p className="font-display font-black text-3xl tracking-[-0.02em] text-white tabular-nums">{retellNumber}</p>
+                <p className="font-display font-black text-3xl tracking-[-0.02em] text-white tabular-nums">{formatPhone(retellNumber)}</p>
                 <p className="text-sm text-white/60 mt-2">Forward your existing line to this number, or use it directly on your ads, site, and business cards. The AI is live the moment forwarding is wired up.</p>
               </div>
             )}

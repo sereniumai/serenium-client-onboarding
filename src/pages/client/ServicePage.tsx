@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { ChevronLeft, CheckCircle2, Clock, PlayCircle } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Circle, Clock, PlayCircle } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { TaskCheckbox } from '../../components/TaskCheckbox';
 import { FieldRenderer } from '../../components/FieldRenderer';
@@ -15,9 +15,11 @@ import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
 import { getService, type ModuleDef } from '../../config/modules';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
-import { getOrgProgress, getEnabledModulesForService, moduleIsAdminLocked, moduleIsReady, moduleHasRequiredItems } from '../../lib/progress';
+import { getOrgProgress, getEnabledModulesForService, moduleIsAdminLocked, moduleIsReady } from '../../lib/progress';
 import { useQuery } from '@tanstack/react-query';
 import { listStepVideos } from '../../lib/db/videos';
+import { getRetellNumber } from '../../lib/db/retellNumbers';
+import { formatPhone } from '../../lib/formatPhone';
 import { sfx } from '../../lib/soundFx';
 import type { ServiceKey } from '../../types';
 import { cn } from '../../lib/cn';
@@ -53,6 +55,11 @@ export function ServicePage() {
   const setModStatus = useSetModuleStatus();
   const setTask = useSetTaskCompletion();
   const { data: stepVideos = [] } = useQuery({ queryKey: ['step_videos'], queryFn: listStepVideos });
+  const { data: retellNumber = null } = useQuery({
+    queryKey: ['org', org?.id, 'retell'],
+    queryFn: () => getRetellNumber(org!.id),
+    enabled: !!org?.id && serviceKey === 'ai_receptionist',
+  });
 
   // Hooks before early returns. Nullable snapshot handled inside the memo
   // bodies so the hook count stays stable across renders.
@@ -131,6 +138,7 @@ export function ServicePage() {
                   serviceKey={svc.key}
                   userId={user?.id}
                   stepVideoOverride={stepVideos.find(v => v.serviceKey === svc.key && v.moduleKey === m.key)?.url}
+                  retellNumber={m.key === 'phone_number_setup' ? retellNumber : null}
                   onStatusChange={setSaveStatus}
                   onSetTask={(taskKey, checked) => setTask.mutate({ organizationId: org.id, taskKey, completed: checked, userId: user?.id })}
                   onSetModuleStatus={(status) => setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: m.key, status, userId: user?.id })}
@@ -195,7 +203,7 @@ export function ServicePage() {
 }
 
 function ModuleSection({
-  index, total, module, snapshot, serviceKey, userId, stepVideoOverride, onStatusChange, onSetTask, onSetModuleStatus, onComplete,
+  index, total, module, snapshot, serviceKey, userId, stepVideoOverride, retellNumber, onStatusChange, onSetTask, onSetModuleStatus, onComplete,
 }: {
   index: number;
   total: number;
@@ -204,6 +212,7 @@ function ModuleSection({
   serviceKey: ServiceKey;
   userId?: string;
   stepVideoOverride?: string;
+  retellNumber: string | null;
   onStatusChange: (s: 'idle' | 'saving' | 'saved' | 'error') => void;
   onSetTask: (taskKey: string, checked: boolean) => void;
   onSetModuleStatus: (status: 'not_started' | 'in_progress' | 'complete') => void;
@@ -279,6 +288,18 @@ function ModuleSection({
         {adminLocked && (module.lockedMessage || module.lockedUntilAdminFlag) && (
           <div className="rounded-xl border border-orange/40 bg-orange/[0.06] px-4 py-3 text-sm text-white/85">
             <Markdown>{module.lockedMessage ?? "We'll unlock this section once we've finished setup on our end. We'll email you when it's ready."}</Markdown>
+          </div>
+        )}
+
+        {/* AI phone number — surfaced once admin has provisioned and saved
+            the Retell number for this org. Lives at the top of the
+            Phone-Number-Implementation module so the client can copy it
+            straight into their carrier's forwarding setup. */}
+        {retellNumber && (
+          <div className="rounded-xl border border-orange/30 bg-orange/[0.06] p-4">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-orange font-bold mb-1">Your AI phone number</p>
+            <p className="font-display font-black text-2xl tracking-[-0.02em] text-white tabular-nums">{formatPhone(retellNumber)}</p>
+            <p className="text-sm text-white/60 mt-2">Forward your existing line to this number, or use it directly anywhere your business shows up. The AI is live the moment forwarding is wired up.</p>
           </div>
         )}
 
@@ -384,19 +405,9 @@ function ModuleSection({
               <span className="text-sm text-white/80 flex-1">Section complete. Autosaved.</span>
             </div>
           </div>
-        ) : !readyFor && !adminLocked && !moduleHasRequiredItems(snapshot, serviceKey, module.key) && (enabledFields.length > 0 || (module.tasks?.length ?? 0) > 0) && (
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                onSetModuleStatus('complete');
-                sfx.submit();
-                onComplete();
-              }}
-              className="btn-secondary w-full"
-            >
-              Mark this section complete
-            </button>
+        ) : !readyFor && !adminLocked && (enabledFields.length > 0 || (module.tasks?.length ?? 0) > 0) && (
+          <div className="pt-2 flex items-center gap-2 text-xs text-white/45">
+            <Circle className="h-3.5 w-3.5" /> Not yet complete
           </div>
         )}
       </div>

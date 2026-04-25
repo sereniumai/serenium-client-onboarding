@@ -226,10 +226,22 @@ export function moduleIsReady(snap: OrgSnapshot, svcKey: ServiceKey, moduleKey: 
     return sub ? submissionIsFilled(f, sub.value, { uploads: snap.uploads, fieldKey }) : false;
   });
 
-  // Modules with no required gating shouldn't auto-complete on entry — that
-  // produced bogus "Section complete" toasts before the user had typed a
-  // single character. Such modules need an explicit manual mark-complete.
-  if (requiredTasks.length === 0 && requiredFields.length === 0) return false;
+  // Modules with no required gating (purely optional sections like Social
+  // Profiles or Team Members) auto-complete once the user has engaged with
+  // *anything* inside — at least one submission, upload, or task. Without
+  // this they would either auto-complete on entry (bogus) or stay "Not
+  // started" forever (annoying). Engagement-based gating threads the needle.
+  if (requiredTasks.length === 0 && requiredFields.length === 0) {
+    const moduleSubmissions = snap.submissions.some(s => {
+      if (!s.fieldKey.startsWith(`${svcKey}.${m.key}.`)) return false;
+      const f = m.fields?.find(ff => `${svcKey}.${m.key}.${ff.key}` === s.fieldKey);
+      if (!f) return false;
+      return submissionIsFilled(f, s.value, { uploads: snap.uploads, fieldKey: s.fieldKey });
+    });
+    const moduleUploads = snap.uploads.some(u => u.category.startsWith(`${svcKey}.${m.key}.`));
+    const moduleTasksTouched = snap.taskCompletions.some(c => c.taskKey.startsWith(`${svcKey}.${m.key}.`) && c.completed);
+    return moduleSubmissions || moduleUploads || moduleTasksTouched;
+  }
 
   return tasksDone && fieldsDone;
 }
