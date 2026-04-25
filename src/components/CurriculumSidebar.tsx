@@ -113,7 +113,13 @@ function ServiceGroup({
               const isActive = activeModule === m.key;
               const state = m.summary.status;
               const locked = !m.summary.canStart && state !== 'complete';
-              const href = `/onboarding/${orgSlug}/services/${svcKey}#module-${m.key}`;
+              // First module: link to the bare service URL so the page lands
+              // at the top and the user sees the service hero. Otherwise
+              // they'd jump-scroll past it and lose context for which
+              // service they're in. Subsequent modules deep-link as normal.
+              const href = idx === 0
+                ? `/onboarding/${orgSlug}/services/${svcKey}`
+                : `/onboarding/${orgSlug}/services/${svcKey}#module-${m.key}`;
 
               return (
                 <li key={m.key}>
