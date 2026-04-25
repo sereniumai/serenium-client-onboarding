@@ -158,13 +158,15 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
   const [primaryEmail, setPrimaryEmail] = useState(org.primaryContactEmail ?? '');
   const [primaryPhone, setPrimaryPhone] = useState(org.primaryContactPhone ?? '');
   const [status, setStatus] = useState<OrgStatus>(org.status);
+  const [leadSource, setLeadSource] = useState<string>(org.leadSource ?? '');
 
   const dirty =
     businessName !== org.businessName ||
     primaryName !== (org.primaryContactName ?? '') ||
     primaryEmail !== (org.primaryContactEmail ?? '') ||
     primaryPhone !== (org.primaryContactPhone ?? '') ||
-    status !== org.status;
+    status !== org.status ||
+    leadSource !== (org.leadSource ?? '');
 
   const save = async () => {
     try {
@@ -176,6 +178,7 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
           primaryContactEmail: primaryEmail.trim() || null,
           primaryContactPhone: primaryPhone.trim() || null,
           status,
+          leadSource: (leadSource || null) as import('../../types').LeadSource | null,
         },
       });
       toast.success('Saved');
@@ -271,6 +274,20 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
               <option value="live">Live</option>
               <option value="paused">Paused</option>
               <option value="churned">Churned</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">How did they find us?</label>
+            <select className="input" value={leadSource} onChange={e => setLeadSource(e.target.value)}>
+              <option value="">Not set</option>
+              <option value="facebook_ad">Facebook ads</option>
+              <option value="google_ads">Google Ads</option>
+              <option value="referral">Referral</option>
+              <option value="outreach">Outreach</option>
+              <option value="socials">Socials</option>
+              <option value="networking">Networking</option>
+              <option value="unsure">Unsure / not tracked</option>
+              <option value="other">Other</option>
             </select>
           </div>
         </div>

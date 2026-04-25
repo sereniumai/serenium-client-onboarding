@@ -13,7 +13,6 @@ import {
   revenueYTD,
 } from '../../lib/db/revenue';
 import { getService } from '../../config/modules';
-import { SERVICE_ICON } from '../../config/serviceIcons';
 import type { Organization, ServiceKey } from '../../types';
 import { FieldTooltip } from '../../components/FieldTooltip';
 import { cn } from '../../lib/cn';
@@ -66,21 +65,6 @@ export function RevenuePage() {
   const prevMonth = monthly[monthly.length - 2];
   const momChange = prevMonth && prevMonth.revenue > 0 ? ((thisMonth - prevMonth.revenue) / prevMonth.revenue) * 100 : null;
 
-  // Service mix (current MRR breakdown)
-  const serviceMix = useMemo(() => {
-    const today = todayStr();
-    const map: Partial<Record<ServiceKey, number>> = {};
-    for (const l of lines) {
-      if (l.type !== 'monthly') continue;
-      if (l.startedAt > today) continue;
-      if (l.endedAt && l.endedAt <= today) continue;
-      map[l.serviceKey] = (map[l.serviceKey] ?? 0) + l.amountCents;
-    }
-    return Object.entries(map)
-      .map(([key, cents]) => ({ key: key as ServiceKey, cents: cents as number }))
-      .sort((a, b) => b.cents - a.cents);
-  }, [lines]);
-
   // Lead source counts: how many clients came from each source.
   const leadCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -114,33 +98,6 @@ export function RevenuePage() {
       .map(([key, cents]) => ({ key: key as ServiceKey, cents: cents as number }))
       .sort((a, b) => b.cents - a.cents);
   }, [lines]);
-
-  // Lead source mix (% of YTD revenue by lead source)
-  const leadMix = useMemo(() => {
-    const orgIdToLead = new Map<string, string>();
-    for (const o of orgs) orgIdToLead.set(o.id, o.leadSource ?? 'unknown');
-    const totals: Record<string, number> = {};
-    for (const l of lines) {
-      const lead = orgIdToLead.get(l.organizationId) ?? 'unknown';
-      // Total revenue YTD per line
-      const yStart = `${year}-01-01`;
-      if (l.type === 'one_time') {
-        if (l.startedAt >= yStart && l.startedAt <= todayStr()) totals[lead] = (totals[lead] ?? 0) + l.amountCents;
-      } else {
-        // approx: months active YTD * amount
-        for (let m = 1; m <= month; m++) {
-          const eom = new Date(Date.UTC(year, m, 0)).toISOString().slice(0, 10);
-          const som = `${year}-${String(m).padStart(2, '0')}-01`;
-          if (l.startedAt <= eom && (!l.endedAt || l.endedAt > som)) {
-            totals[lead] = (totals[lead] ?? 0) + l.amountCents;
-          }
-        }
-      }
-    }
-    return Object.entries(totals)
-      .map(([k, v]) => ({ source: k, cents: v }))
-      .sort((a, b) => b.cents - a.cents);
-  }, [lines, orgs, year, month]);
 
   // Per-client roll-up
   const perClient = useMemo(() => {
@@ -293,45 +250,40 @@ export function RevenuePage() {
             <RevenueChart monthly={monthly} />
           </section>
 
-          {/* WHERE MONEY COMES FROM (per service) */}
-          {(serviceMix.length > 0 || earningsByService.length > 0) && (
-            <section className="card mb-10">
-              <p className="eyebrow mb-1">Where the money comes from</p>
-              <h2 className="font-display font-bold text-xl mb-1">Earned by service</h2>
-              <p className="text-xs text-white/50 mb-5">Total earned to date per service (one-times + accrued retainer months). Business Profile excluded since it's not a billable service.</p>
-              {earningsByService.length > 0 ? (
-                <ServiceEarningsBars earnings={earningsByService} />
-              ) : (
-                <p className="text-sm text-white/45">No revenue logged yet.</p>
-              )}
-
-              {serviceMix.length > 0 && (
-                <div className="mt-7 pt-6 border-t border-border-subtle">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-3">Current MRR mix · what's billing right now</p>
-                  <ServiceMixBars mix={serviceMix} total={mrr} />
-                </div>
-              )}
+          {/* WHERE MONEY COMES FROM + WHERE LEADS COME FROM (side by side) */}
+          <div className="grid md:grid-cols-2 gap-3 mb-10">
+            <section className="card">
+              <div className="flex items-center justify-between mb-1">
+                <p className="eyebrow">Earnings by service</p>
+                <FieldTooltip text="Total earned to date per service: every one-time payment plus the accrued sum of every monthly retainer for the months it's been active. Business Profile excluded since it's not a billable service." />
+              </div>
+              <h2 className="font-display font-bold text-base mb-4">Where money comes from</h2>
+              {earningsByService.length > 0
+                ? <ColumnChart bars={earningsByService.map(e => ({
+                    key: e.key,
+                    label: getService(e.key)?.label.split(' ')[0] ?? e.key,
+                    value: e.cents,
+                    formatted: fmtCAD(e.cents, { compact: true }),
+                  }))} />
+                : <EmptyChart text="No revenue logged yet." />}
             </section>
-          )}
 
-          {/* WHERE LEADS COME FROM */}
-          {(leadCounts.length > 0 || leadMix.length > 0) && (
-            <section className="card mb-10">
-              <p className="eyebrow mb-1">Where leads come from</p>
-              <h2 className="font-display font-bold text-xl mb-1">Lead source breakdown</h2>
-              <p className="text-xs text-white/50 mb-5">How many clients came from each channel, and the YTD revenue each channel produced.</p>
-
-              <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-3">Number of clients · all-time</p>
-              <LeadCountBars counts={leadCounts} totalClients={orgs.length} />
-
-              {leadMix.length > 0 && (
-                <div className="mt-7 pt-6 border-t border-border-subtle">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-3">Revenue by lead source · year-to-date</p>
-                  <LeadSourceMix mix={leadMix} />
-                </div>
-              )}
+            <section className="card">
+              <div className="flex items-center justify-between mb-1">
+                <p className="eyebrow">Clients per source</p>
+                <FieldTooltip text="How many clients came from each lead source. Helps you spot which channel is producing real customers (vs just calls). Set the source on a client's Overview tab." />
+              </div>
+              <h2 className="font-display font-bold text-base mb-4">Where leads come from</h2>
+              {leadCounts.length > 0
+                ? <ColumnChart bars={leadCounts.map(c => ({
+                    key: c.source,
+                    label: shortLeadLabel(c.source),
+                    value: c.count,
+                    formatted: String(c.count),
+                  }))} colour="success" />
+                : <EmptyChart text="No clients yet." />}
             </section>
-          )}
+          </div>
 
           {/* CLIENTS SECTION */}
           <section className="mb-10">
@@ -478,111 +430,7 @@ function RevenueChart({ monthly }: { monthly: Array<{ label: string; revenue: nu
   );
 }
 
-// ─── SERVICE MIX BARS ──────────────────────────────────────────────────────
-
-function ServiceMixBars({ mix, total }: { mix: Array<{ key: ServiceKey; cents: number }>; total: number }) {
-  return (
-    <div className="space-y-2.5">
-      {mix.map(m => {
-        const def = getService(m.key);
-        if (!def) return null;
-        const Icon = SERVICE_ICON[m.key];
-        const pct = total > 0 ? (m.cents / total) * 100 : 0;
-        return (
-          <div key={m.key}>
-            <div className="flex items-center gap-2.5 mb-1">
-              <div className="h-7 w-7 rounded-lg bg-orange/10 text-orange flex items-center justify-center shrink-0">
-                <Icon className="h-3.5 w-3.5" />
-              </div>
-              <p className="text-sm font-medium flex-1 truncate">{def.label}</p>
-              <p className="text-sm tabular-nums text-white/85">{fmtCAD(m.cents)}<span className="text-white/40 font-normal text-xs">/mo</span></p>
-              <p className="text-xs text-white/50 tabular-nums w-12 text-right">{pct.toFixed(0)}%</p>
-            </div>
-            <div className="h-1.5 ml-9 rounded-full bg-bg-tertiary overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${pct}%` }}
-                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className="h-full bg-orange rounded-full"
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── SERVICE EARNINGS (cumulative, lifetime) ──────────────────────────────
-
-function ServiceEarningsBars({ earnings }: { earnings: Array<{ key: ServiceKey; cents: number }> }) {
-  const max = Math.max(...earnings.map(e => e.cents), 1);
-  const total = earnings.reduce((s, e) => s + e.cents, 0);
-  return (
-    <div className="space-y-3">
-      {earnings.map(e => {
-        const def = getService(e.key);
-        if (!def) return null;
-        const Icon = SERVICE_ICON[e.key];
-        const widthPct = (e.cents / max) * 100;
-        const sharePct = total > 0 ? (e.cents / total) * 100 : 0;
-        return (
-          <div key={e.key}>
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <div className="h-7 w-7 rounded-lg bg-orange/10 text-orange flex items-center justify-center shrink-0">
-                <Icon className="h-3.5 w-3.5" />
-              </div>
-              <p className="text-sm font-medium flex-1 truncate">{def.label}</p>
-              <p className="text-sm tabular-nums font-semibold">{fmtCAD(e.cents)}</p>
-              <p className="text-xs text-white/45 tabular-nums w-12 text-right">{sharePct.toFixed(0)}%</p>
-            </div>
-            <div className="h-2 ml-9 rounded-full bg-bg-tertiary overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${widthPct}%` }}
-                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                className="h-full bg-gradient-to-r from-orange to-orange-hover rounded-full"
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── LEAD SOURCE COUNTS (clients per source) ──────────────────────────────
-
-function LeadCountBars({ counts, totalClients }: { counts: Array<{ source: string; count: number }>; totalClients: number }) {
-  const max = Math.max(...counts.map(c => c.count), 1);
-  return (
-    <div className="space-y-2.5">
-      {counts.map(c => {
-        const widthPct = (c.count / max) * 100;
-        const sharePct = totalClients > 0 ? (c.count / totalClients) * 100 : 0;
-        return (
-          <div key={c.source}>
-            <div className="flex items-center gap-2.5 mb-1">
-              <p className="text-sm font-medium flex-1">{LEAD_LABEL[c.source] ?? c.source}</p>
-              <p className="text-sm tabular-nums font-semibold">{c.count}</p>
-              <p className="text-xs text-white/45 tabular-nums w-12 text-right">{sharePct.toFixed(0)}%</p>
-            </div>
-            <div className="h-2 rounded-full bg-bg-tertiary overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${widthPct}%` }}
-                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className="h-full bg-success rounded-full"
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── LEAD SOURCE MIX ───────────────────────────────────────────────────────
+// ─── COMPACT COLUMN CHART ──────────────────────────────────────────────────
 
 const LEAD_LABEL: Record<string, string> = {
   facebook_ad: 'Facebook ads',
@@ -597,31 +445,55 @@ const LEAD_LABEL: Record<string, string> = {
 };
 const LEAD_ORDER = ['facebook_ad', 'google_ads', 'referral', 'outreach', 'socials', 'networking', 'other', 'unsure', 'unknown'];
 
-function LeadSourceMix({ mix }: { mix: Array<{ source: string; cents: number }> }) {
-  const total = mix.reduce((s, m) => s + m.cents, 0);
+function shortLeadLabel(source: string): string {
+  switch (source) {
+    case 'facebook_ad': return 'Facebook';
+    case 'google_ads': return 'Google';
+    case 'referral': return 'Referral';
+    case 'outreach': return 'Outreach';
+    case 'socials': return 'Socials';
+    case 'networking': return 'Network';
+    case 'other': return 'Other';
+    case 'unsure': return 'Unsure';
+    case 'unknown': return 'Not set';
+    default: return source;
+  }
+}
+
+function ColumnChart({ bars, colour = 'orange' }: {
+  bars: Array<{ key: string; label: string; value: number; formatted: string }>;
+  colour?: 'orange' | 'success';
+}) {
+  const max = Math.max(...bars.map(b => b.value), 1);
+  const fillClass = colour === 'success'
+    ? 'bg-gradient-to-t from-success/80 to-success'
+    : 'bg-gradient-to-t from-orange/80 to-orange';
   return (
-    <div className="space-y-2.5">
-      {mix.map(m => {
-        const pct = total > 0 ? (m.cents / total) * 100 : 0;
+    <div className="flex items-end gap-2 h-40 pt-3">
+      {bars.map(b => {
+        const heightPct = (b.value / max) * 100;
         return (
-          <div key={m.source}>
-            <div className="flex items-center gap-2.5 mb-1">
-              <p className="text-sm font-medium flex-1">{LEAD_LABEL[m.source] ?? m.source}</p>
-              <p className="text-sm tabular-nums text-white/85">{fmtCAD(m.cents)}</p>
-              <p className="text-xs text-white/50 tabular-nums w-12 text-right">{pct.toFixed(0)}%</p>
-            </div>
-            <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+          <div key={b.key} className="flex-1 min-w-0 flex flex-col items-center gap-1.5">
+            <p className="text-[11px] tabular-nums font-semibold text-white whitespace-nowrap">{b.formatted}</p>
+            <div className="flex-1 w-full flex items-end">
               <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${pct}%` }}
+                initial={{ height: 0 }}
+                animate={{ height: `${Math.max(2, heightPct)}%` }}
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className="h-full bg-success rounded-full"
+                className={cn('w-full rounded-t-md', fillClass)}
               />
             </div>
+            <p className="text-[10px] text-white/55 truncate w-full text-center" title={b.label}>{b.label}</p>
           </div>
         );
       })}
     </div>
+  );
+}
+
+function EmptyChart({ text }: { text: string }) {
+  return (
+    <div className="h-40 flex items-center justify-center text-sm text-white/40">{text}</div>
   );
 }
 
