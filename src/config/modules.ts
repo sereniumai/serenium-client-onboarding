@@ -181,7 +181,7 @@ const BUSINESS_PROFILE: ServiceDef = {
         { key: 'certifications', label: 'Certifications (GAF, IKO, CRCA, etc.)', type: 'repeatable', tooltip: 'Manufacturer certifications and trade-body memberships (GAF Master Elite, IKO ROOFPRO, CRCA, BBB Accredited). These are huge trust signals on your site and in ads.' },
         { key: 'awards', label: 'Awards and "Best of" lists', type: 'repeatable', tooltip: 'Any "Best of" lists, HomeStars Best of, Consumer Choice, local newspaper awards, etc. Year and source if you have it. We turn these into trust badges on your site.' },
         { key: 'warranty', label: 'Warranty terms (workmanship and materials)', type: 'textarea', tooltip: 'Plain language is fine. Example: "10-year workmanship, lifetime manufacturer on GAF shingles." Used in ads, on site, and when the AI answers warranty questions.' },
-        { key: 'insurance', label: 'Insurance you carry (liability, WCB, bonding)', type: 'textarea', tooltip: 'Coverage amounts and types (e.g. "$5M liability, WCB in good standing, fully bonded"). "Fully insured" is one of the strongest trust phrases we can put on your site.' },
+        { key: 'insurance', label: 'Insurance you carry (liability, WCB Alberta, bonding)', type: 'textarea', helpText: 'List the coverages and amounts. Example: "$5M general liability, WCB Alberta in good standing, fully bonded."', tooltip: 'Specific coverage amounts (e.g. "$5M liability, WCB Alberta active, fully bonded"). "Fully insured" is one of the strongest trust phrases we can put on your site, especially in Alberta where homeowners specifically check for WCB.' },
       ],
     },
     {
@@ -191,7 +191,7 @@ const BUSINESS_PROFILE: ServiceDef = {
       estimatedMinutes: 2,
       fields: [
         { key: 'financing_offered', label: 'Do you offer financing?', type: 'select', options: ['Yes', 'No'], required: true, tooltip: 'If Yes, your AI will mention financing when price comes up, a common conversion booster for bigger roof jobs.' },
-        { key: 'financing_partners', label: 'Partners (Hearth, GreenSky, etc.)', type: 'repeatable', conditional: { field: 'financing_offered', op: 'eq', value: 'Yes' }, tooltip: 'List who provides your financing (Hearth, GreenSky, Financeit, etc.) and any rate-range you can advertise. The AI uses this when callers hesitate on price.' },
+        { key: 'financing_partners', label: 'Financing partners', type: 'repeatable', conditional: { field: 'financing_offered', op: 'eq', value: 'Yes' }, helpText: 'One per line. Common ones for Alberta roofers: Financeit, FinanceIt Connect, EasyFinancial, SnapFinance, in-house terms.', tooltip: 'List who provides your financing (Financeit, EasyFinancial, in-house, etc.) and any rate-range you can advertise. The AI uses this when callers hesitate on price.' },
       ],
     },
     {

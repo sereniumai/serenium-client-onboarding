@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from 'react';
-import { useParams, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, Navigate, Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
+import { FinalCelebration } from '../../components/FinalCelebration';
 import { motion } from 'framer-motion';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
@@ -90,10 +91,12 @@ export function OnboardingDashboard() {
   const firstName = user?.fullName.split(' ')[0] ?? 'there';
 
   // Post-onboarding states handled here:
-  // - status === 'live'       → reports have been unlocked, redirect to /reports
+  // - status === 'live'       → reports have been unlocked. First time the
+  //                            user lands here we show a welcome celebration,
+  //                            after that we redirect straight to /reports.
   // - status === 'onboarding' + 100% done → pending review (waiting for team)
   // - otherwise → active onboarding dashboard
-  if (org.status === 'live') return <Navigate to={`/onboarding/${org.slug}/reports`} replace />;
+  if (org.status === 'live') return <LiveLandingGate org={org} firstName={firstName} userId={user?.id} />;
   if (onboardingDone) {
     return (
       <AppShell>
@@ -314,4 +317,40 @@ function findLastTouchedModule(snapshot: import('../../lib/progress').OrgSnapsho
     }
   }
   return null;
+}
+
+function LiveLandingGate({ org, firstName, userId }: {
+  org: { id: string; slug: string; businessName: string };
+  firstName: string;
+  userId?: string;
+}) {
+  const navigate = useNavigate();
+  const seenKey = `serenium.live-seen.${org.id}.${userId ?? 'anon'}`;
+  const [show, setShow] = useState(() => {
+    if (!userId) return false;
+    try { return window.localStorage.getItem(seenKey) !== '1'; }
+    catch { return false; }
+  });
+
+  useEffect(() => {
+    if (!show) {
+      navigate(`/onboarding/${org.slug}/reports`, { replace: true });
+    }
+  }, [show, org.slug, navigate]);
+
+  if (!show) return null;
+
+  return (
+    <AppShell>
+      <FinalCelebration
+        show
+        businessName={org.businessName}
+        firstName={firstName}
+        onContinue={() => {
+          try { window.localStorage.setItem(seenKey, '1'); } catch { /* storage blocked */ }
+          setShow(false);
+        }}
+      />
+    </AppShell>
+  );
 }
