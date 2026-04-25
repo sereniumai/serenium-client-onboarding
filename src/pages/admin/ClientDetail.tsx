@@ -228,6 +228,35 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
         </div>
       )}
 
+      {org.status === 'live' && (
+        <div className="card border-success/30 bg-success/5">
+          <div className="flex items-start gap-4">
+            <div className="h-10 w-10 rounded-xl bg-success/20 text-success flex items-center justify-center shrink-0">
+              <Check className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold">Live · reports view unlocked</p>
+              <p className="text-xs text-white/60 mt-0.5">Marked live by accident? Switch them back to onboarding mode and the reports view re-locks until you mark them live again.</p>
+            </div>
+            <button
+              onClick={async () => {
+                if (!confirm(`Switch ${org.businessName} back to onboarding? Their reports view will re-lock and they'll see the onboarding dashboard again on next login.`)) return;
+                try {
+                  await updateOrg.mutateAsync({ id: org.id, patch: { status: 'onboarding' } });
+                  toast.success('Switched back to onboarding mode');
+                } catch (err) {
+                  toast.error('Could not switch', { description: (err as Error).message });
+                }
+              }}
+              disabled={updateOrg.isPending}
+              className="btn-secondary shrink-0"
+            >
+              Back to onboarding
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card space-y-4">
         <p className="eyebrow">Business details</p>
         <LabeledInput label="Business name" value={businessName} onChange={setBusinessName} />

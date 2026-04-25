@@ -397,26 +397,29 @@ function GoalHero({ goal, mrr, monthly }: { goal: BusinessGoal; mrr: number; mon
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-1">Gap to goal</p>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-1">Still to add</p>
             <p className="font-display font-bold text-xl tabular-nums">{fmtCAD(remaining)}</p>
+            <p className="text-[11px] text-white/40 mt-1">In monthly recurring revenue.</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-1">Need per month</p>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-1">New MRR to add each month</p>
             <p className="font-display font-bold text-xl tabular-nums">
               {monthsLeft > 0 ? fmtCAD(neededPerMonth) : '—'}
-              {monthsLeft > 0 && <span className="text-white/40 text-sm font-normal"> · {monthsLeft}mo left</span>}
             </p>
+            <p className="text-[11px] text-white/40 mt-1">{monthsLeft > 0 ? `For ${monthsLeft} months to hit ${fmtCAD(goal.targetMrrCents, { compact: true })}.` : 'Goal date passed.'}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-1">On pace?</p>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-semibold mb-1">Projected by goal date</p>
             <p className={cn(
               'font-display font-bold text-xl tabular-nums',
-              onPace ? 'text-success' : 'text-warning',
+              paceMrr > 0 ? (onPace ? 'text-success' : 'text-warning') : 'text-white/40',
             )}>
+              {paceMrr > 0 ? fmtCAD(projection) : 'Need data'}
+            </p>
+            <p className="text-[11px] text-white/40 mt-1">
               {paceMrr > 0
-                ? `${fmtCAD(projection)}`
-                : '—'}
-              <span className="text-white/40 text-sm font-normal"> · {onPace ? 'on track' : 'behind'}</span>
+                ? (onPace ? 'On track to hit the goal.' : 'Behind, pick up the pace.')
+                : 'Add a few months of MRR to see your trajectory.'}
             </p>
           </div>
         </div>
