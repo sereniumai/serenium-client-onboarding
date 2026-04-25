@@ -1202,6 +1202,7 @@ function AdminSetupCard({ orgId }: { orgId: string }) {
   useEffect(() => { if (retell !== null) setNumber(retell); }, [retell]);
 
   const aiReceptionistReady = !!flags['ai_receptionist_ready_for_connection'];
+  const aiSmsGhlReady = !!flags['ai_sms_ghl_ready'];
 
   const saveNumber = useMutation({
     mutationFn: async () => {
@@ -1268,6 +1269,23 @@ function AdminSetupCard({ orgId }: { orgId: string }) {
     onError: (err: Error) => toast.error('Save failed', { description: err.message }),
   });
 
+  const toggleSmsFlag = useMutation({
+    mutationFn: async (value: boolean) => {
+      const { setAdminFlag } = await import('../../lib/db/progress');
+      await setAdminFlag(orgId, 'ai_sms_ghl_ready', value);
+      supabase.from('activity_log').insert({
+        organization_id: orgId,
+        action: 'admin_config_changed',
+        metadata: { type: 'ai_sms_ghl_ready', value },
+      }).then(({ error }) => { if (error) console.warn('[activity] flag log failed', error); });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminFlags(orgId) });
+      toast.success('GoHighLevel access flag updated');
+    },
+    onError: (err: Error) => toast.error('Save failed', { description: err.message }),
+  });
+
   const dirty = number.trim() !== (retell ?? '');
 
   return (
@@ -1310,6 +1328,23 @@ function AdminSetupCard({ orgId }: { orgId: string }) {
           )}
         >
           <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white transition-transform', aiReceptionistReady ? 'translate-x-6' : 'translate-x-1')} />
+        </button>
+      </div>
+
+      <div className="pt-4 border-t border-border-subtle flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">GoHighLevel access is ready for the client</p>
+          <p className="text-xs text-white/55 mt-0.5">Flip this on once the client has GHL credentials. Unlocks the calendar setup step on AI SMS.</p>
+        </div>
+        <button
+          onClick={() => toggleSmsFlag.mutate(!aiSmsGhlReady)}
+          disabled={toggleSmsFlag.isPending}
+          className={cn(
+            'relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0',
+            aiSmsGhlReady ? 'bg-success' : 'bg-bg-tertiary',
+          )}
+        >
+          <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white transition-transform', aiSmsGhlReady ? 'translate-x-6' : 'translate-x-1')} />
         </button>
       </div>
     </div>
@@ -1444,11 +1479,15 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
   onCancel: () => void;
 }) {
   const [period, setPeriod] = useState(existing?.period ?? new Date().toISOString().slice(0, 7));
-  const [serviceKey, setServiceKey] = useState<ServiceKey | ''>(existing?.serviceKey ?? '');
   const [title, setTitle] = useState(existing?.title ?? '');
   const [summary, setSummary] = useState(existing?.summary ?? '');
   const [loomUrl, setLoomUrl] = useState(existing?.loomUrl ?? '');
-  const [highlights, setHighlights] = useState<string[]>(existing?.highlights ?? []);
+  // Second Loom slot — stored alongside the first in the highlights array
+  // under a marker so we don't need a schema migration. Anything starting
+  // with "loom2://" is treated as the second video URL on read.
+  const initialLoom2 = (existing?.highlights ?? []).find(h => h.startsWith('loom2://'))?.slice('loom2://'.length) ?? '';
+  const [loomUrl2, setLoomUrl2] = useState(initialLoom2);
+  const [highlights, setHighlights] = useState<string[]>((existing?.highlights ?? []).filter(h => !h.startsWith('loom2://')));
   const [files, setFiles] = useState<import('../../types').ReportFile[]>(existing?.files ?? []);
   const [pending, setPending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -1494,10 +1533,15 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
     try {
       const { createReport, updateReport } = await import('../../lib/db/reports');
       const cleaned = highlights.map(h => h.trim()).filter(Boolean);
+      // Stash the second Loom URL alongside highlights using a "loom2://"
+      // prefix so we don't need a schema migration. Reads strip it back out.
+      const highlightsWithLoom2 = loomUrl2.trim()
+        ? [...cleaned, `loom2://${loomUrl2.trim()}`]
+        : cleaned;
       if (existing) {
-        await updateReport(existing.id, { period, serviceKey: serviceKey || undefined, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned, files });
+        await updateReport(existing.id, { period, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: highlightsWithLoom2, files });
       } else {
-        await createReport({ organizationId: orgId, period, serviceKey: serviceKey || undefined, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: cleaned, files, createdBy: userId });
+        await createReport({ organizationId: orgId, period, title: title.trim(), summary: summary.trim() || undefined, loomUrl: loomUrl.trim() || undefined, highlights: highlightsWithLoom2, files, createdBy: userId });
       }
       onSaved();
     } catch (err) {
@@ -1510,22 +1554,10 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
   return (
     <div className="card space-y-4 border-orange/30">
       <p className="eyebrow">{existing ? 'Editing report' : 'New report'}</p>
-      <div className="grid md:grid-cols-[160px,1fr,1fr] gap-3">
+      <div className="grid md:grid-cols-[160px,1fr] gap-3">
         <div>
           <label className="label">Period</label>
           <input type="month" className="input" value={period} onChange={e => setPeriod(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Service</label>
-          <select className="input" value={serviceKey} onChange={e => setServiceKey(e.target.value as ServiceKey | '')}>
-            <option value="">Untagged / general</option>
-            <option value="website">SEO / Website</option>
-            <option value="google_ads">Google Ads</option>
-            <option value="google_business_profile">Google Business Profile</option>
-            <option value="facebook_ads">Facebook Ads</option>
-            <option value="ai_sms">AI SMS</option>
-            <option value="ai_receptionist">AI Voice Receptionist</option>
-          </select>
         </div>
         <div>
           <label className="label">Title</label>
@@ -1537,8 +1569,13 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
         <textarea rows={4} className="input" placeholder="What happened this month, what worked, what we're changing next month." value={summary} onChange={e => setSummary(e.target.value)} />
       </div>
       <div>
-        <label className="label">Loom / YouTube video URL (optional)</label>
+        <label className="label">Loom / YouTube video URL #1 (optional)</label>
         <input type="url" className="input" placeholder="https://www.loom.com/share/..." value={loomUrl} onChange={e => setLoomUrl(e.target.value)} />
+      </div>
+      <div>
+        <label className="label">Loom / YouTube video URL #2 (optional)</label>
+        <input type="url" className="input" placeholder="https://www.loom.com/share/..." value={loomUrl2} onChange={e => setLoomUrl2(e.target.value)} />
+        <p className="text-xs text-white/40 mt-1">For when one report covers two angles, e.g. one website-focused and one ads-focused.</p>
       </div>
       <div>
         <label className="label">Headline numbers / bullets</label>

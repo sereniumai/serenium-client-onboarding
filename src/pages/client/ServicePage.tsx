@@ -405,11 +405,26 @@ function ModuleSection({
               <span className="text-sm text-white/80 flex-1">Section complete. Autosaved.</span>
             </div>
           </div>
-        ) : !readyFor && !adminLocked && (enabledFields.length > 0 || (module.tasks?.length ?? 0) > 0) && (
+        ) : !readyFor && !adminLocked && module.allowManualComplete ? (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                onSetModuleStatus('complete');
+                sfx.submit();
+                onComplete();
+              }}
+              className="btn-secondary w-full"
+            >
+              Mark this section complete
+            </button>
+            <p className="text-[11px] text-white/40 mt-2 text-center">Use this if our default hours already match yours.</p>
+          </div>
+        ) : !readyFor && !adminLocked && (enabledFields.length > 0 || (module.tasks?.length ?? 0) > 0) ? (
           <div className="pt-2 flex items-center gap-2 text-xs text-white/45">
             <Circle className="h-3.5 w-3.5" /> Not yet complete
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

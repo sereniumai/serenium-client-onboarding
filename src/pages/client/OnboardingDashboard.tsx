@@ -133,7 +133,7 @@ export function OnboardingDashboard() {
               <h1 className="font-display font-black text-[clamp(1.875rem,5vw,3.25rem)] leading-[1.02] tracking-[-0.035em] mb-3">
                 {timeOfDayGreeting()}, <span className="text-orange">{firstName}</span>.
               </h1>
-              <p className="text-white/55 text-base md:text-lg max-w-2xl leading-relaxed">{motivation(progress.overall, reports.length > 0, !onboardingDone && !resume)}</p>
+              <p className="text-white/55 text-base md:text-lg max-w-2xl leading-relaxed">{motivation(progress.overall, reports.length > 0, !onboardingDone && !resume && progress.overall > 0)}</p>
 
               {!onboardingDone && resume && (
                 <Link
@@ -175,8 +175,14 @@ export function OnboardingDashboard() {
               if (!svc) return null;
               const summaries = progress.perService[svcKey];
               const Icon = SERVICE_ICON[svcKey];
-              const svcComplete = summaries.filter(s => s.status === 'complete').length;
-              const svcTotal = summaries.length;
+              // Admin-locked modules (e.g. Phone number implementation before
+              // we provision the AI number, GHL calendar setup before we hand
+              // over access) can't be finished by the client. Exclude them
+              // so the service shows complete once everything client-fillable
+              // is done.
+              const completable = summaries.filter(s => s.canStart);
+              const svcComplete = completable.filter(s => s.status === 'complete').length;
+              const svcTotal = completable.length;
               const svcPct = svcTotal === 0 ? 0 : Math.round((svcComplete / svcTotal) * 100);
               const svcDone = svcTotal > 0 && svcComplete === svcTotal;
               const anyInProgress = summaries.some(s => s.status !== 'not_started');

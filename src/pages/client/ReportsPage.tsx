@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, FileBarChart2, FileText, Download, Eye, EyeOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileBarChart2, FileText, Download, Eye } from 'lucide-react';
 import { LoadingState } from '../../components/LoadingState';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
@@ -14,8 +14,7 @@ import { getReportFileSignedUrl } from '../../lib/db/reportFiles';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
 import { Markdown } from '../../components/Markdown';
 import { cn } from '../../lib/cn';
-import type { MonthlyReport, ServiceKey } from '../../types';
-import { getService } from '../../config/modules';
+import type { MonthlyReport } from '../../types';
 
 export function ReportsPage() {
   const { orgSlug } = useParams();
@@ -171,9 +170,30 @@ function MonthFolder({ period, reports, activeId, onPick }: {
   activeId: string | null;
   onPick: (id: string) => void;
 }) {
+  // One report per month is the new norm — drop service grouping and surface
+  // each report as a direct child of the month. The single-report case shows
+  // the report inline; multi-report (legacy) lists them.
+  const single = reports.length === 1 ? reports[0] : null;
+  if (single) {
+    const isActive = activeId === single.id;
+    return (
+      <li>
+        <button
+          onClick={() => onPick(single.id)}
+          className={cn(
+            'w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors text-left',
+            isActive ? 'bg-orange/15 text-orange' : 'text-white/75 hover:bg-bg-tertiary/60 hover:text-white',
+          )}
+        >
+          <FileText className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{monthName(period)}</span>
+        </button>
+      </li>
+    );
+  }
+
   const hasActive = reports.some(r => r.id === activeId);
   const [open, setOpen] = useState(hasActive);
-  const services = useMemo(() => groupByService(reports), [reports]);
 
   return (
     <li>
@@ -197,22 +217,18 @@ function MonthFolder({ period, reports, activeId, onPick }: {
             transition={{ duration: 0.16 }}
             className="overflow-hidden mt-0.5 ml-3 pl-3 border-l border-border-subtle/60 space-y-0.5"
           >
-            {services.map(group => (
-              <li key={group.serviceKey ?? 'untagged'}>
-                <p className="text-[10px] uppercase tracking-[0.18em] text-white/35 px-2 pt-2 pb-1">{group.label}</p>
-                {group.reports.map(r => (
-                  <button
-                    key={r.id}
-                    onClick={() => onPick(r.id)}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors text-left',
-                      activeId === r.id ? 'bg-orange/15 text-orange' : 'text-white/70 hover:bg-bg-tertiary/60 hover:text-white',
-                    )}
-                  >
-                    <FileText className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{r.title}</span>
-                  </button>
-                ))}
+            {reports.map(r => (
+              <li key={r.id}>
+                <button
+                  onClick={() => onPick(r.id)}
+                  className={cn(
+                    'w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors text-left',
+                    activeId === r.id ? 'bg-orange/15 text-orange' : 'text-white/70 hover:bg-bg-tertiary/60 hover:text-white',
+                  )}
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{r.title}</span>
+                </button>
               </li>
             ))}
           </motion.ul>
@@ -224,6 +240,12 @@ function MonthFolder({ period, reports, activeId, onPick }: {
 
 function ReportDetail({ report }: { report: MonthlyReport }) {
   const embed = report.loomUrl ? videoEmbedUrl(report.loomUrl) : null;
+  // Highlights doubles as a stash for the optional second Loom URL — anything
+  // prefixed "loom2://" is the second video. Strip those out for display.
+  const allHighlights = report.highlights ?? [];
+  const loom2Url = allHighlights.find(h => h.startsWith('loom2://'))?.slice('loom2://'.length) ?? null;
+  const highlightsToShow = allHighlights.filter(h => !h.startsWith('loom2://'));
+  const embed2 = loom2Url ? videoEmbedUrl(loom2Url) : null;
 
   return (
     <motion.article
@@ -245,9 +267,15 @@ function ReportDetail({ report }: { report: MonthlyReport }) {
         </div>
       )}
 
-      {report.highlights && report.highlights.length > 0 && (
+      {embed2 && (
+        <div className="aspect-video rounded-xl border border-border-subtle overflow-hidden bg-black mb-5">
+          <iframe src={embed2} allow="fullscreen; clipboard-write" className="w-full h-full" title={`${report.title} – part 2`} />
+        </div>
+      )}
+
+      {highlightsToShow.length > 0 && (
         <div className="grid md:grid-cols-2 gap-2 mb-5">
-          {report.highlights.map((h, idx) => (
+          {highlightsToShow.map((h, idx) => (
             <div key={idx} className="px-3 py-2.5 rounded-lg bg-orange/5 border border-orange/20 text-sm text-white/90">
               {h}
             </div>
@@ -274,29 +302,38 @@ function ReportDetail({ report }: { report: MonthlyReport }) {
 }
 
 function ReportFileRow({ file }: { file: import('../../types').ReportFile & { description?: string } }) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
   const isPdf = file.mimeType === 'application/pdf';
 
-  const togglePreview = async () => {
-    if (open) { setOpen(false); return; }
-    if (signedUrl) { setOpen(true); return; }
+  // View opens the file inline in a new tab — browsers render PDFs natively
+  // there, no iframe + signed-URL Content-Disposition headache.
+  const view = async () => {
     setLoading(true);
     try {
       const url = await getReportFileSignedUrl(file.fileUrl, { download: false });
-      setSignedUrl(url);
-      setOpen(true);
-    } finally { setLoading(false); }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Download fetches the bytes as a blob and triggers a save with the
+  // original filename. Bypasses any browser inline-rendering quirks.
   const download = async () => {
     setLoading(true);
     try {
-      // Force the save dialog by signing with download:true so the browser
-      // doesn't try to render in the same tab.
       const url = await getReportFileSignedUrl(file.fileUrl, { download: true });
-      window.open(url, '_blank', 'noopener,noreferrer');
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = file.fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
     } finally {
       setLoading(false);
     }
@@ -316,24 +353,14 @@ function ReportFileRow({ file }: { file: import('../../types').ReportFile & { de
           <p className="text-[10px] text-white/40 tabular-nums">{sizeKb < 1024 ? `${sizeKb} KB` : `${(sizeKb / 1024).toFixed(1)} MB`}</p>
         </div>
         {isPdf && (
-          <button onClick={togglePreview} disabled={loading} className="btn-secondary !py-1.5 !px-3 text-xs">
-            {open ? <><EyeOff className="h-3.5 w-3.5" /> Hide</> : <><Eye className="h-3.5 w-3.5" /> {loading ? '…' : 'View'}</>}
+          <button onClick={view} disabled={loading} className="btn-secondary !py-1.5 !px-3 text-xs">
+            <Eye className="h-3.5 w-3.5" /> {loading ? '…' : 'View'}
           </button>
         )}
         <button onClick={download} disabled={loading} className="btn-secondary !py-1.5 !px-3 text-xs">
           <Download className="h-3.5 w-3.5" /> {loading ? '…' : 'Download'}
         </button>
       </div>
-      {open && signedUrl && isPdf && (
-        <div className="border-t border-border-subtle bg-black">
-          <iframe
-            src={signedUrl}
-            title={file.fileName}
-            className="w-full"
-            style={{ height: '80vh' }}
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -346,18 +373,6 @@ function groupByMonth(reports: MonthlyReport[]): Array<{ period: string; reports
     .map(([period, items]) => ({ period, reports: items }));
 }
 
-function groupByService(reports: MonthlyReport[]): Array<{ serviceKey: ServiceKey | null; label: string; reports: MonthlyReport[] }> {
-  const byService = new Map<string, MonthlyReport[]>();
-  for (const r of reports) {
-    const key = r.serviceKey ?? '_';
-    (byService.get(key) ?? byService.set(key, []).get(key)!).push(r);
-  }
-  return Array.from(byService.entries()).map(([key, items]) => ({
-    serviceKey: key === '_' ? null : (key as ServiceKey),
-    label: key === '_' ? 'General' : (getService(key as ServiceKey)?.label ?? key),
-    reports: items,
-  }));
-}
 
 function groupByYear(reports: MonthlyReport[]): Array<{ year: number; reports: MonthlyReport[] }> {
   const byYear = new Map<number, MonthlyReport[]>();
