@@ -9,6 +9,7 @@ import { Markdown } from '../../components/Markdown';
 import { FinalCelebration } from '../../components/FinalCelebration';
 import confetti from 'canvas-confetti';
 import { ConditionalLinkBlock } from '../../components/ConditionalLinkBlock';
+import { PausedScreen } from '../../components/PausedScreen';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
 import { useOrgSnapshot, useSetModuleStatus, useSetTaskCompletion } from '../../hooks/useOnboarding';
@@ -69,6 +70,9 @@ export function ServicePage() {
     );
   }
   if (!org || !svc || !snapshot || !progress) return <Navigate to={`/onboarding/${orgSlug}`} replace />;
+  if ((org.status === 'paused' || org.status === 'churned') && user?.role !== 'admin') {
+    return <PausedScreen businessName={org.businessName} status={org.status} />;
+  }
   if (!snapshot.services.some(s => s.serviceKey === svc.key)) {
     return <Navigate to={`/onboarding/${org.slug}`} replace />;
   }

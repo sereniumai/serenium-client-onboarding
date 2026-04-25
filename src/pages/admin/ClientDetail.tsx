@@ -226,6 +226,10 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
         </div>
       )}
 
+      {(org.status === 'live' || org.status === 'paused') && (
+        <PauseActionCard org={org} updateOrg={updateOrg} />
+      )}
+
       <div className="card space-y-4">
         <p className="eyebrow">Business details</p>
         <LabeledInput label="Business name" value={businessName} onChange={setBusinessName} />
@@ -268,6 +272,54 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
         onConfirm={runDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />
+    </div>
+  );
+}
+
+function PauseActionCard({ org, updateOrg }: {
+  org: NonNullable<ReturnType<typeof useOrgBySlug>['data']>;
+  updateOrg: ReturnType<typeof useUpdateOrg>;
+}) {
+  const isPaused = org.status === 'paused';
+  const onAction = async () => {
+    const verb = isPaused ? 'reactivate' : 'pause';
+    if (!confirm(isPaused
+      ? `Reactivate ${org.businessName}? Their portal logins will work again. You'll need to re-enter retainer rates on the Services tab if they're picking up where they left off.`
+      : `Pause ${org.businessName}? Their portal access stops, every active monthly retainer ends today (MRR drops accordingly), and they're removed from "live" counts. All data, reports and history are preserved. Reactivate any time.`,
+    )) return;
+    try {
+      await updateOrg.mutateAsync({ id: org.id, patch: { status: isPaused ? 'live' : 'paused' } });
+      toast.success(isPaused ? `${org.businessName} reactivated.` : `${org.businessName} paused. Logins stopped, billing ended.`);
+    } catch (err) {
+      toast.error(`Could not ${verb}`, { description: (err as Error).message });
+    }
+  };
+  return (
+    <div className={cn(
+      'card flex items-start gap-4',
+      isPaused ? 'border-warning/30 bg-warning/5' : 'border-border-subtle',
+    )}>
+      <div className={cn(
+        'h-10 w-10 rounded-xl flex items-center justify-center shrink-0',
+        isPaused ? 'bg-warning/15 text-warning' : 'bg-bg-tertiary/60 text-white/65',
+      )}>
+        <span className="font-display font-bold text-base">{isPaused ? 'II' : 'I'}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold">{isPaused ? 'Currently paused' : 'Pause this account'}</p>
+        <p className="text-xs text-white/60 mt-0.5">
+          {isPaused
+            ? 'Logins are blocked, monthly retainers ended. Reactivate any time, all data is preserved.'
+            : 'Stops their portal access and ends every active monthly retainer today. Use this when a client takes a break, all data + reports stay safe so you can flip them back on later.'}
+        </p>
+      </div>
+      <button
+        onClick={onAction}
+        disabled={updateOrg.isPending}
+        className={cn(isPaused ? 'btn-primary' : 'btn-secondary', 'shrink-0')}
+      >
+        {updateOrg.isPending ? '…' : isPaused ? 'Reactivate' : 'Pause account'}
+      </button>
     </div>
   );
 }

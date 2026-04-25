@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Navigate, Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { FinalCelebration } from '../../components/FinalCelebration';
+import { PausedScreen } from '../../components/PausedScreen';
 import { motion } from 'framer-motion';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
@@ -96,6 +97,12 @@ export function OnboardingDashboard() {
   //                            after that we redirect straight to /reports.
   // - status === 'onboarding' + 100% done → pending review (waiting for team)
   // - otherwise → active onboarding dashboard
+  // Paused / churned clients hit a soft block. Auth is fine — admin can flip
+  // status back to 'live' and the same login walks straight in. All data is
+  // preserved.
+  if ((org.status === 'paused' || org.status === 'churned') && user?.role !== 'admin') {
+    return <PausedScreen businessName={org.businessName} status={org.status} />;
+  }
   if (org.status === 'live') return <LiveLandingGate org={org} firstName={firstName} userId={user?.id} />;
   if (onboardingDone) {
     return (

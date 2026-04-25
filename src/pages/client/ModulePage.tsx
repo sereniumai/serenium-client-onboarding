@@ -15,6 +15,7 @@ import confetti from 'canvas-confetti';
 
 import { ConditionalLinkBlock } from '../../components/ConditionalLinkBlock';
 import { PresenceBanner } from '../../components/PresenceBanner';
+import { PausedScreen } from '../../components/PausedScreen';
 import { usePresence } from '../../hooks/usePresence';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
@@ -106,6 +107,9 @@ export function ModulePage() {
     );
   }
   if (!org || !svc || !mod || !snapshot) return <Navigate to={`/onboarding/${orgSlug}`} replace />;
+  if ((org.status === 'paused' || org.status === 'churned') && user?.role !== 'admin') {
+    return <PausedScreen businessName={org.businessName} status={org.status} />;
+  }
   const isServiceEnabled = snapshot.services.some(s => s.serviceKey === svc.key);
   const isModDisabled = snapshot.services.find(s => s.serviceKey === svc.key)?.disabledModuleKeys?.includes(mod.key);
   if (!isServiceEnabled || isModDisabled) return <Navigate to={`/onboarding/${org.slug}`} replace />;

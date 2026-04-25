@@ -8,6 +8,7 @@ import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgBySlug } from '../../hooks/useOrgs';
+import { PausedScreen } from '../../components/PausedScreen';
 import { listReportsForOrg, markReportsViewed } from '../../lib/db/reports';
 import { getReportFileSignedUrl } from '../../lib/db/reportFiles';
 import { videoEmbedUrl } from '../../lib/videoEmbed';
@@ -49,6 +50,9 @@ export function ReportsPage() {
     );
   }
   if (!orgSlug || !org) return <Navigate to="/login" replace />;
+  if ((org.status === 'paused' || org.status === 'churned') && user?.role !== 'admin') {
+    return <PausedScreen businessName={org.businessName} status={org.status} />;
+  }
   if (!isLive) return <Navigate to={`/onboarding/${org.slug}`} replace />;
 
   const active = reports.find(r => r.id === openId);

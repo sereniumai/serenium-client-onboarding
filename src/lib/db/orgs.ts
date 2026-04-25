@@ -115,9 +115,11 @@ export async function updateOrg(id: string, patch: UpdateOrgInput): Promise<Orga
     .single();
   if (error) throw error;
 
-  // When a client churns, end every active monthly revenue line so MRR drops
-  // cleanly without admin needing to cancel each service one by one.
-  if (patch.status === 'churned') {
+  // When a client churns or pauses, end every active monthly revenue line so
+  // MRR drops cleanly without admin clicking through each service. Pausing is
+  // soft (account preserved, may reactivate later), churn is final, but both
+  // states should stop billing showing up in MRR while the client isn't paying.
+  if (patch.status === 'churned' || patch.status === 'paused') {
     const today = new Date().toISOString().slice(0, 10);
     supabase
       .from('revenue_lines')
@@ -126,7 +128,7 @@ export async function updateOrg(id: string, patch: UpdateOrgInput): Promise<Orga
       .eq('type', 'monthly')
       .is('ended_at', null)
       .then(({ error: revErr }) => {
-        if (revErr) console.warn('[revenue] auto-end on churn failed', revErr);
+        if (revErr) console.warn('[revenue] auto-end on status flip failed', revErr);
       });
   }
 
