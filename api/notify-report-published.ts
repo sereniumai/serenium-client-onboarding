@@ -101,9 +101,7 @@ export default async function handler(req: Request): Promise<Response> {
   const portalUrl = `https://clients.sereniumai.com/onboarding/${o.slug}/reports`;
   const subject = `Your ${periodLabel(r.period)} report for ${o.business_name} is ready`;
   const html = renderEmail({
-    businessName: o.business_name,
     monthLabel: periodLabel(r.period),
-    reportTitle: r.title,
     portalUrl,
   });
 
@@ -133,8 +131,8 @@ export default async function handler(req: Request): Promise<Response> {
   return json({ ok: true, sent });
 }
 
-function renderEmail({ businessName, monthLabel, reportTitle, portalUrl }: {
-  businessName: string; monthLabel: string; reportTitle: string; portalUrl: string;
+function renderEmail({ monthLabel, portalUrl }: {
+  monthLabel: string; portalUrl: string;
 }): string {
   return `<!doctype html>
 <html><body style="margin:0;padding:0;background:#0A0A0A;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.55;">
@@ -142,9 +140,8 @@ function renderEmail({ businessName, monthLabel, reportTitle, portalUrl }: {
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:40px 32px;">
 <tr><td>
 <p style="margin:0 0 4px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#FF6B1F;font-weight:700;">New monthly report</p>
-<h1 style="margin:0 0 18px;font-size:26px;font-weight:800;letter-spacing:-0.025em;color:#fff;">Your ${escape(monthLabel)} report is ready.</h1>
-<p style="margin:0 0 14px;color:rgba(255,255,255,0.78);font-size:15px;">We've published <strong style="color:#fff;">${escape(reportTitle)}</strong> for <strong style="color:#fff;">${escape(businessName)}</strong>. Log in to read the breakdown, watch the walkthrough video, and download attachments.</p>
-<p style="margin:0 0 32px;"><a href="${portalUrl}" style="display:inline-block;background:#FF6B1F;color:#fff;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:10px;font-size:15px;">Open your reports →</a></p>
+<h1 style="margin:0 0 24px;font-size:26px;font-weight:800;letter-spacing:-0.025em;color:#fff;">Your ${escape(monthLabel)} report is ready.</h1>
+<p style="margin:0 0 32px;"><a href="${portalUrl}" style="display:inline-block;background:#FF6B1F;color:#fff;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:10px;font-size:15px;">Log in to view your report →</a></p>
 <p style="margin:0;color:rgba(255,255,255,0.5);font-size:13px;">Reports stay behind your portal login — we never email PDFs. Questions? Reply to this email and a real person picks it up.</p>
 </td></tr></table></td></tr></table></body></html>`;
 }

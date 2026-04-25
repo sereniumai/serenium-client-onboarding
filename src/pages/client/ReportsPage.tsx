@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, FileBarChart2, FileText, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileBarChart2, FileText, Download, Eye, EyeOff } from 'lucide-react';
 import { LoadingState } from '../../components/LoadingState';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
@@ -274,30 +274,67 @@ function ReportDetail({ report }: { report: MonthlyReport }) {
 }
 
 function ReportFileRow({ file }: { file: import('../../types').ReportFile & { description?: string } }) {
-  const [downloading, setDownloading] = useState(false);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const isPdf = file.mimeType === 'application/pdf';
+
+  const ensureUrl = async (): Promise<string> => {
+    if (signedUrl) return signedUrl;
+    const url = await getReportFileSignedUrl(file.fileUrl);
+    setSignedUrl(url);
+    return url;
+  };
+
+  const togglePreview = async () => {
+    if (open) { setOpen(false); return; }
+    setLoading(true);
+    try { await ensureUrl(); setOpen(true); }
+    finally { setLoading(false); }
+  };
+
   const download = async () => {
-    setDownloading(true);
+    setLoading(true);
     try {
-      const url = await getReportFileSignedUrl(file.fileUrl);
+      const url = await ensureUrl();
       window.open(url, '_blank', 'noopener,noreferrer');
     } finally {
-      setDownloading(false);
+      setLoading(false);
     }
   };
+
   const sizeKb = Math.round(file.fileSize / 1024);
+
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-border-subtle hover:border-border-emphasis bg-bg-secondary/40 transition-colors">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange/10 text-orange shrink-0">
-        <FileText className="h-4 w-4" />
+    <div className="rounded-lg border border-border-subtle bg-bg-secondary/40 hover:border-border-emphasis transition-colors overflow-hidden">
+      <div className="flex items-center gap-3 p-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange/10 text-orange shrink-0">
+          <FileText className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{file.fileName}</p>
+          {file.description && <p className="text-xs text-white/55 truncate">{file.description}</p>}
+          <p className="text-[10px] text-white/40 tabular-nums">{sizeKb < 1024 ? `${sizeKb} KB` : `${(sizeKb / 1024).toFixed(1)} MB`}</p>
+        </div>
+        {isPdf && (
+          <button onClick={togglePreview} disabled={loading} className="btn-secondary !py-1.5 !px-3 text-xs">
+            {open ? <><EyeOff className="h-3.5 w-3.5" /> Hide</> : <><Eye className="h-3.5 w-3.5" /> {loading ? '…' : 'View'}</>}
+          </button>
+        )}
+        <button onClick={download} disabled={loading} className="btn-secondary !py-1.5 !px-3 text-xs">
+          <Download className="h-3.5 w-3.5" /> {loading ? '…' : 'Download'}
+        </button>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{file.fileName}</p>
-        {file.description && <p className="text-xs text-white/55 truncate">{file.description}</p>}
-        <p className="text-[10px] text-white/40 tabular-nums">{sizeKb < 1024 ? `${sizeKb} KB` : `${(sizeKb / 1024).toFixed(1)} MB`}</p>
-      </div>
-      <button onClick={download} disabled={downloading} className="btn-secondary !py-1.5 !px-3 text-xs">
-        <Download className="h-3.5 w-3.5" /> {downloading ? '…' : 'Download'}
-      </button>
+      {open && signedUrl && isPdf && (
+        <div className="border-t border-border-subtle bg-black">
+          <iframe
+            src={signedUrl}
+            title={file.fileName}
+            className="w-full"
+            style={{ height: '80vh' }}
+          />
+        </div>
+      )}
     </div>
   );
 }
