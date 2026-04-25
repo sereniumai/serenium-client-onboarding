@@ -399,8 +399,11 @@ const GOOGLE_ADS: ServiceDef = {
       whyWeAsk: 'Adding us as a user inside your Google Ads account is how we manage your campaigns without taking ownership. You stay the owner, we stay the optimiser, and you can revoke us with one click anytime.',
       estimatedMinutes: 4,
       conditional: { path: 'google_ads.account_state.google_ads_account_exists', op: 'eq', value: 'Yes' },
-      instructions: `**How to grant us access to your Google Ads:**\n\n1. Sign in to **Google Ads** and click the **Admin** icon in the left menu\n2. Select **Access and security**\n3. Click the **+** button to add a user\n4. Enter \`contact@sereniumai.com\` and select access level (**Admin** recommended)\n5. Click **Send invitation**, we'll receive an email and accept`,
+      instructions: `Invite \`contact@sereniumai.com\` to your Google Ads account with **Admin** access. The full walkthrough is in Google's docs.`,
       fields: [
+        { key: 'google_ads_access_help', type: 'info',
+          content: '[→ Official guide for Google Ads](https://support.google.com/google-ads/answer/6372672?hl=en)',
+        },
         { key: 'google_ads_access_granted', label: "I've invited contact@sereniumai.com with Admin access", type: 'checkbox', required: true, tooltip: 'Tick once you have sent the invite. Admin access lets us build, optimise, and report on campaigns. You can downgrade or revoke us with one click in the same screen.' },
       ],
     },
@@ -429,19 +432,6 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
         { key: 'gbp_help_unverified', type: 'info',
           conditional: { field: 'gbp_profile_exists', op: 'eq', value: 'Yes unverified' },
           content: "All good. Google needs to verify the listing (usually by postcard or phone) before we can be added as a Manager. **If you need help with that step, just reach out and we'll walk you through it.** Once it's verified, come back here and the next steps will unlock." },
-      ],
-    },
-    {
-      key: 'ownership',
-      title: 'Confirm ownership',
-      whyWeAsk: 'A surprising number of roofers find that an old contractor or marketing company still owns their Google Business Profile. We need you to confirm it is genuinely yours before we touch it, otherwise we end up working on the wrong listing.',
-      estimatedMinutes: 1,
-      conditional: { any: [
-        { path: 'google_business_profile.profile_state.gbp_profile_exists', op: 'eq', value: 'Yes verified' },
-        { path: 'google_business_profile.profile_state.gbp_profile_exists', op: 'eq', value: 'Yes unverified' },
-      ] },
-      fields: [
-        { key: 'gbp_ownership_confirmed', label: "I confirm I'm the verified owner of this Google Business Profile, not a third party, and not a stolen or old listing", type: 'checkbox', required: true, tooltip: 'A surprising number of roofers find an old agency or former employee owns their listing. Confirm you genuinely control it before we touch it, otherwise we end up working on the wrong profile.' },
       ],
     },
     {
