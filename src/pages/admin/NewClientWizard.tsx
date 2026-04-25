@@ -25,7 +25,9 @@ export function NewClientWizard() {
   const [services, setServices] = useState<ServiceKey[]>([]);
   // Modules NOT included, per service (opt-out). Empty/absent = all included.
   const [disabledModules, setDisabledModules] = useState<Partial<Record<ServiceKey, string[]>>>({});
-  const [users, setUsers] = useState<UserRow[]>([{ fullName: '', email: '', role: 'owner' }]);
+  // Additional users only. The primary contact (from step 1) is auto-included
+  // as the first owner; no need to retype it here.
+  const [users, setUsers] = useState<UserRow[]>([]);
 
   const toggleSvc = (k: ServiceKey) => setServices(s => s.includes(k) ? s.filter(x => x !== k) : [...s, k]);
   const toggleModule = (svcKey: ServiceKey, modKey: string, on: boolean) => {
@@ -57,12 +59,14 @@ export function NewClientWizard() {
     // Drop invalid extra-user rows, but surface how many were skipped so the
     // admin doesn't silently lose a teammate they typed half of.
     const allExtras = users.filter(u => u.fullName.trim() || u.email.trim());
-    const validUsers = allExtras.filter(u => isValidEmail(u.email));
-    const skipped = allExtras.length - validUsers.length;
+    const validExtras = allExtras.filter(u => isValidEmail(u.email));
+    const skipped = allExtras.length - validExtras.length;
     if (skipped > 0) {
       toast.warning(`${skipped} user row${skipped === 1 ? '' : 's'} skipped - invalid email`);
     }
-    const final = validUsers.length > 0 ? validUsers : [{ fullName: primaryName, email: primaryEmail, role: 'owner' as const }];
+    // Primary contact is always the first owner. Extra users follow.
+    const primaryUser = { fullName: primaryName.trim(), email: primaryEmail.trim(), role: 'owner' as const };
+    const final = [primaryUser, ...validExtras.filter(u => u.email.trim().toLowerCase() !== primaryEmail.trim().toLowerCase())];
     try {
       const org = await createClient.mutateAsync({
         businessName: businessName.trim(),
@@ -211,7 +215,20 @@ export function NewClientWizard() {
 
           {step === 3 && (
             <div className="card space-y-4">
-              <p className="text-sm text-white/60">Add the users who'll log in. The primary contact is the default owner. In local mode, accounts are created instantly, real email invites get wired up when Supabase is connected.</p>
+              <p className="text-sm text-white/60">The primary contact you added in step 1 is automatically the first owner. Add any additional teammates below if you want them to have their own login.</p>
+
+              {/* Primary contact - read-only, sourced from step 1 */}
+              <div className="rounded-lg border border-orange/30 bg-orange/[0.04] p-4 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-orange/15 text-orange flex items-center justify-center shrink-0 font-semibold text-sm">
+                  {primaryName.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{primaryName || 'Primary contact'}</p>
+                  <p className="text-xs text-white/55 truncate">{primaryEmail}</p>
+                </div>
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-orange shrink-0">Owner · primary</span>
+              </div>
+
               {users.map((u, i) => (
                 <div key={i} className="flex flex-col md:flex-row gap-2">
                   <input className="input md:w-1/3" placeholder="Full name"
@@ -223,12 +240,10 @@ export function NewClientWizard() {
                     <option value="owner">Owner</option>
                     <option value="member">Member</option>
                   </select>
-                  {users.length > 1 && (
-                    <button type="button" onClick={() => setUsers(arr => arr.filter((_, j) => j !== i))}
-                      className="px-3 rounded-lg border border-border-subtle text-white/50 hover:text-error hover:border-error/40">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+                  <button type="button" onClick={() => setUsers(arr => arr.filter((_, j) => j !== i))}
+                    className="px-3 rounded-lg border border-border-subtle text-white/50 hover:text-error hover:border-error/40">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               ))}
               <button type="button" onClick={() => setUsers(u => [...u, { fullName: '', email: '', role: 'member' }])}
@@ -243,7 +258,7 @@ export function NewClientWizard() {
                   <SummaryRow label="Business" value={businessName || '-'} />
                   <SummaryRow label="Primary contact" value={primaryName || '-'} />
                   <SummaryRow label="Total steps" value={totalSteps(services, disabledModules).toString()} />
-                  <SummaryRow label="Users invited" value={(users.filter(u => u.email.trim()).length || 1).toString()} />
+                  <SummaryRow label="Users invited" value={(1 + users.filter(u => u.email.trim()).length).toString()} />
                 </div>
                 <div>
                   <span className="text-[11px] uppercase tracking-wider text-white/40 font-semibold">Services enabled</span>
