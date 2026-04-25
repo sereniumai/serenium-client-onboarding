@@ -14,6 +14,7 @@ export interface Profile {
 }
 
 export type OrgPlan = 'starter' | 'pro' | 'custom';
+export type LeadSource = 'referral' | 'facebook_ad' | 'cold_outbound' | 'website' | 'other';
 
 export interface Organization {
   id: string;
@@ -27,7 +28,36 @@ export interface Organization {
   plan?: OrgPlan;               // optional, displayed in admin for filtering/billing context
   tags?: string[];              // free-form admin labels ("VIP", "Q1-cohort", etc.)
   goLiveDate?: string;
+  liveAt?: string;              // timestamp set when status flips to 'live'
+  churnedAt?: string;           // timestamp set when status flips to 'churned'
+  leadSource?: LeadSource;
   createdAt: string;
+}
+
+// --- Revenue ---
+export type RevenueType = 'one_time' | 'monthly';
+
+export interface RevenueLine {
+  id: string;
+  organizationId: string;
+  serviceKey: ServiceKey;
+  type: RevenueType;
+  amountCents: number;
+  currency: string;
+  startedAt: string;            // ISO date (yyyy-mm-dd)
+  endedAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string | null;
+}
+
+export interface BusinessGoal {
+  id: string;
+  targetMrrCents: number;
+  targetDate: string;           // ISO date
+  updatedAt: string;
+  updatedBy: string | null;
 }
 
 export interface OrganizationService {

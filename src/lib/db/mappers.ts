@@ -21,20 +21,26 @@ export const toProfile = (r: Row<'profiles'>): Profile => ({
   avatarUrl: r.avatar_url ?? undefined,
 });
 
-export const toOrganization = (r: Row<'organizations'>): Organization => ({
-  id: r.id,
-  slug: r.slug,
-  businessName: r.business_name,
-  logoUrl: r.logo_url ?? undefined,
-  primaryContactName: r.primary_contact_name ?? undefined,
-  primaryContactEmail: r.primary_contact_email ?? undefined,
-  primaryContactPhone: r.primary_contact_phone ?? undefined,
-  status: r.status,
-  plan: r.plan ?? undefined,
-  tags: r.tags ?? [],
-  goLiveDate: r.go_live_date ?? undefined,
-  createdAt: r.created_at,
-});
+export const toOrganization = (r: Row<'organizations'>): Organization => {
+  const row = r as Row<'organizations'> & { live_at?: string | null; churned_at?: string | null; lead_source?: string | null };
+  return {
+    id: r.id,
+    slug: r.slug,
+    businessName: r.business_name,
+    logoUrl: r.logo_url ?? undefined,
+    primaryContactName: r.primary_contact_name ?? undefined,
+    primaryContactEmail: r.primary_contact_email ?? undefined,
+    primaryContactPhone: r.primary_contact_phone ?? undefined,
+    status: r.status,
+    plan: r.plan ?? undefined,
+    tags: r.tags ?? [],
+    goLiveDate: r.go_live_date ?? undefined,
+    liveAt: row.live_at ?? undefined,
+    churnedAt: row.churned_at ?? undefined,
+    leadSource: (row.lead_source ?? undefined) as Organization['leadSource'],
+    createdAt: r.created_at,
+  };
+};
 
 export const toOrganizationMember = (r: Row<'organization_members'>): OrganizationMember => ({
   organizationId: r.organization_id,

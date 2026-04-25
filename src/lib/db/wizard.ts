@@ -14,13 +14,14 @@ import { supabase } from '../supabase';
 import { SERVICES } from '../../config/modules';
 import { createOrg, deleteOrg } from './orgs';
 import { createInvitation } from './invitations';
-import type { Organization, ServiceKey, MemberRole } from '../../types';
+import type { Organization, ServiceKey, MemberRole, LeadSource } from '../../types';
 
 export interface CreateClientInput {
   businessName: string;
   primaryContactName: string;
   primaryContactEmail: string;
   primaryContactPhone?: string;
+  leadSource?: LeadSource;
   services: ServiceKey[];
   /** Opt-out list of module keys per service. Absent = all modules included. */
   serviceModules?: Partial<Record<ServiceKey, string[]>>;
@@ -33,6 +34,7 @@ export async function createClient(input: CreateClientInput): Promise<Organizati
     primaryContactName: input.primaryContactName,
     primaryContactEmail: input.primaryContactEmail,
     primaryContactPhone: input.primaryContactPhone,
+    leadSource: input.leadSource,
   });
 
   // From here on, any failure should trigger a rollback so we don't leave a

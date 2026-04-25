@@ -29,6 +29,7 @@ const VideosManager = lazy(() => import('./pages/admin/VideosManager').then(m =>
 const WelcomeVideoManager = lazy(() => import('./pages/admin/WelcomeVideoManager').then(m => ({ default: m.WelcomeVideoManager })));
 const FollowupSettingsPage = lazy(() => import('./pages/admin/FollowupSettingsPage').then(m => ({ default: m.FollowupSettingsPage })));
 const AiConversationsPage = lazy(() => import('./pages/admin/AiConversationsPage').then(m => ({ default: m.AiConversationsPage })));
+const RevenuePage = lazy(() => import('./pages/admin/RevenuePage').then(m => ({ default: m.RevenuePage })));
 const ChangelogPage = lazy(() => import('./pages/admin/ChangelogPage').then(m => ({ default: m.ChangelogPage })));
 const DiagnosticsPage = lazy(() => import('./pages/admin/DiagnosticsPage').then(m => ({ default: m.DiagnosticsPage })));
 const AccountPage = lazy(() => import('./pages/account/AccountPage').then(m => ({ default: m.AccountPage })));
@@ -96,6 +97,7 @@ function App() {
             <Route path="/admin/welcome-video" element={<AuthGuard requireRole="admin"><WelcomeVideoManager /></AuthGuard>} />
             <Route path="/admin/settings/followups" element={<AuthGuard requireRole="admin"><FollowupSettingsPage /></AuthGuard>} />
             <Route path="/admin/ai-conversations" element={<AuthGuard requireRole="admin"><AiConversationsPage /></AuthGuard>} />
+            <Route path="/admin/revenue" element={<AuthGuard requireRole="admin"><RevenuePage /></AuthGuard>} />
             <Route path="/admin/whats-new" element={<AuthGuard requireRole="admin"><ChangelogPage /></AuthGuard>} />
             <Route path="/admin/diagnostics" element={<AuthGuard requireRole="admin"><DiagnosticsPage /></AuthGuard>} />
             <Route path="/account" element={<AuthGuard><AccountPage /></AuthGuard>} />

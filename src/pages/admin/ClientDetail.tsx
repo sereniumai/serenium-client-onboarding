@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Trash2, Copy, Mail, AlertTriangle, MessageCircle as MessageCircleIcon, Eye, Plus, Bell, Check, RotateCcw } from 'lucide-react';
+import { ChevronLeft, Trash2, Copy, Mail, AlertTriangle, MessageCircle as MessageCircleIcon, Eye, Plus, Bell, Check, RotateCcw, DollarSign } from 'lucide-react';
+import { ServiceRevenueEditor } from '../../components/admin/ServiceRevenueEditor';
+import { listLinesForOrg, endActiveLinesForService } from '../../lib/db/revenue';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
@@ -377,6 +379,33 @@ function SortableServiceRow({ orgId, service, onDisable }: {
   const svcDef = getService(service.serviceKey);
   const Icon = SERVICE_ICON[service.serviceKey];
   const [expanded, setExpanded] = useState(false);
+  const [revenueOpen, setRevenueOpen] = useState(false);
+  const qc = useQueryClient();
+
+  const { data: lines = [] } = useQuery({
+    queryKey: ['revenue', orgId],
+    queryFn: () => listLinesForOrg(orgId),
+  });
+  const serviceLines = lines.filter(l => l.serviceKey === service.serviceKey);
+  const today = new Date().toISOString().slice(0, 10);
+  const activeLines = serviceLines.filter(l => l.startedAt <= today && (!l.endedAt || l.endedAt > today));
+  const monthlyMRR = activeLines.filter(l => l.type === 'monthly').reduce((s, l) => s + l.amountCents, 0);
+  const oneTimeTotal = serviceLines.filter(l => l.type === 'one_time').reduce((s, l) => s + l.amountCents, 0);
+  const summaryParts: string[] = [];
+  if (monthlyMRR > 0) summaryParts.push(`${(monthlyMRR / 100).toLocaleString('en-CA', { maximumFractionDigits: 0 })}/mo`);
+  if (oneTimeTotal > 0) summaryParts.push(`${(oneTimeTotal / 100).toLocaleString('en-CA', { maximumFractionDigits: 0 })} one-time`);
+
+  const cancelService = async () => {
+    if (!confirm(`Cancel ${svcDef?.label}? This ends every active monthly retainer for this service today and disables it on the client portal.`)) return;
+    try {
+      await endActiveLinesForService(orgId, service.serviceKey);
+      onDisable();
+      qc.invalidateQueries({ queryKey: ['revenue', orgId] });
+      toast.success(`${svcDef?.label} cancelled. MRR adjusted.`);
+    } catch (err) {
+      toast.error('Cancel failed', { description: (err as Error).message });
+    }
+  };
 
   if (!svcDef) return null;
 
@@ -409,6 +438,19 @@ function SortableServiceRow({ orgId, service, onDisable }: {
           </p>
         </div>
         <button
+          onClick={() => setRevenueOpen(true)}
+          className={cn(
+            'inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors',
+            summaryParts.length > 0
+              ? 'border-orange/40 bg-orange/10 text-orange hover:bg-orange/15'
+              : 'border-border-subtle text-white/55 hover:border-white/30 hover:text-white',
+          )}
+          title="Revenue for this service"
+        >
+          <DollarSign className="h-3.5 w-3.5" />
+          {summaryParts.length > 0 ? summaryParts.join(' · ') : 'Add revenue'}
+        </button>
+        <button
           onClick={() => setExpanded(e => !e)}
           className="inline-flex items-center gap-1 text-xs text-white/60 hover:text-white px-2 py-1 rounded hover:bg-bg-tertiary"
           title="Configure modules + fields"
@@ -416,8 +458,15 @@ function SortableServiceRow({ orgId, service, onDisable }: {
           <Settings2 className="h-3.5 w-3.5" />
           {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         </button>
-        <button onClick={onDisable} className="text-xs text-white/40 hover:text-error px-2">Disable service</button>
+        <button onClick={cancelService} className="text-xs text-white/40 hover:text-error px-2">Cancel service</button>
       </div>
+      <ServiceRevenueEditor
+        orgId={orgId}
+        serviceKey={service.serviceKey}
+        serviceLabel={svcDef.label}
+        open={revenueOpen}
+        onClose={() => setRevenueOpen(false)}
+      />
 
       {expanded && (
         <ServiceDrillDown

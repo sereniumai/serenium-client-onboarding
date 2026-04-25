@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { toOrganization } from './mappers';
-import type { Organization, OrgStatus, OrgPlan } from '../../types';
+import type { Organization, OrgStatus, OrgPlan, LeadSource } from '../../types';
 
 export async function listAllOrgs(): Promise<Organization[]> {
   const { data, error } = await supabase
@@ -50,6 +50,7 @@ export interface CreateOrgInput {
   logoUrl?: string;
   plan?: OrgPlan;
   tags?: string[];
+  leadSource?: LeadSource;
 }
 
 export async function createOrg(input: CreateOrgInput): Promise<Organization> {
@@ -66,6 +67,7 @@ export async function createOrg(input: CreateOrgInput): Promise<Organization> {
       logo_url: input.logoUrl ?? null,
       plan: input.plan ?? null,
       tags: input.tags ?? [],
+      lead_source: input.leadSource ?? null,
     })
     .select('*')
     .single();
@@ -83,6 +85,7 @@ export interface UpdateOrgInput {
   plan?: OrgPlan | null;
   tags?: string[];
   goLiveDate?: string | null;
+  leadSource?: LeadSource | null;
 }
 
 export async function updateOrg(id: string, patch: UpdateOrgInput): Promise<Organization> {
@@ -96,6 +99,13 @@ export async function updateOrg(id: string, patch: UpdateOrgInput): Promise<Orga
   if (patch.plan !== undefined) dbPatch.plan = patch.plan;
   if (patch.tags !== undefined) dbPatch.tags = patch.tags;
   if (patch.goLiveDate !== undefined) dbPatch.go_live_date = patch.goLiveDate;
+  if (patch.leadSource !== undefined) dbPatch.lead_source = patch.leadSource;
+
+  // Auto-set the BI timestamps on status flips so the Revenue page can compute
+  // tenure and churn rate without any extra clicks. Only set if not already
+  // populated, so re-flipping the status doesn't clobber the original date.
+  if (patch.status === 'live')    dbPatch.live_at    = new Date().toISOString();
+  if (patch.status === 'churned') dbPatch.churned_at = new Date().toISOString();
 
   const { data, error } = await supabase
     .from('organizations')
@@ -104,6 +114,21 @@ export async function updateOrg(id: string, patch: UpdateOrgInput): Promise<Orga
     .select('*')
     .single();
   if (error) throw error;
+
+  // When a client churns, end every active monthly revenue line so MRR drops
+  // cleanly without admin needing to cancel each service one by one.
+  if (patch.status === 'churned') {
+    const today = new Date().toISOString().slice(0, 10);
+    supabase
+      .from('revenue_lines')
+      .update({ ended_at: today })
+      .eq('organization_id', id)
+      .eq('type', 'monthly')
+      .is('ended_at', null)
+      .then(({ error: revErr }) => {
+        if (revErr) console.warn('[revenue] auto-end on churn failed', revErr);
+      });
+  }
 
   // Audit: mark-live is the highest-stakes status change, log it.
   if (patch.status === 'live') {

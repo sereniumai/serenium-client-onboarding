@@ -7,7 +7,7 @@ import { useCreateClient } from '../../hooks/useOrgs';
 import { SERVICES, SELECTABLE_SERVICES, getService } from '../../config/modules';
 import { SERVICE_ICON } from '../../config/serviceIcons';
 import { toast } from 'sonner';
-import type { ServiceKey } from '../../types';
+import type { ServiceKey, LeadSource } from '../../types';
 import { cn } from '../../lib/cn';
 
 type UserRow = { fullName: string; email: string; role: 'owner' | 'member' };
@@ -21,6 +21,7 @@ export function NewClientWizard() {
   const [primaryName, setPrimaryName] = useState('');
   const [primaryEmail, setPrimaryEmail] = useState('');
   const [primaryPhone, setPrimaryPhone] = useState('');
+  const [leadSource, setLeadSource] = useState<LeadSource | ''>('');
 
   const [services, setServices] = useState<ServiceKey[]>([]);
   // Modules NOT included, per service (opt-out). Empty/absent = all included.
@@ -73,6 +74,7 @@ export function NewClientWizard() {
         primaryContactName: primaryName.trim(),
         primaryContactEmail: primaryEmail.trim(),
         primaryContactPhone: primaryPhone.trim() || undefined,
+        leadSource: (leadSource || undefined) as LeadSource | undefined,
         services,
         serviceModules: disabledModules,
         users: final,
@@ -124,6 +126,16 @@ export function NewClientWizard() {
               </Field>
               <Field label="Primary contact phone">
                 <input className="input" type="tel" value={primaryPhone} onChange={e => setPrimaryPhone(e.target.value)} placeholder="403-555-0199" />
+              </Field>
+              <Field label="Lead source">
+                <select className="input" value={leadSource} onChange={e => setLeadSource(e.target.value as LeadSource | '')}>
+                  <option value="">Pick one (optional)</option>
+                  <option value="referral">Referral</option>
+                  <option value="facebook_ad">Facebook ad</option>
+                  <option value="cold_outbound">Cold outbound</option>
+                  <option value="website">Website</option>
+                  <option value="other">Other</option>
+                </select>
               </Field>
             </div>
           )}
