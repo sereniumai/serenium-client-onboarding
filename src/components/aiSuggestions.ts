@@ -11,9 +11,24 @@
 
 const DEFAULT_SUGGESTIONS = [
   "What do I need to give Serenium to get started?",
-  "How long does onboarding usually take?",
   "Can I come back and finish later?",
+  "What happens once I'm done with onboarding?",
 ];
+
+/**
+ * Per-service "how do I give you access" prompts. Surfaced on the dashboard so
+ * clients can jump straight to the access question that's blocking their next
+ * service, instead of digging through modules.
+ */
+const SERVICE_ACCESS_PROMPTS: Record<string, string> = {
+  website: 'How do I give you access to my domain?',
+  facebook_ads: 'How do I share my Facebook ad account with you?',
+  google_ads: 'How do I accept the Google Ads MCC link request?',
+  google_business_profile: 'How do I add you as a Manager on my Google Business Profile?',
+  ai_receptionist: 'How do I forward my existing number to the AI receptionist?',
+  ai_sms: 'How do I connect my calendar to the AI SMS?',
+  business_profile: 'What info do you need for my Business Profile?',
+};
 
 const SERVICE_SUGGESTIONS: Record<string, string[]> = {
   business_profile: [
@@ -143,11 +158,24 @@ const REPORTS_SUGGESTIONS = [
   "Can I compare this month to last?",
 ];
 
-export function suggestionsForContext(context: string | null): string[] {
-  if (!context) return DEFAULT_SUGGESTIONS;
-  if (context === 'dashboard') return DEFAULT_SUGGESTIONS;
+export function suggestionsForContext(
+  context: string | null,
+  opts: { enabledServices?: string[] } = {},
+): string[] {
   if (context === 'reports') return REPORTS_SUGGESTIONS;
   if (context === 'admin') return [];
+
+  // On the dashboard (or no specific context): show access prompts for the
+  // services the client actually has, so they can get unblocked fast.
+  if (!context || context === 'dashboard') {
+    const services = opts.enabledServices ?? [];
+    const accessPrompts = services
+      .map(s => SERVICE_ACCESS_PROMPTS[s])
+      .filter((s): s is string => !!s)
+      .slice(0, 2);
+    if (accessPrompts.length === 0) return DEFAULT_SUGGESTIONS;
+    return [accessPrompts[0], ...(accessPrompts[1] ? [accessPrompts[1]] : []), DEFAULT_SUGGESTIONS[0]];
+  }
 
   // Module-level context, most specific first.
   if (MODULE_SUGGESTIONS[context]) return MODULE_SUGGESTIONS[context];

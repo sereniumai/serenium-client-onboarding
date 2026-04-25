@@ -172,7 +172,7 @@ function buildSections({
       {
         title: 'Support',
         items: [
-          { to: `/onboarding/${orgSlug}`, label: 'Ask Aria', icon: LifeBuoy, onClick: openAiChat },
+          { label: 'Ask Aria', icon: LifeBuoy, onClick: openAiChat },
           ...(hasWelcomeVideo
             ? [{ label: 'Welcome video', icon: PlayCircle, onClick: openWelcomeVideo }]
             : []),
@@ -215,7 +215,7 @@ function buildSections({
     {
       title: 'Support',
       items: [
-        { to: `/onboarding/${orgSlug}`, label: 'Ask Aria', icon: LifeBuoy, onClick: openAiChat },
+        { label: 'Ask Aria', icon: LifeBuoy, onClick: openAiChat },
         ...(hasWelcomeVideo
           ? [{ label: 'Welcome video', icon: PlayCircle, onClick: openWelcomeVideo }]
           : []),

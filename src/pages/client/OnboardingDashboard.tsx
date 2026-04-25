@@ -1,14 +1,13 @@
 import { useEffect, useMemo } from 'react';
 import { useParams, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, PlayCircle, ArrowRight, Lock, Sparkles } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
 import { CircleProgress } from '../../components/CircleProgress';
 import { LatestReportHero } from '../../components/LatestReportHero';
 import { CompleteBanner } from '../../components/CompleteBanner';
 import { PendingReview } from '../../components/PendingReview';
-import { AnimatedNumber } from '../../components/AnimatedNumber';
 import { StatusPill } from '../../components/StatusPill';
 import { LoadingState } from '../../components/LoadingState';
 import { timeOfDayGreeting } from '../../lib/greeting';
@@ -112,56 +111,39 @@ export function OnboardingDashboard() {
       <div className="relative">
         <HeroGlow />
 
-        {/* HERO */}
-        <section className="relative mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-14 pb-6 md:pb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-10">
+        {/* HERO - minimalist. Restraint, not decoration. */}
+        <section className="relative mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-16 pb-8 md:pb-10">
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="flex flex-col md:flex-row md:items-end md:justify-between gap-8"
+          >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-4">
-                <p className="eyebrow">Onboarding · {org.businessName}</p>
+                <p className="eyebrow">{org.businessName}</p>
                 <StatusPill variant="client" />
               </div>
-              <h1 className="font-display font-black text-[clamp(2rem,6vw,3.75rem)] leading-[1.02] tracking-[-0.03em] mb-4">
+              <h1 className="font-display font-black text-[clamp(1.875rem,5vw,3.25rem)] leading-[1.02] tracking-[-0.035em] mb-3">
                 {timeOfDayGreeting()}, <span className="text-orange">{firstName}</span>.
               </h1>
-              <p className="text-white/60 text-lg max-w-xl">{motivation(progress.overall, reports.length > 0)}</p>
+              <p className="text-white/55 text-base md:text-lg max-w-xl leading-relaxed">{motivation(progress.overall, reports.length > 0)}</p>
+
+              {!onboardingDone && resume && (
+                <Link
+                  to={`/onboarding/${org.slug}/services/${resume.serviceKey}/${resume.moduleKey}`}
+                  className="group inline-flex items-center gap-2 mt-6 text-sm font-medium px-4 py-2 rounded-lg border border-orange/40 bg-orange/[0.04] text-white hover:bg-orange/[0.1] hover:border-orange/70 transition-all"
+                >
+                  <span className="text-orange font-semibold">Continue</span>
+                  <span className="text-white/40">·</span>
+                  <span className="text-white/85">{resume.serviceLabel} · {resume.moduleTitle}</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-orange group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+              )}
             </div>
 
-            <div className="shrink-0 self-start md:self-center">
-              <CircleProgress value={progress.overall} size={128} strokeWidth={7}>
-                <div className="text-center">
-                  <p className="font-display font-black text-2xl tracking-tight leading-none">
-                    <AnimatedNumber value={progress.overall} /><span className="text-sm text-white/40">%</span>
-                  </p>
-                  <p className="text-[9px] uppercase tracking-wider text-white/40 mt-1">Complete</p>
-                </div>
-              </CircleProgress>
-            </div>
-          </div>
+          </motion.div>
         </section>
-
-        {/* Resume where you left off */}
-        {!onboardingDone && resume && (
-          <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-4">
-              <Link
-                to={`/onboarding/${org.slug}/services/${resume.serviceKey}/${resume.moduleKey}`}
-                className="card block group border-orange/30 hover:border-orange/60 hover:-translate-y-0.5 transition-all"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="h-11 w-11 rounded-xl bg-orange/15 text-orange flex items-center justify-center shrink-0">
-                    <PlayCircle className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="eyebrow mb-1">Pick up where you left off</p>
-                    <p className="font-display font-bold text-base md:text-lg truncate">{resume.serviceLabel} · {resume.moduleTitle}</p>
-                    {resume.lastTouchedAt && (
-                      <p className="text-xs text-white/55 mt-0.5">Last edited {relativeTime(resume.lastTouchedAt)}</p>
-                    )}
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-orange shrink-0 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </Link>
-            </section>
-        )}
 
         {/* POST-ONBOARDING, latest report + complete banner */}
         {onboardingDone && (
@@ -172,17 +154,8 @@ export function OnboardingDashboard() {
         )}
 
         {/* ONBOARDING, grouped by phase */}
-        <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-16 md:pb-24 pt-6 md:pt-8">
-          <div className="flex items-end justify-between mb-6">
-            <div>
-              <h2 className="font-display font-black text-2xl md:text-3xl tracking-[-0.02em]">
-                {onboardingDone ? 'Onboarding summary' : 'What we need from you'}
-              </h2>
-              <p className="text-sm text-white/60 mt-1">
-                {onboardingDone ? 'Everything you submitted. Open any step to review or update.' : 'Tackle these in any order. We autosave as you go.'}
-              </p>
-            </div>
-          </div>
+        <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-16 md:pb-24 pt-2 md:pt-4">
+          <p className="eyebrow mb-4">{onboardingDone ? 'Summary' : 'Onboarding'}</p>
 
           {progress.enabledServices.length === 0 && (
             <div className="card text-center py-16">
@@ -225,26 +198,26 @@ export function OnboardingDashboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-display font-bold text-lg tracking-[-0.01em] truncate">{svc.label}</h4>
-                        <p className="text-xs text-white/55 leading-relaxed mt-0.5">{svc.description}</p>
+                        <p className="text-sm text-white/65 leading-relaxed mt-1">{svc.description}</p>
                       </div>
                       <CircleProgress value={svcPct} size={44} strokeWidth={3}>
                         <span className="text-[10px] font-semibold tabular-nums">{svcComplete}<span className="text-white/40">/{svcTotal}</span></span>
                       </CircleProgress>
                     </div>
-                    <div className="flex items-center justify-between pt-3 border-t border-border-subtle">
+                    <div className="flex items-center justify-between pt-4 border-t border-border-subtle">
                       <span className={cn(
-                        'inline-flex items-center gap-1.5 text-xs font-medium',
+                        'inline-flex items-center gap-1.5 text-sm font-medium',
                         svcDone ? 'text-success' : anyInProgress ? 'text-orange' : 'text-white/50',
                       )}>
                         {svcDone
-                          ? <><CheckCircle2 className="h-3.5 w-3.5" /> Done</>
+                          ? <><CheckCircle2 className="h-4 w-4" /> Done</>
                           : anyInProgress
                             ? <>In progress</>
                             : <>Not started</>
                         }
                       </span>
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange group-hover:gap-2 transition-all">
-                        {svcDone ? 'Review' : anyInProgress ? 'Continue' : 'Start'} <ArrowRight className="h-3.5 w-3.5" />
+                      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange group-hover:gap-2 transition-all">
+                        {svcDone ? 'Review' : anyInProgress ? 'Continue' : 'Start'} <ArrowRight className="h-4 w-4" />
                       </span>
                     </div>
                   </Link>
@@ -267,84 +240,36 @@ export function OnboardingDashboard() {
 function OtherSerenumServices({ unavailableServiceKeys }: { unavailableServiceKeys: ServiceKey[] }) {
   if (unavailableServiceKeys.length === 0) return null;
   return (
-    <section className="mt-12 md:mt-16">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-5">
-        <div>
-          <p className="eyebrow mb-2">More from Serenium</p>
-          <h3 className="font-display font-black text-xl md:text-2xl tracking-[-0.02em]">
-            Other services we offer
-          </h3>
-          <p className="text-sm text-white/55 mt-1 max-w-xl">
-            Not part of your current plan - but each one slots into the same portal whenever you're ready.
-          </p>
-        </div>
+    <section className="mt-16 md:mt-20">
+      <div className="flex items-center justify-between mb-5">
+        <p className="eyebrow">More from Serenium</p>
         <a
           href="mailto:contact@sereniumai.com?subject=Adding%20a%20service%20to%20my%20Serenium%20plan"
-          className="btn-secondary !py-2 !px-4 text-xs shrink-0"
+          className="text-sm font-semibold text-orange hover:text-orange-hover transition-colors inline-flex items-center gap-1.5"
         >
-          Ask us about adding one
+          Ask about adding one <ArrowRight className="h-4 w-4" />
         </a>
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        {unavailableServiceKeys.map((key, i) => {
+      <ul className="divide-y divide-border-subtle">
+        {unavailableServiceKeys.map((key) => {
           const svc = SELECTABLE_SERVICES.find(s => s.key === key);
           if (!svc) return null;
           const Icon = SERVICE_ICON[key];
           return (
-            <motion.div
-              key={key}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-            >
-              <a
-                href={`mailto:contact@sereniumai.com?subject=${encodeURIComponent('Adding ' + svc.label + ' to my Serenium plan')}&body=${encodeURIComponent("Hi, I'd like to hear more about adding " + svc.label + " to my plan.")}`}
-                className="card relative group block transition-all duration-200 hover:border-orange/60 hover:-translate-y-0.5 hover:shadow-orange-glow"
-                title={'Ask about adding ' + svc.label}
-              >
-                {/* Orange glow sweep on hover, masked to the card */}
-                <span
-                  className="pointer-events-none absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-orange/5 via-transparent to-transparent"
-                  aria-hidden
-                />
-                <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-orange bg-orange/10 border border-orange/30 rounded-full px-2 py-0.5 group-hover:bg-orange/20 group-hover:border-orange/50 transition-colors">
-                  <Lock className="h-3 w-3 group-hover:hidden" />
-                  <Sparkles className="h-3 w-3 hidden group-hover:inline-block animate-pulse" />
-                  <span className="group-hover:hidden">Not in plan</span>
-                  <span className="hidden group-hover:inline">Add this</span>
-                </span>
-                <div className="flex items-start gap-4 mb-4 relative">
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-orange/10 text-orange group-hover:bg-orange group-hover:text-white transition-colors duration-200 group-hover:scale-105">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 min-w-0 pr-20">
-                    <h4 className="font-display font-bold text-lg tracking-[-0.01em] truncate group-hover:text-orange transition-colors">{svc.label}</h4>
-                    <p className="text-xs text-white/55 leading-relaxed mt-0.5 group-hover:text-white/75 transition-colors">{svc.description}</p>
-                  </div>
-                </div>
-                <div className="pt-3 border-t border-border-subtle relative">
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange group-hover:gap-2 transition-all">
-                    Ask about adding this <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </span>
-                </div>
-              </a>
-            </motion.div>
+            <li key={key} className="group flex items-center gap-4 py-4">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-white/[0.04] text-white/55 group-hover:bg-orange/10 group-hover:text-orange transition-colors">
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-base text-white/90 group-hover:text-white transition-colors">{svc.label}</p>
+                <p className="text-sm text-white/60 leading-relaxed">{svc.marketingDescription ?? svc.description}</p>
+              </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return days === 1 ? 'yesterday' : `${days} days ago`;
 }
 
 /** Find the module most recently touched that isn't already complete. */

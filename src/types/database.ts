@@ -207,12 +207,22 @@ interface FollowupSentRow {
 
 interface AiChatMessage {
   id: string;
+  thread_id: string;
   user_id: string;
   organization_id: string | null;
   role: ChatRole;
   content: string;
   context: string | null;
   created_at: string;
+}
+
+interface AiChatThread {
+  id: string;
+  user_id: string;
+  organization_id: string | null;
+  title: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface TeamNotificationSent {
@@ -252,6 +262,7 @@ export interface Database {
       followup_settings:       Table<FollowupSettingsRow>;
       followups_sent:          Table<FollowupSentRow>;
       ai_chat_messages:        Table<AiChatMessage>;
+      ai_chat_threads:         Table<AiChatThread>;
       team_notifications_sent: Table<TeamNotificationSent>;
     };
     Views: Record<string, never>;

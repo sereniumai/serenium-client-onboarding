@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, CheckCircle2, Clock, PlayCircle } from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { TaskCheckbox } from '../../components/TaskCheckbox';
 import { FieldRenderer } from '../../components/FieldRenderer';
@@ -194,20 +192,20 @@ function ModuleSection({
   // Auto-complete when ready + not already complete. Tracks previous ready value
   // so we only fire the celebration on the transition, not on page load for
   // an already-done module.
+  // Auto-complete only on the false→true ready transition. Re-completes from
+  // edits stay silent (no confetti, no toast). Confetti for whole-service
+  // completion is handled in ModulePage where the celebration lives.
   const readyRef = useRef(readyFor);
   useEffect(() => {
-    if (readyFor && !complete && !adminLocked) {
-      if (!readyRef.current || mp?.status === 'not_started' || mp?.status === 'in_progress') {
-        onSetModuleStatus('complete');
-        sfx.submit();
-        confetti({ particleCount: 30, spread: 50, origin: { y: 0.5 }, colors: ['#FF6B1F', '#FF7A35', '#ffffff'], zIndex: 9999 });
-        toast.success('Module complete', { description: module.title });
-        onComplete();
-      }
-    }
+    const wasReady = readyRef.current;
     readyRef.current = readyFor;
+    if (readyFor && !wasReady && !complete && !adminLocked) {
+      onSetModuleStatus('complete');
+      sfx.submit();
+      onComplete();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readyFor, complete, adminLocked, mp?.status]);
+  }, [readyFor, complete, adminLocked]);
 
   const markIncomplete = () => { onSetModuleStatus('in_progress'); };
 

@@ -8,7 +8,7 @@ import type { Database } from '../../types/database';
 import type {
   Profile, Organization, OrganizationMember, OrganizationService,
   ModuleProgress, TaskCompletion, Submission, Upload, Invitation,
-  MonthlyReport, ActivityLogEntry, AdminNote, AiChatMessage, FollowupSent,
+  MonthlyReport, ActivityLogEntry, AdminNote, AiChatMessage, AiChatThread, FollowupSent,
 } from '../../types';
 
 type Row<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
@@ -148,10 +148,20 @@ export const toFollowupSent = (r: Row<'followups_sent'>): FollowupSent => ({
 
 export const toAiChatMessage = (r: Row<'ai_chat_messages'>): AiChatMessage => ({
   id: r.id,
+  threadId: r.thread_id,
   userId: r.user_id,
   organizationId: r.organization_id,
   role: r.role,
   content: r.content,
   context: r.context,
   createdAt: r.created_at,
+});
+
+export const toAiChatThread = (r: Row<'ai_chat_threads'>): AiChatThread => ({
+  id: r.id,
+  userId: r.user_id,
+  organizationId: r.organization_id,
+  title: r.title,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
 });

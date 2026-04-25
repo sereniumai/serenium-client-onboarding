@@ -1,5 +1,13 @@
-import { listChatMessagesForUser, appendChatMessage, clearChatForUser } from './db/chat';
-import type { AiChatMessage } from '../types';
+import {
+  listMessagesForThread,
+  listThreadsForUser,
+  createThread,
+  deleteThread,
+  renameThread,
+  ensureActiveThread,
+  appendChatMessage,
+} from './db/chat';
+import type { AiChatMessage, AiChatThread } from '../types';
 import type { PersonaKey } from '../config/personas';
 
 export type ChatMode = 'onboarding' | 'analytics';
@@ -61,11 +69,42 @@ export async function askAssistant(question: string, opts: AskOptions = {}): Pro
   return data.reply ?? '';
 }
 
-export async function loadChatForUser(userId: string): Promise<AiChatMessage[]> {
-  return listChatMessagesForUser(userId);
+// ─── Threads ────────────────────────────────────────────────────────────────
+
+export async function loadThreads(userId: string): Promise<AiChatThread[]> {
+  return listThreadsForUser(userId);
+}
+
+export async function startNewThread(args: {
+  userId: string;
+  organizationId?: string | null;
+}): Promise<AiChatThread> {
+  return createThread(args);
+}
+
+export async function getOrCreateActiveThread(args: {
+  userId: string;
+  organizationId?: string | null;
+}): Promise<AiChatThread> {
+  return ensureActiveThread(args);
+}
+
+export async function removeThread(threadId: string): Promise<void> {
+  return deleteThread(threadId);
+}
+
+export async function setThreadTitle(threadId: string, title: string): Promise<void> {
+  return renameThread(threadId, title);
+}
+
+// ─── Messages ───────────────────────────────────────────────────────────────
+
+export async function loadChat(threadId: string): Promise<AiChatMessage[]> {
+  return listMessagesForThread(threadId);
 }
 
 export async function saveMessage(args: {
+  threadId: string;
   userId: string;
   organizationId?: string | null;
   role: 'user' | 'assistant';
@@ -75,8 +114,11 @@ export async function saveMessage(args: {
   return appendChatMessage(args);
 }
 
-export async function clearChat(userId: string): Promise<void> {
-  return clearChatForUser(userId);
+/** Auto-derive a thread title from the first user message. ~40 char cap. */
+export function deriveThreadTitle(firstUserMessage: string): string {
+  const cleaned = firstUserMessage.trim().replace(/\s+/g, ' ');
+  if (cleaned.length <= 40) return cleaned;
+  return cleaned.slice(0, 37).trimEnd() + '…';
 }
 
 export const SUGGESTED_QUESTIONS_ONBOARDING = [

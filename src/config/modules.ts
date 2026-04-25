@@ -85,6 +85,8 @@ export interface ModuleDef {
   key: string;
   title: string;
   description?: string;
+  /** One-sentence answer to "why does Serenium need this?" - shown as a subtle info panel on the module page. */
+  whyWeAsk?: string;
   estimatedMinutes?: number;
   videoUrl?: string;
   videoPlaceholder?: boolean;
@@ -106,6 +108,8 @@ export interface ModuleDef {
 }
 
 export interface ServiceDef {
+  /** Marketing-style outcome pitch shown on the "More from Serenium" upsell list. */
+  marketingDescription?: string;
   key: ServiceKey;
   label: string;
   description: string;
@@ -119,11 +123,13 @@ export interface ServiceDef {
 const BUSINESS_PROFILE: ServiceDef = {
   key: 'business_profile',
   label: 'Business Profile',
-  description: 'Core business info used across all services, filled out once, used everywhere',
+  description: 'Core business details we use across every Serenium service we run for you.',
+  marketingDescription: 'The story we tell about your business everywhere, polished, consistent, and built to win every quote.',
   modules: [
     {
       key: 'logo_files',
       title: 'Logo',
+      whyWeAsk: 'Your logo goes everywhere we build for you - your website, ads, social profiles, email signatures, and the AI receptionist confirmation texts. We need the original files (not screenshots) so it stays sharp at any size.',
       estimatedMinutes: 3,
       fields: [{
         key: 'logo_files',
@@ -137,6 +143,7 @@ const BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'service_areas',
       title: 'Service areas',
+      whyWeAsk: 'Your ads, Google Business listing, and AI receptionist all need to know where you actually work - so we only spend ad budget on people in your service zone, and the AI never books a job two hours outside it.',
       estimatedMinutes: 3,
       fields: [{
         key: 'service_areas',
@@ -161,6 +168,7 @@ const BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'credentials_and_trust',
       title: 'Credentials and trust',
+      whyWeAsk: 'Roofing is a trust purchase. Saying "fully insured, 10-year workmanship warranty, GAF Master Elite" converts roughly 30% better than not saying it. We weave these into your ads, site, and AI scripts so every touchpoint earns trust automatically.',
       estimatedMinutes: 6,
       instructions: 'All the things that make prospects trust you. We use these on your website hero, in ads, on your Google Business Profile, and when the AI answers questions about your credibility.',
       fields: [
@@ -182,6 +190,7 @@ const BUSINESS_PROFILE: ServiceDef = {
     {
       key: 'emergency_service',
       title: 'Emergency service',
+      whyWeAsk: 'A leaking roof at 9pm is the highest-intent lead a roofer will ever get. Telling us if and how you handle emergencies lets us route those calls and texts straight to the right person, instead of losing them to a competitor by morning.',
       estimatedMinutes: 5,
       fields: [
         { key: 'emergency_offered', label: 'Do you offer emergency service?', type: 'select', options: ['Yes', 'No'], required: true, tooltip: 'Answer Yes to unlock emergency handling inside your AI SMS and AI Receptionist flows. We use this to decide how urgent leaks and storm damage get routed.' },
@@ -277,7 +286,8 @@ const BUSINESS_PROFILE: ServiceDef = {
 const FACEBOOK_ADS: ServiceDef = {
   key: 'facebook_ads',
   label: 'Facebook Ads',
-  description: 'Partner access so Serenium can run your Facebook and Instagram ads, plus manage targeting and creative.',
+  description: 'Partner access and brand info so we can launch and manage your Meta ads.',
+  marketingDescription: 'Hyper-targeted Meta ads that put your roof in front of homeowners ready to buy this week, not next year.',
   modules: [
     {
       key: 'prerequisites',
@@ -349,7 +359,8 @@ Only the checkboxes that apply to your setup will show. If you don't have a Busi
 const GOOGLE_ADS: ServiceDef = {
   key: 'google_ads',
   label: 'Google Ads',
-  description: 'MCC link to your Google Ads account so Serenium can manage campaigns and LSAs',
+  description: 'Manager link and account details so we can run your search and LSA campaigns.',
+  marketingDescription: 'Show up first when locals search "roofer near me", plus Google-guaranteed Local Service Ads that bring leads to your phone.',
   modules: [
     {
       key: 'account_state',
@@ -391,7 +402,8 @@ const GOOGLE_ADS: ServiceDef = {
 const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
   key: 'google_business_profile',
   label: 'Google Business Profile',
-  description: 'Manager access to your GBP listing so Serenium can handle posts, reviews, and Q&A',
+  description: 'Manager access so we can post, reply to reviews, and grow your reputation.',
+  marketingDescription: 'Dominate the Google Map Pack so when neighbours search, you\'re the first call. Reviews, fresh photos, weekly posts, all handled.',
   modules: [
     {
       key: 'profile_state',
@@ -401,10 +413,10 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
         { key: 'gbp_profile_exists', label: 'Do you have a Google Business Profile?', type: 'select', required: true, options: ['Yes verified', 'Yes unverified', 'No', 'Not sure'] },
         { key: 'gbp_help_create', type: 'info',
           conditional: { any: [{ field: 'gbp_profile_exists', op: 'eq', value: 'No' }, { field: 'gbp_profile_exists', op: 'eq', value: 'Not sure' }] },
-          content: "We'll help you create or claim a profile. Skip the rest of this service, Serenium takes it from here." },
+          content: "No problem, we'll create or claim one for you. You can skip the rest of this service, Serenium takes it from here. Need a hand in the meantime? Ask Aria or message the team." },
         { key: 'gbp_help_unverified', type: 'info',
           conditional: { field: 'gbp_profile_exists', op: 'eq', value: 'Yes unverified' },
-          content: "Verification is required before we can be added as a Manager. Google typically verifies by postcard or phone, finish verification, then come back." },
+          content: "All good. Google needs to verify the listing (usually by postcard or phone) before we can be added as a Manager. **If you need help with that step, just reach out and we'll walk you through it.** Once it's verified, come back here and the next steps will unlock." },
       ],
     },
     {
@@ -441,7 +453,8 @@ const GOOGLE_BUSINESS_PROFILE: ServiceDef = {
 const AI_SMS: ServiceDef = {
   key: 'ai_sms',
   label: 'AI SMS',
-  description: 'Texts your roofing leads back in seconds, asks the right questions, and books estimates into your calendar.',
+  description: 'Scripts, FAQs, and calendar setup so the AI can reply and book leads for you.',
+  marketingDescription: 'An AI that texts every lead back in 10 seconds, qualifies them, and books estimates straight into your calendar. 24/7, no missed leads.',
   modules: [
     {
       key: 'purpose_goal',
@@ -651,7 +664,8 @@ const AI_SMS: ServiceDef = {
 const AI_RECEPTIONIST: ServiceDef = {
   key: 'ai_receptionist',
   label: 'AI Receptionist',
-  description: 'A phone AI that picks up every inbound call, qualifies the caller, and emails you a full summary.',
+  description: 'Greeting, question flow, and forwarding so the AI can answer and qualify your calls.',
+  marketingDescription: 'A phone AI that answers every call professionally, qualifies the caller, and books the job. Never miss another lead, even at 11pm.',
   modules: [
     {
       key: 'purpose_goal',
@@ -670,6 +684,7 @@ const AI_RECEPTIONIST: ServiceDef = {
     {
       key: 'scripts_behaviour',
       title: 'Scripts & question flow',
+      whyWeAsk: 'The greeting and questions you give us here are exactly what your AI receptionist will say to every caller, in your voice. Think of this as briefing a new front-desk hire on day one - the more specific you are, the more it sounds like you.',
       estimatedMinutes: 15,
       fields: [
         {
@@ -826,7 +841,8 @@ const AI_RECEPTIONIST: ServiceDef = {
 const WEBSITE: ServiceDef = {
   key: 'website',
   label: 'Website',
-  description: 'Custom website build with foundational SEO baked in, creative first, technical access at the end.',
+  description: 'Brand, content, and tech access so we can build a site that ranks and converts.',
+  marketingDescription: 'A premium website that ranks on Google, converts visitors into bookings, and makes you the obvious choice in town.',
   modules: [
     {
       key: 'purpose_goal',
@@ -932,6 +948,7 @@ const WEBSITE: ServiceDef = {
     {
       key: 'registrar_delegation',
       title: 'Registrar / DNS delegation',
+      whyWeAsk: 'To launch your new site without downtime, we need temporary DNS access at your domain registrar (GoDaddy, Namecheap, etc.). We never transfer your domain - it stays in your name - we just point it at the new site when go-live day comes.',
       estimatedMinutes: 8,
       instructions: `Add **contact@sereniumai.com** to your registrar with admin / DNS-edit permissions. Pick your registrar below, we'll show you a walkthrough.`,
       fields: [

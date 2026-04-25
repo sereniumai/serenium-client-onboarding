@@ -79,11 +79,13 @@ export function WelcomeVideoModal() {
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50"
             onClick={dismiss}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onClick={dismiss}
             role="dialog"
@@ -91,25 +93,55 @@ export function WelcomeVideoModal() {
             aria-label="Welcome video"
           >
             <div ref={modalRef} className="relative w-full max-w-3xl" onClick={e => e.stopPropagation()}>
-              <button
-                onClick={dismiss}
-                className="absolute -top-10 right-0 text-white/60 hover:text-white inline-flex items-center gap-1.5 text-sm"
-                aria-label="Close welcome video"
-              >
-                <X className="h-4 w-4" /> Close
-              </button>
-              <div className="rounded-2xl overflow-hidden border border-border-subtle bg-black shadow-2xl">
-                <iframe
-                  src={embed}
-                  className="w-full aspect-video"
-                  title="Welcome"
-                  allow="fullscreen; clipboard-write; autoplay"
-                  allowFullScreen
-                />
+              {/* Ambient glow behind, not around */}
+              <div className="absolute inset-x-12 -bottom-8 h-32 bg-orange/20 blur-3xl rounded-full pointer-events-none" aria-hidden />
+
+              <div className="relative rounded-2xl overflow-hidden bg-[#0d0d0d] border border-white/[0.08] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
+                {/* Hairline top accent */}
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange/50 to-transparent" />
+
+                {/* Header */}
+                <div className="relative flex items-start justify-between gap-4 px-7 md:px-9 pt-7 pb-6">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] uppercase tracking-[0.28em] font-semibold text-orange/90 mb-2.5">A note from the founder</p>
+                    <h2 className="font-display font-black text-2xl md:text-[28px] tracking-[-0.025em] leading-[1.1]">
+                      Welcome to Serenium
+                    </h2>
+                    <p className="text-[13px] text-white/50 mt-2 max-w-md leading-relaxed">
+                      90 seconds on what's inside and how to get the most out of your portal.
+                    </p>
+                  </div>
+                  <button
+                    onClick={dismiss}
+                    className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+                    aria-label="Close welcome video"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Video, framed in same dark with thin separator above */}
+                <div className="relative px-5 md:px-7">
+                  <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-black">
+                    <iframe
+                      src={embed}
+                      className="w-full aspect-video"
+                      title="Welcome"
+                      allow="fullscreen; clipboard-write; autoplay"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+
+                {!manuallyOpened && (
+                  <div className="relative px-7 md:px-9 pt-5 pb-6">
+                    <p className="text-[11px] text-white/40 text-center sm:text-right">
+                      You'll only see this on first sign-in. Rewatch anytime from the sidebar.
+                    </p>
+                  </div>
+                )}
+                {manuallyOpened && <div className="pb-6" />}
               </div>
-              {!manuallyOpened && (
-                <p className="text-center text-xs text-white/55 mt-3">You'll only see this once. Close anytime.</p>
-              )}
             </div>
           </motion.div>
         </>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronLeft, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { AppShell } from '../../components/AppShell';
 import { TaskCheckbox } from '../../components/TaskCheckbox';
@@ -42,6 +42,11 @@ export function ModulePage() {
   const svc = serviceKey ? getService(serviceKey as ServiceKey) : null;
   const mod = svc && moduleKey ? getModule(svc.key, moduleKey) : null;
 
+  // Auto-complete only on the false→true ready transition. Editing a saved
+  // module flips it to in_progress; we don't want to immediately bounce it
+  // back to complete (which previously trapped users behind the celebration
+  // overlay and re-fired confetti). They'll re-complete naturally next time
+  // a field actually changes value.
   const readyRef = useRef(false);
   useEffect(() => {
     if (!snapshot || !org || !svc || !mod) return;
@@ -49,14 +54,13 @@ export function ModulePage() {
     if (!mpLocal) return;
     const readyLocal = moduleIsReady(snapshot, svc.key, mod.key);
     const adminLocked = mod.lockedUntilAdminFlag ? !snapshot.adminFlags[mod.lockedUntilAdminFlag] : false;
-    if (adminLocked) { readyRef.current = readyLocal; return; }
-    if (readyLocal && mpLocal.status !== 'complete') {
-      if (!readyRef.current || mpLocal.status === 'not_started' || mpLocal.status === 'in_progress') {
-        setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'complete', userId: user?.id });
-        celebrateCompletionRef.current();
-      }
-    }
+    const wasReady = readyRef.current;
     readyRef.current = readyLocal;
+    if (adminLocked) return;
+    if (readyLocal && !wasReady && mpLocal.status !== 'complete') {
+      setModStatus.mutate({ organizationId: org.id, serviceKey: svc.key, moduleKey: mod.key, status: 'complete', userId: user?.id });
+      celebrateCompletionRef.current();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, org?.id, svc?.key, mod?.key]);
 
@@ -112,8 +116,22 @@ export function ModulePage() {
   };
 
   const celebrateCompletion = () => {
+    // Bail if module was already complete - this is just an edit re-saving.
+    // No confetti, no overlay. Field changes already toast their own "saved".
+    if (mp?.status === 'complete') return;
+
     const before = getOrgProgress(snapshot);
     const after = { ...before, completeModules: before.completeModules + 1, overall: Math.round(((before.completeModules + 1) / before.totalModules) * 100) };
+
+    // Did THIS module's completion just make its service hit 100%?
+    const enabledSvc = snapshot.services.find(s => s.serviceKey === svc.key);
+    const disabledModKeys = new Set(enabledSvc?.disabledModuleKeys ?? []);
+    const svcModules = svc.modules.filter(m => !disabledModKeys.has(m.key));
+    const svcWillBeComplete = svcModules.every(m => {
+      if (m.key === mod.key) return true; // this one is about to flip to complete
+      const p = snapshot.moduleProgress.find(x => x.serviceKey === svc.key && x.moduleKey === m.key);
+      return p?.status === 'complete';
+    });
 
     if (after.totalModules > 0 && after.overall === 100) {
       sfx.complete();
@@ -121,33 +139,26 @@ export function ModulePage() {
       return;
     }
 
-    // Milestone crossing (25, 50, 75)
-    const crossedMilestone = [25, 50, 75].find(ms => before.overall < ms && after.overall >= ms);
-    if (crossedMilestone) {
+    if (svcWillBeComplete) {
+      // Service just finished - this is the celebration moment
       sfx.milestone();
       confetti({
-        particleCount: 60,
-        spread: 80,
+        particleCount: 80,
+        spread: 90,
         origin: { y: 0.35 },
         colors: ['#FF6B1F', '#FF7A35', '#FFD4BA', '#ffffff'],
         zIndex: 9999,
       });
-      toast.success(`${crossedMilestone}% there!`, {
-        description: 'Nice pace, keep the momentum going.',
-        duration: 3500,
+      toast.success(`${svc.label} complete`, {
+        description: 'Nice work. Onto the next one.',
+        duration: 4000,
       });
+      setShowComplete(true);
     } else {
+      // Module within a service - quiet, no confetti, no overlay
       sfx.submit();
-      confetti({
-        particleCount: 40,
-        spread: 60,
-        origin: { y: 0.4 },
-        colors: ['#FF6B1F', '#FF7A35', '#FFD4BA', '#ffffff'],
-        zIndex: 9999,
-      });
-      toast.success('Module complete', { description: mod.title });
+      toast.success('Saved', { description: mod.title, duration: 2000 });
     }
-    setShowComplete(true);
   };
   // Keep ref fresh with the latest closure. Mutating ref.current during
   // render is a supported React pattern when used to bridge forward-references
@@ -227,6 +238,22 @@ export function ModulePage() {
             })()}
 
             {/* Retell forwarding number block returns in Phase 6 (retell_numbers port). */}
+
+            {/* WHY WE ASK - differentiator: every other agency just asks; we explain */}
+            {mod.whyWeAsk && (
+              <div className="relative rounded-2xl border border-orange/25 bg-gradient-to-br from-orange/[0.06] via-orange/[0.02] to-transparent p-5 mb-8 overflow-hidden">
+                <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-orange/10 blur-3xl pointer-events-none" />
+                <div className="relative flex gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-orange/15 text-orange flex items-center justify-center shrink-0">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] uppercase tracking-[0.15em] font-semibold text-orange mb-1">Why we ask this</p>
+                    <p className="text-sm text-white/80 leading-relaxed">{mod.whyWeAsk}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* INSTRUCTIONS */}
             {mod.instructions && (

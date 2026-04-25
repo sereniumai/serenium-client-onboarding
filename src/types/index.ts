@@ -209,8 +209,18 @@ export interface FollowupSent {
 }
 
 // --- AI helper chat ---
+export interface AiChatThread {
+  id: string;
+  userId: string;
+  organizationId: string | null;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AiChatMessage {
   id: string;
+  threadId: string;
   userId: string;
   organizationId: string | null;
   role: 'user' | 'assistant';
