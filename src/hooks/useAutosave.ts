@@ -15,6 +15,11 @@ export function useAutosave<T>(organizationId: string, fieldKey: string, userId?
   const saveTimer = useRef<number | null>(null);
   const resetTimer = useRef<number | null>(null);
   const initial = useRef(true);
+  // When set, the next change to `value` is treated as a local-only update
+  // (no autosave). Used by FieldRenderer's prefill effect so example text
+  // (e.g. "Hi [Name]") doesn't get silently persisted before the client has
+  // edited it. Reset back to false in the [value] effect.
+  const skipNextSave = useRef(false);
   const pendingValue = useRef<T | undefined>(undefined);
   const pendingArgs = useRef<{ organizationId: string; fieldKey: string; userId?: string }>({ organizationId, fieldKey, userId });
 
@@ -58,6 +63,7 @@ export function useAutosave<T>(organizationId: string, fieldKey: string, userId?
 
   useEffect(() => {
     if (initial.current) { initial.current = false; return; }
+    if (skipNextSave.current) { skipNextSave.current = false; return; }
     setStatus('saving');
     pendingValue.current = value;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
@@ -85,5 +91,15 @@ export function useAutosave<T>(organizationId: string, fieldKey: string, userId?
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { value, setValue, status };
+  /**
+   * Sets the field value WITHOUT triggering an autosave. For prefilling
+   * example text the user can edit but shouldn't be persisted until they
+   * actually touch it.
+   */
+  const setLocalValue = (v: T | undefined) => {
+    skipNextSave.current = true;
+    setValue(v);
+  };
+
+  return { value, setValue, setLocalValue, status };
 }

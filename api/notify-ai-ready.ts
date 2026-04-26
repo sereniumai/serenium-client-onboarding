@@ -42,6 +42,16 @@ export default async function handler(req: Request): Promise<Response> {
   const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
   if (!profile || (profile as { role: string }).role !== 'admin') return json({ error: 'Admins only' }, 403);
 
+  // Respect the admin's per-event email toggle.
+  const { data: setting } = await admin
+    .from('notification_settings')
+    .select('send_email')
+    .eq('event_key', 'client:ai_ready')
+    .maybeSingle();
+  if (setting && (setting as { send_email: boolean }).send_email === false) {
+    return json({ ok: true, disabled: true });
+  }
+
   let b: Body;
   try { b = (await req.json()) as Body; } catch { return json({ error: 'Invalid JSON' }, 400); }
   if (!b.organizationId) return json({ error: 'Missing organizationId' }, 400);

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, FileBarChart2, Home, LifeBuoy, ChevronLeft, PlayCircle, MessageCircleQuestion, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Video, Sparkles, Mail, MessageCircle, Bell, BellRing, FileBarChart2, Home, LifeBuoy, ChevronLeft, PlayCircle, MessageCircleQuestion, TrendingUp, Activity } from 'lucide-react';
 import { SELECTABLE_SERVICES, getService } from '../config/modules';
 import { SERVICE_ICON } from '../config/serviceIcons';
 import { Sidebar, type SidebarSection } from './Sidebar';
@@ -9,6 +9,7 @@ import { CurriculumSidebar } from './CurriculumSidebar';
 import { AiHelperChat } from './AiHelperChat';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ImpersonationBanner } from './ImpersonationBanner';
+import { AdminBell } from './AdminBell';
 import { WelcomeVideoModal, openWelcomeVideo } from './WelcomeVideoModal';
 import { ReportsVideoModal, openReportsVideo } from './ReportsVideoModal';
 import { useAuth } from '../auth/AuthContext';
@@ -102,6 +103,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Sidebar>
       <div className="flex-1 md:ml-[260px] min-w-0 flex flex-col">
         <ImpersonationBanner />
+        {user.role === 'admin' && (
+          <div className="hidden md:flex justify-end px-6 pt-4">
+            <AdminBell />
+          </div>
+        )}
         <main className="flex-1">
           <ErrorBoundary variant="inline" resetKey={location.pathname}>
             {children}
@@ -159,6 +165,7 @@ function buildSections({
       {
         title: 'System',
         items: [
+          { to: '/admin/notifications', label: 'Notifications', icon: BellRing },
           { to: '/admin/whats-new', label: "What's new", icon: Bell, dot: hasUnreadWhatsNew },
           { to: '/admin/diagnostics', label: 'System health', icon: LifeBuoy },
         ],
@@ -182,88 +189,85 @@ function buildSections({
     ];
   }
 
-  // Live clients land in reports mode, single sidebar entry, no Aria, no
-  // welcome video.
-  if (isLive) {
-    return [
-      {
-        title: 'Your account',
-        items: [
-          { to: `/onboarding/${orgSlug}/reports`, label: 'Reports', icon: FileBarChart2, end: true },
-          ...(hasReportsVideo
-            ? [{ label: 'Reports walkthrough', icon: PlayCircle, onClick: openReportsVideo }]
-            : []),
-        ],
-      },
-    ];
-  }
-
-  if (onboardingDone) {
-    return [
-      {
-        title: 'Overview',
-        items: [
-          { to: `/onboarding/${orgSlug}`, label: 'Dashboard', icon: Home, end: true },
-        ],
-      },
-      {
-        title: 'Support',
-        items: [
-          { label: 'Ask Aria', icon: MessageCircleQuestion, onClick: openAiChat },
-          ...(hasWelcomeVideo
-            ? [{ label: 'Welcome video', icon: PlayCircle, onClick: openWelcomeVideo }]
-            : []),
-        ],
-      },
-    ];
-  }
-
-  // During onboarding, list each enabled service directly. No phase grouping, no
-  // module-level detail - clean and clickable.
   const enabledServiceKeys = progress?.enabledServices ?? [];
-  const serviceItems = SELECTABLE_SERVICES
+
+  // "Your Services" , services this client is paying for. Links to the same
+  // service page as during onboarding; once live, that page renders read-only.
+  // business_profile is foundational (everyone has it) so it sits here too.
+  const yourServiceItems = SELECTABLE_SERVICES
     .filter(s => enabledServiceKeys.includes(s.key))
     .map(s => {
       const summaries = progress?.perService[s.key] ?? [];
-      // Same completion-gate as the dashboard: admin-locked modules
-      // (Receptionist phone setup, AI SMS GHL calendar) don't count toward
-      // the X/Y badge so the sidebar reflects what the client can actually
-      // finish, not what's still on our plate.
       const completable = summaries.filter(x => x.canStart);
       const done = completable.filter(x => x.status === 'complete').length;
       const total = completable.length;
+      const allDone = total > 0 && done === total;
       return {
         to: `/onboarding/${orgSlug}/services/${s.key}`,
         label: getService(s.key)?.label ?? s.key,
         icon: SERVICE_ICON[s.key] ?? Home,
-        badge: total > 0 ? `${done}/${total}` : undefined,
+        // During onboarding show progress; once live or all-done show a check.
+        badge: isLive || allDone ? '✓' : (total > 0 ? `${done}/${total}` : undefined),
       };
     });
 
-  return [
-    {
-      title: 'Your onboarding',
-      items: [
-        {
-          to: `/onboarding/${orgSlug}`,
-          label: 'Overview',
-          icon: Home,
-          end: true,
-          badge: progress ? `${progress.overall}%` : undefined,
-        },
-        ...serviceItems,
-      ],
-    },
-    {
-      title: 'Support',
-      items: [
-        { label: 'Ask Aria', icon: MessageCircleQuestion, onClick: openAiChat },
-        ...(hasWelcomeVideo
-          ? [{ label: 'Welcome video', icon: PlayCircle, onClick: openWelcomeVideo }]
-          : []),
-      ],
-    },
-  ];
+  // "More from Serenium" , services they haven't bought. business_profile is
+  // shared infrastructure, never an upsell.
+  const moreFromSereniumItems = SELECTABLE_SERVICES
+    .filter(s => !enabledServiceKeys.includes(s.key) && s.key !== 'business_profile')
+    .map(s => ({
+      to: `/onboarding/${orgSlug}/learn/${s.key}`,
+      label: getService(s.key)?.label ?? s.key,
+      icon: SERVICE_ICON[s.key] ?? Home,
+      muted: true,
+    }));
+
+  const overviewSection: SidebarSection = {
+    title: 'Overview',
+    items: [
+      {
+        to: `/onboarding/${orgSlug}`,
+        label: 'Dashboard',
+        icon: Home,
+        end: true,
+        badge: !isLive && !onboardingDone && progress ? `${progress.overall}%` : undefined,
+      },
+      ...(isLive
+        ? [{ to: `/onboarding/${orgSlug}/reports`, label: 'Reports', icon: FileBarChart2 }]
+        : []),
+    ],
+  };
+
+  const supportSection: SidebarSection = {
+    title: 'Support',
+    items: [
+      ...(!isLive ? [{ label: 'Ask Aria', icon: MessageCircleQuestion, onClick: openAiChat }] : []),
+      ...(!isLive && hasWelcomeVideo
+        ? [{ label: 'Welcome video', icon: PlayCircle, onClick: openWelcomeVideo }]
+        : []),
+      ...(isLive && hasReportsVideo
+        ? [{ label: 'Reports walkthrough', icon: PlayCircle, onClick: openReportsVideo }]
+        : []),
+    ],
+  };
+
+  const sections: SidebarSection[] = [overviewSection];
+  if (yourServiceItems.length > 0) {
+    sections.push({ title: 'Your services', items: yourServiceItems });
+  }
+  if (moreFromSereniumItems.length > 0) {
+    sections.push({ title: 'More from Serenium', items: moreFromSereniumItems });
+  }
+  if (supportSection.items.length > 0) {
+    sections.push(supportSection);
+  }
+  // System status sits at the very bottom , quietly visible, never dominant.
+  sections.push({
+    items: [
+      { to: `/onboarding/${orgSlug}/status`, label: 'System status', icon: Activity },
+    ],
+  });
+  return sections;
 }
 
 function openAiChat() {

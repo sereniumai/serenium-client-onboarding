@@ -27,6 +27,17 @@ import { ARIA } from '../config/personas';
 import { suggestionsForContext } from './aiSuggestions';
 import { Markdown } from './Markdown';
 import { cn } from '../lib/cn';
+import { supabase } from '../lib/supabase';
+
+async function notifyAriaMessage(organizationId: string, content: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+  await fetch('/api/notify-aria-message', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ organizationId, messagePreview: content.slice(0, 220) }),
+  });
+}
 
 export function AiHelperChat() {
   const { user } = useAuth();
@@ -117,6 +128,13 @@ export function AiHelperChat() {
         context: currentContext,
       });
       qc.invalidateQueries({ queryKey: ['ai-chat', activeThreadId] });
+
+      // Ping the admin (bell + optionally email) when a client posts. The
+      // endpoint consolidates back-and-forth chat into a single notification
+      // per hour and respects the admin's channel toggles. Fire-and-forget.
+      if (user.role === 'client' && org?.id) {
+        notifyAriaMessage(org.id, content).catch(() => {});
+      }
 
       const userContext = org && progress ? {
         firstName: user.fullName.split(' ')[0],

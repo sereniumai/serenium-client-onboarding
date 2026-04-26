@@ -18,6 +18,17 @@ import { Markdown } from './Markdown';
 import { FieldTooltip } from './FieldTooltip';
 import { cn } from '../lib/cn';
 
+// Format as (XXX) XXX-XXXX as the user types. NANP only , clients are Canadian.
+// If they paste a +1 prefix or extension, we strip it; the saved value matches
+// what they see, no hidden divergence.
+function formatPhone(input: string): string {
+  const digits = input.replace(/\D/g, '').replace(/^1/, '').slice(0, 10);
+  if (digits.length === 0) return '';
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 interface Props {
   field: Field;
   organizationId: string;
@@ -188,30 +199,35 @@ function WeeklyAvailabilityField({ field, organizationId, fieldKey, userId, onSt
 }
 
 function SimpleField({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
-  const { value, setValue, status } = useAutosave<string>(organizationId, fieldKey, userId);
+  const { value, setValue, setLocalValue, status } = useAutosave<string>(organizationId, fieldKey, userId);
   const v = value ?? '';
 
   useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
 
-  // Pre-fill once when nothing is saved yet. Lets clients see a working
-  // example (e.g. AI greeting script) they can edit instead of staring at
-  // a blank textarea.
+  // Pre-fill once when nothing is saved yet so clients see a working example
+  // (e.g. AI greeting script) instead of staring at a blank textarea. Uses
+  // setLocalValue so the example DOESN'T autosave , until the client actually
+  // edits the field, the field stays "empty" in the DB and "not filled" for
+  // progress purposes. Stops fresh accounts shipping "Hi [Name]" verbatim.
   const prefilledRef = useRef(false);
   useEffect(() => {
     if (prefilledRef.current) return;
     if (!field.defaultValue) return;
     if (status === 'idle' && (value === undefined || value === '')) {
       prefilledRef.current = true;
-      setValue(field.defaultValue);
+      setLocalValue(field.defaultValue);
     }
-  }, [field.defaultValue, status, value, setValue]);
+  }, [field.defaultValue, status, value, setLocalValue]);
 
   const common = {
     id: fieldKey,
     value: v,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setValue(e.target.value),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const raw = e.target.value;
+      setValue(field.type === 'phone' ? formatPhone(raw) : raw);
+    },
     className: 'input',
-    placeholder: field.placeholder,
+    placeholder: field.type === 'phone' ? (field.placeholder ?? '(403) 555-0100') : field.placeholder,
   };
 
   if (field.type === 'textarea') {
@@ -305,6 +321,13 @@ function MultiselectField({ field, organizationId, fieldKey, userId, onStatusCha
 }
 
 function RepeatableField({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
+  if (field.pair) {
+    return <RepeatablePairField field={field} organizationId={organizationId} fieldKey={fieldKey} userId={userId} onStatusChange={onStatusChange} />;
+  }
+  return <RepeatableSimpleField field={field} organizationId={organizationId} fieldKey={fieldKey} userId={userId} onStatusChange={onStatusChange} />;
+}
+
+function RepeatableSimpleField({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
   const { value, setValue, status } = useAutosave<string[]>(organizationId, fieldKey, userId);
   const items = value ?? [''];
   useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
@@ -336,6 +359,58 @@ function RepeatableField({ field, organizationId, fieldKey, userId, onStatusChan
       ))}
       <button type="button" onClick={add} className="inline-flex items-center gap-1.5 text-sm text-orange hover:text-orange-hover font-medium">
         <Plus className="h-4 w-4" /> Add another
+      </button>
+    </div>
+  );
+}
+
+function RepeatablePairField({ field, organizationId, fieldKey, userId, onStatusChange }: Props) {
+  const { value, setValue, status } = useAutosave<Array<{ q: string; a: string }>>(organizationId, fieldKey, userId);
+  const items = value ?? [{ q: '', a: '' }];
+  useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
+  const pair = field.pair!;
+
+  const update = (i: number, key: 'q' | 'a', v: string) => {
+    const next = items.map((it, idx) => idx === i ? { ...it, [key]: v } : it);
+    setValue(next);
+  };
+  const add = () => setValue([...items, { q: '', a: '' }]);
+  const remove = (i: number) => setValue(items.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="space-y-3">
+      {items.map((item, i) => (
+        <div key={i} className="rounded-lg border border-border-subtle bg-bg-tertiary/40 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-wider text-white/40 font-semibold">Pair {i + 1}</span>
+            {items.length > 1 && (
+              <button type="button" onClick={() => remove(i)} className="text-white/40 hover:text-error">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <label className="block">
+            <span className="text-xs text-white/60 mb-1 block">{pair.qLabel}</span>
+            <input
+              value={item.q}
+              onChange={e => update(i, 'q', e.target.value)}
+              placeholder={pair.qPlaceholder}
+              className="input"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs text-white/60 mb-1 block">{pair.aLabel}</span>
+            <input
+              value={item.a}
+              onChange={e => update(i, 'a', e.target.value)}
+              placeholder={pair.aPlaceholder}
+              className="input"
+            />
+          </label>
+        </div>
+      ))}
+      <button type="button" onClick={add} className="inline-flex items-center gap-1.5 text-sm text-orange hover:text-orange-hover font-medium">
+        <Plus className="h-4 w-4" /> Add another Q&amp;A pair
       </button>
     </div>
   );
@@ -450,9 +525,12 @@ function StructuredField({ field, organizationId, fieldKey, userId, onStatusChan
                 id={subId}
                 type={sub.type === 'email' ? 'email' : sub.type === 'phone' ? 'tel' : sub.type === 'url' ? 'url' : 'text'}
                 value={subVal}
-                onChange={e => update(sub.key, e.target.value)}
-                placeholder={sub.placeholder}
+                onChange={e => update(sub.key, sub.type === 'phone' ? formatPhone(e.target.value) : e.target.value)}
+                placeholder={sub.placeholder ?? (sub.type === 'phone' ? '(403) 555-0100' : undefined)}
                 className="input"
+                // Browser autofill on name/email/phone can pop a dropdown that
+                // scrolls the page on some browsers , defensive off-switch.
+                autoComplete="off"
               />
             )}
           </div>

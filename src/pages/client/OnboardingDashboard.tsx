@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, Navigate, Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { FinalCelebration } from '../../components/FinalCelebration';
 import { PausedScreen } from '../../components/PausedScreen';
 import { motion } from 'framer-motion';
@@ -92,9 +92,12 @@ export function OnboardingDashboard() {
   const firstName = user?.fullName.split(' ')[0] ?? 'there';
 
   // Post-onboarding states handled here:
-  // - status === 'live'       → reports have been unlocked. First time the
-  //                            user lands here we show a welcome celebration,
-  //                            after that we redirect straight to /reports.
+  // - status === 'live'       → reports unlocked. Same dashboard layout as
+  //                            onboarding, with services shown as "Live ✓
+  //                            Completed" and Reports as a sidebar item under
+  //                            Dashboard. First visit shows a one-time
+  //                            FinalCelebration overlay, then they stay on
+  //                            the dashboard (no redirect).
   // - status === 'onboarding' + 100% done → pending review (waiting for team)
   // - otherwise → active onboarding dashboard
   // Paused / churned clients hit a soft block. Auth is fine, admin can flip
@@ -103,10 +106,13 @@ export function OnboardingDashboard() {
   if ((org.status === 'paused' || org.status === 'churned') && user?.role !== 'admin') {
     return <PausedScreen businessName={org.businessName} status={org.status} />;
   }
-  if (org.status === 'live') return <LiveLandingGate org={org} firstName={firstName} userId={user?.id} />;
-  // Even at 100% we keep the dashboard fully editable, clients often need to
-  // come back and tweak answers, and we may circle back asking for more. The
-  // celebration view only fires once Serenium marks them live in admin.
+  const isLive = org.status === 'live';
+  // First-visit celebration for newly-live clients. Same dashboard layout as
+  // onboarding, just with services shown as completed; the celebration is a
+  // one-time overlay rather than a redirect away from the dashboard.
+  // Even at 100% during onboarding we keep the dashboard fully editable ,
+  // clients often need to come back and tweak answers, and we may circle back
+  // asking for more.
 
   // Reports placeholder shown in hero metadata only, empty until status flips to 'live'.
   const reports: Array<never> = [];
@@ -114,6 +120,7 @@ export function OnboardingDashboard() {
 
   return (
     <AppShell>
+      {isLive && <LiveFirstVisitCelebration org={org} firstName={firstName} userId={user?.id} />}
       <div className="relative">
         <HeroGlow />
 
@@ -133,9 +140,13 @@ export function OnboardingDashboard() {
               <h1 className="font-display font-black text-[clamp(1.875rem,5vw,3.25rem)] leading-[1.02] tracking-[-0.035em] mb-3">
                 {timeOfDayGreeting()}, <span className="text-orange">{firstName}</span>.
               </h1>
-              <p className="text-white/55 text-base md:text-lg max-w-2xl leading-relaxed">{motivation(progress.overall, reports.length > 0, !onboardingDone && !resume && progress.overall > 0)}</p>
+              <p className="text-white/55 text-base md:text-lg max-w-2xl leading-relaxed">
+                {isLive
+                  ? "Everything we do for you is live. Reports drop monthly , find the latest in the sidebar."
+                  : motivation(progress.overall, reports.length > 0, !onboardingDone && !resume && progress.overall > 0)}
+              </p>
 
-              {!onboardingDone && resume && (
+              {!isLive && !onboardingDone && resume && (
                 <Link
                   to={`/onboarding/${org.slug}/services/${resume.serviceKey}/${resume.moduleKey}`}
                   className="group inline-flex items-center gap-2 mt-6 text-sm font-medium px-4 py-2 rounded-lg border border-orange/40 bg-orange/[0.04] text-white hover:bg-orange/[0.1] hover:border-orange/70 transition-all"
@@ -151,17 +162,19 @@ export function OnboardingDashboard() {
           </motion.div>
         </section>
 
-        {/* POST-ONBOARDING, latest report + complete banner */}
-        {onboardingDone && (
+        {/* POST-ONBOARDING, latest report + complete banner , onboarding-flow
+            only. Live clients have services pinned as "Live" already so the
+            extra "All sections complete" banner becomes noise. */}
+        {!isLive && onboardingDone && (
           <section className="relative mx-auto max-w-6xl px-6 pb-2">
             <CompleteBanner hasReports={reports.length > 0} />
             {latestReport && <LatestReportHero report={latestReport} orgSlug={org.slug} />}
           </section>
         )}
 
-        {/* ONBOARDING, grouped by phase */}
+        {/* SERVICE GRID. Eyebrow shifts copy by state , onboarding / summary / live. */}
         <section className="relative mx-auto max-w-6xl px-4 md:px-6 pb-16 md:pb-24 pt-2 md:pt-4">
-          <p className="eyebrow mb-4">{onboardingDone ? 'Summary' : 'Onboarding'}</p>
+          <p className="eyebrow mb-4">{isLive ? 'Your services' : onboardingDone ? 'Summary' : 'Onboarding'}</p>
 
           {progress.enabledServices.length === 0 && (
             <div className="card text-center py-16">
@@ -184,7 +197,10 @@ export function OnboardingDashboard() {
               const svcComplete = completable.filter(s => s.status === 'complete').length;
               const svcTotal = completable.length;
               const svcPct = svcTotal === 0 ? 0 : Math.round((svcComplete / svcTotal) * 100);
-              const svcDone = svcTotal > 0 && svcComplete === svcTotal;
+              // Once live, every service is complete , they're paying, the
+              // service is running. Show a green Completed pill rather than a
+              // partial progress ring, matching the round-6 brief.
+              const svcDone = isLive || (svcTotal > 0 && svcComplete === svcTotal);
               const anyInProgress = summaries.some(s => s.status !== 'not_started');
               // True when the only thing left on the service is something we
               // (Serenium) need to action, not the client. Surfaces a pill so
@@ -222,9 +238,15 @@ export function OnboardingDashboard() {
                         <h4 className="font-display font-bold text-lg tracking-[-0.01em] truncate">{svc.label}</h4>
                         <p className="text-sm text-white/65 leading-relaxed mt-1">{svc.description}</p>
                       </div>
-                      <CircleProgress value={svcPct} size={44} strokeWidth={3}>
-                        <span className="text-[10px] font-semibold tabular-nums">{svcComplete}<span className="text-white/40">/{svcTotal}</span></span>
-                      </CircleProgress>
+                      {isLive ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-success/15 text-success text-[11px] font-semibold whitespace-nowrap">
+                          <CheckCircle2 className="h-3 w-3" /> Live
+                        </span>
+                      ) : (
+                        <CircleProgress value={svcPct} size={44} strokeWidth={3}>
+                          <span className="text-[10px] font-semibold tabular-nums">{svcComplete}<span className="text-white/40">/{svcTotal}</span></span>
+                        </CircleProgress>
+                      )}
                     </div>
                     {waitingMessage && (
                       <div className="mt-1 mb-3 px-3 py-2 rounded-md bg-orange/[0.06] border border-orange/25 text-xs text-white/85 leading-relaxed">
@@ -236,17 +258,19 @@ export function OnboardingDashboard() {
                         'inline-flex items-center gap-1.5 text-sm font-medium',
                         waitingOnUs ? 'text-orange' : svcDone ? 'text-success' : anyInProgress ? 'text-orange' : 'text-white/50',
                       )}>
-                        {waitingOnUs
-                          ? <>Waiting on Serenium</>
-                          : svcDone
-                            ? <><CheckCircle2 className="h-4 w-4" /> Done</>
-                            : anyInProgress
-                              ? <>In progress</>
-                              : <>Not started</>
+                        {isLive
+                          ? <><CheckCircle2 className="h-4 w-4" /> Completed</>
+                          : waitingOnUs
+                            ? <>Waiting on Serenium</>
+                            : svcDone
+                              ? <><CheckCircle2 className="h-4 w-4" /> Done</>
+                              : anyInProgress
+                                ? <>In progress</>
+                                : <>Not started</>
                         }
                       </span>
                       <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange group-hover:gap-2 transition-all">
-                        {svcDone ? 'Review' : anyInProgress ? 'Continue' : 'Start'} <ArrowRight className="h-4 w-4" />
+                        {isLive ? 'View' : svcDone ? 'Review' : anyInProgress ? 'Continue' : 'Start'} <ArrowRight className="h-4 w-4" />
                       </span>
                     </div>
                   </Link>
@@ -257,6 +281,7 @@ export function OnboardingDashboard() {
 
           {org.showOtherServices !== false && (
             <OtherSerenumServices
+              orgSlug={org.slug}
               unavailableServiceKeys={SELECTABLE_SERVICES
                 .filter(svc => svc.key !== 'business_profile' && !progress.enabledServices.includes(svc.key))
                 .map(s => s.key)}
@@ -268,37 +293,45 @@ export function OnboardingDashboard() {
   );
 }
 
-function OtherSerenumServices({ unavailableServiceKeys }: { unavailableServiceKeys: ServiceKey[] }) {
+function OtherSerenumServices({ orgSlug, unavailableServiceKeys }: { orgSlug: string; unavailableServiceKeys: ServiceKey[] }) {
   if (unavailableServiceKeys.length === 0) return null;
   return (
     <section className="mt-16 md:mt-20">
       <div className="flex items-center justify-between mb-5">
-        <p className="eyebrow">More from Serenium</p>
-        <a
-          href="mailto:contact@sereniumai.com?subject=Adding%20a%20service%20to%20my%20Serenium%20plan"
-          className="text-sm font-semibold text-orange hover:text-orange-hover transition-colors inline-flex items-center gap-1.5"
-        >
-          Ask about adding one <ArrowRight className="h-4 w-4" />
-        </a>
+        <div>
+          <p className="eyebrow">More from Serenium</p>
+          <p className="text-sm text-white/55 mt-1">Other ways we help roofers grow. Tap any to see what we'd do for you.</p>
+        </div>
       </div>
-      <ul className="divide-y divide-border-subtle">
+      <div className="grid md:grid-cols-2 gap-4">
         {unavailableServiceKeys.map((key) => {
           const svc = SELECTABLE_SERVICES.find(s => s.key === key);
           if (!svc) return null;
           const Icon = SERVICE_ICON[key];
           return (
-            <li key={key} className="group flex items-center gap-4 py-4">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-orange/10 text-orange">
-                <Icon className="h-5 w-5" />
+            <Link
+              key={key}
+              to={`/onboarding/${orgSlug}/learn/${key}`}
+              className="card group block hover:border-orange/40 hover:-translate-y-0.5 transition-all"
+            >
+              <div className="flex items-start gap-4">
+                <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-orange/10 text-orange">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-display font-bold text-lg tracking-[-0.01em]">{svc.label}</h4>
+                  <p className="text-sm text-white/65 leading-relaxed mt-1">{svc.marketingDescription ?? svc.description}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-base text-white/90 group-hover:text-white transition-colors">{svc.label}</p>
-                <p className="text-sm text-white/60 leading-relaxed">{svc.marketingDescription ?? svc.description}</p>
+              <div className="flex items-center justify-end pt-4 mt-4 border-t border-border-subtle">
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange group-hover:gap-2 transition-all">
+                  Learn more <ArrowRight className="h-4 w-4" />
+                </span>
               </div>
-            </li>
+            </Link>
           );
         })}
-      </ul>
+      </div>
     </section>
   );
 }
@@ -348,38 +381,27 @@ function findLastTouchedModule(snapshot: import('../../lib/progress').OrgSnapsho
   return null;
 }
 
-function LiveLandingGate({ org, firstName, userId }: {
-  org: { id: string; slug: string; businessName: string };
+function LiveFirstVisitCelebration({ org, firstName, userId }: {
+  org: { id: string; businessName: string };
   firstName: string;
   userId?: string;
 }) {
-  const navigate = useNavigate();
   const seenKey = `serenium.live-seen.${org.id}.${userId ?? 'anon'}`;
   const [show, setShow] = useState(() => {
     if (!userId) return false;
     try { return window.localStorage.getItem(seenKey) !== '1'; }
     catch { return false; }
   });
-
-  useEffect(() => {
-    if (!show) {
-      navigate(`/onboarding/${org.slug}/reports`, { replace: true });
-    }
-  }, [show, org.slug, navigate]);
-
   if (!show) return null;
-
   return (
-    <AppShell>
-      <FinalCelebration
-        show
-        businessName={org.businessName}
-        firstName={firstName}
-        onContinue={() => {
-          try { window.localStorage.setItem(seenKey, '1'); } catch { /* storage blocked */ }
-          setShow(false);
-        }}
-      />
-    </AppShell>
+    <FinalCelebration
+      show
+      businessName={org.businessName}
+      firstName={firstName}
+      onContinue={() => {
+        try { window.localStorage.setItem(seenKey, '1'); } catch { /* storage blocked */ }
+        setShow(false);
+      }}
+    />
   );
 }

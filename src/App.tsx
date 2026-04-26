@@ -20,6 +20,8 @@ const OnboardingDashboard = lazy(() => import('./pages/client/OnboardingDashboar
 const ModulePage = lazy(() => import('./pages/client/ModulePage').then(m => ({ default: m.ModulePage })));
 const ServicePage = lazy(() => import('./pages/client/ServicePage').then(m => ({ default: m.ServicePage })));
 const ReportsPage = lazy(() => import('./pages/client/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const LearnMorePage = lazy(() => import('./pages/client/LearnMorePage').then(m => ({ default: m.LearnMorePage })));
+const SystemStatusPage = lazy(() => import('./pages/client/SystemStatusPage').then(m => ({ default: m.SystemStatusPage })));
 
 // Admin, the biggest chunk, kept out of the client bundle entirely.
 const AdminHome = lazy(() => import('./pages/admin/AdminHome').then(m => ({ default: m.AdminHome })));
@@ -31,6 +33,7 @@ const FollowupSettingsPage = lazy(() => import('./pages/admin/FollowupSettingsPa
 const AiConversationsPage = lazy(() => import('./pages/admin/AiConversationsPage').then(m => ({ default: m.AiConversationsPage })));
 const RevenuePage = lazy(() => import('./pages/admin/RevenuePage').then(m => ({ default: m.RevenuePage })));
 const ChangelogPage = lazy(() => import('./pages/admin/ChangelogPage').then(m => ({ default: m.ChangelogPage })));
+const NotificationsPage = lazy(() => import('./pages/admin/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const DiagnosticsPage = lazy(() => import('./pages/admin/DiagnosticsPage').then(m => ({ default: m.DiagnosticsPage })));
 const AccountPage = lazy(() => import('./pages/account/AccountPage').then(m => ({ default: m.AccountPage })));
 
@@ -89,6 +92,12 @@ function App() {
             <Route path="/onboarding/:orgSlug/services/:serviceKey/:moduleKey" element={
               <AuthGuard><ModulePage /></AuthGuard>
             } />
+            <Route path="/onboarding/:orgSlug/learn/:serviceKey" element={
+              <AuthGuard><LearnMorePage /></AuthGuard>
+            } />
+            <Route path="/onboarding/:orgSlug/status" element={
+              <AuthGuard><SystemStatusPage /></AuthGuard>
+            } />
 
             <Route path="/admin" element={<AuthGuard requireRole="admin"><AdminHome /></AuthGuard>} />
             <Route path="/admin/clients/new" element={<AuthGuard requireRole="admin"><NewClientWizard /></AuthGuard>} />
@@ -99,6 +108,7 @@ function App() {
             <Route path="/admin/ai-conversations" element={<AuthGuard requireRole="admin"><AiConversationsPage /></AuthGuard>} />
             <Route path="/admin/revenue" element={<AuthGuard requireRole="admin"><RevenuePage /></AuthGuard>} />
             <Route path="/admin/whats-new" element={<AuthGuard requireRole="admin"><ChangelogPage /></AuthGuard>} />
+            <Route path="/admin/notifications" element={<AuthGuard requireRole="admin"><NotificationsPage /></AuthGuard>} />
             <Route path="/admin/diagnostics" element={<AuthGuard requireRole="admin"><DiagnosticsPage /></AuthGuard>} />
             <Route path="/account" element={<AuthGuard><AccountPage /></AuthGuard>} />
 

@@ -55,6 +55,17 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ error: 'Admins only' }, 403);
   }
 
+  // Honor the admin's per-event toggle on the Notifications page.
+  // Missing row = enabled by default (so brand-new events don't go silent).
+  const { data: setting } = await admin
+    .from('notification_settings')
+    .select('send_email')
+    .eq('event_key', 'client:invitation')
+    .maybeSingle();
+  if (setting && (setting as { send_email: boolean }).send_email === false) {
+    return json({ ok: true, disabled: true });
+  }
+
   // 2. Parse body.
   let body: Body;
   try { body = (await req.json()) as Body; } catch { return json({ error: 'Invalid JSON body' }, 400); }

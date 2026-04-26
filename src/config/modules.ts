@@ -71,6 +71,8 @@ export interface Field {
   docLinks?: Array<{ label: string; url: string }>;
   /** For repeatable fields, minimum entries required */
   minItems?: number;
+  /** For type='repeatable', when set the row renders as paired inputs (e.g. Q + A for FAQs). Stored as `{q,a}[]` instead of `string[]`. */
+  pair?: { qLabel: string; aLabel: string; qPlaceholder?: string; aPlaceholder?: string };
   /** For type='structured', sub-field schema (e.g. street/city/postal). */
   schema?: StructuredSubField[];
   /** For type='slider', numeric range config. */
@@ -107,7 +109,7 @@ export interface ModuleDef {
   links?: Record<string, string>;
   /** Links that appear when another field equals the key (e.g. registrar). */
   conditionalLinks?: Record<string, string>;
-  /** Show a manual "Mark this section complete" button. Use sparingly — most
+  /** Show a manual "Mark this section complete" button. Use sparingly , most
    *  sections complete via auto-save once required fields are filled. Reserved
    *  for modules where the default value (e.g. Business Hours 9–5) might not
    *  trigger any edit event, so without a button the section never flips. */
@@ -143,7 +145,7 @@ const BUSINESS_PROFILE: ServiceDef = {
         label: 'Cities and towns you serve, most important first',
         type: 'repeatable',
         required: true,
-        helpText: 'Order matters: the top of the list gets priority wherever your business is represented.',
+        helpText: 'One city per row, click "+ Add" to enter the next one. Order matters: the top of the list gets priority wherever your business is represented.',
         tooltip: 'List the cities and towns where you actually take jobs, your top market first. We use this across the parts of your business we run for you so nothing books or targets outside your zone.',
       }],
     },
@@ -495,11 +497,15 @@ The more specific you are here, the more your AI sounds like you.`,
           tooltip: 'The exact opening text the AI sends every new lead. Keep it warm and short, use [Name] and [Company] placeholders, and avoid overly formal language since this is SMS.',
         },
         {
+          key: 'sms_qualification_questions_help',
+          type: 'info',
+          content: 'In the order the AI should ask. Typical for roofing: full name, service address, roof age, material, insurance vs cash, urgency.',
+        },
+        {
           key: 'sms_qualification_questions',
           label: 'Info the AI must gather before booking',
           type: 'repeatable',
           required: true,
-          helpText: 'In the order the AI should ask. Typical for roofing: full name, service address, roof age, material, insurance vs cash, urgency.',
           tooltip: 'The questions the AI must get answered before it books. Order matters, ask the easy ones (name, address) first and the trickier ones (insurance vs cash) once they are warmed up.',
         },
         {
@@ -508,8 +514,14 @@ The more specific you are here, the more your AI sounds like you.`,
           type: 'repeatable',
           minItems: 5,
           required: true,
+          pair: {
+            qLabel: 'Question',
+            aLabel: 'Ideal answer',
+            qPlaceholder: 'e.g. Do you do insurance claims?',
+            aPlaceholder: 'e.g. Yes, we work with all major Canadian insurers and handle the paperwork.',
+          },
           helpText: 'Add at least 5. Cover topics like service area, warranty, pricing, availability, insurance work, emergency service, and financing.',
-          tooltip: 'For each common question, give the AI the exact answer in your voice. Example Q: "Do you do insurance claims?" A: "Yes, we work with all major Canadian insurers and handle the paperwork." More FAQs means fewer awkward AI moments.',
+          tooltip: 'For each common question, give the AI the exact answer in your voice. More FAQs means fewer awkward AI moments.',
         },
         {
           key: 'sms_pricing_stance',
@@ -665,11 +677,11 @@ The more specific you are here, the more your AI sounds like you.`,
     {
       key: 'ghl_calendar_setup',
       title: 'Connect your calendar',
-      whyWeAsk: "We'll give you GoHighLevel access first. Once you're in, this is the handshake that lets the AI drop real appointments on your calendar without double-booking, the difference between \"AI texts about a lead\" and \"AI books the lead while you're on a roof\".",
+      whyWeAsk: "We'll set you up with an account on our CRM first. Once you're in, this is the handshake that lets the AI drop real appointments on your calendar without double-booking, the difference between \"AI texts about a lead\" and \"AI books the lead while you're on a roof\".",
       estimatedMinutes: 10,
       lockedUntilAdminFlag: 'ai_sms_ghl_ready',
-      lockedMessage: "**We'll set up your GoHighLevel access first, then unlock this section.** Once you're in, the two short guides below will walk you through linking your calendar and setting availability in about 10 minutes.",
-      instructions: `Once your GHL access is live, follow the two guides below to link your calendar and set your booking availability.`,
+      lockedMessage: "**We'll set you up with an account on our CRM (GoHighLevel) first, then unlock this section.** Once your access is live, the two short guides below will walk you through linking your calendar and setting availability in about 10 minutes.",
+      instructions: `Once your CRM access is live, follow the two guides below to link your calendar and set your booking availability.`,
       fields: [
         { key: 'calendar_link_help', type: 'info',
           content: '[→ Official guide for linking your calendar](https://help.gohighlevel.com/support/solutions/articles/155000002374-setting-up-linked-calendars-conflict-calendars)',
@@ -752,7 +764,14 @@ const AI_RECEPTIONIST: ServiceDef = {
           helpText: 'Order matters. Typical roofing: name → address → roof type → age → reason → urgency → callback time.',
           tooltip: 'The questions the AI asks in order on every qualifying call. Easy first (name, address), then the deeper ones. Treat this like training a new front-desk hire.',
         },
-        { key: 'retell_faqs', label: 'FAQs callers commonly ask', type: 'repeatable', required: true, tooltip: 'Question + ideal answer pairs for things callers always ask: hours, service area, warranty, financing, insurance work. The more you give, the less the AI fumbles.' },
+        { key: 'retell_faqs', label: 'FAQs callers commonly ask', type: 'repeatable', required: true,
+          pair: {
+            qLabel: 'Question',
+            aLabel: 'Ideal answer',
+            qPlaceholder: 'e.g. How long are your warranties?',
+            aPlaceholder: 'e.g. 25 years on materials, 10 on workmanship.',
+          },
+          tooltip: 'Question + ideal answer pairs for things callers always ask: hours, service area, warranty, financing, insurance work. The more you give, the less the AI fumbles.' },
         { key: 'retell_pricing_stance', label: 'Pricing stance', type: 'select', required: true, options: ['Share ranges', 'A team member will follow up with pricing details'], tooltip: 'How the AI handles "what does a roof cost?" on a phone call. The follow-up option lets the AI capture the lead without quoting blind, then your team calls back with real numbers. Pick "Share ranges" only if you are confident on typical pricing.' },
         { key: 'retell_ai_never_say', label: 'Guardrails, never say', type: 'textarea', required: true, tooltip: 'Hard limits for the AI on calls. Examples: "do not promise specific prices, do not commit to dates without checking the calendar, do not name competitors, do not speculate on insurance coverage".' },
       ],
@@ -991,7 +1010,7 @@ const WEBSITE: ServiceDef = {
           tooltip: 'Where the lead lands the moment someone submits. "Both" is safest, you get an email alert and the CRM record in one shot.' },
         { key: 'submission_destination_info', type: 'info',
           conditional: { serviceEnabled: 'ai_sms', expected: true },
-          content: "Since you've signed up for AI SMS, every form submission flows automatically into the GoHighLevel CRM we manage for you and the AI follows up within 60 seconds. No setup needed here.",
+          content: "Since you've signed up for AI SMS, every form submission flows automatically into the CRM we manage for you and the AI follows up within 60 seconds. No setup needed here.",
         },
         { key: 'email_destination', label: 'Email for lead notifications', type: 'email', required: true, validate: validateEmail, conditional: { field: 'submission_destination', op: 'includes', value: 'Email' }, tooltip: 'The inbox that gets a fresh email every time the form is submitted. Use a real, monitored address, not info@ unless someone actually watches it.' },
         { key: 'crm_choice', label: 'CRM', type: 'select', required: true,

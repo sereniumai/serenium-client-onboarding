@@ -52,6 +52,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
+  // Force a session refresh when the tab regains focus. Browsers throttle
+  // setInterval in hidden tabs, so supabase-js's autoRefreshToken can miss
+  // its window if a client opens onboarding, switches tabs to grab a doc,
+  // and comes back 40+ minutes later. Without this they'd be silently
+  // signed out on the next API call. Cheap call when the session is healthy.
+  useEffect(() => {
+    if (!user) return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      supabase.auth.getSession().then(({ data }) => {
+        if (!data.session) return;
+        const expiresAt = data.session.expires_at ?? 0;
+        const secondsLeft = expiresAt - Math.floor(Date.now() / 1000);
+        // Refresh proactively if less than 5 minutes left.
+        if (secondsLeft < 300) {
+          supabase.auth.refreshSession().catch(() => {});
+        }
+      });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [user]);
+
   useEffect(() => {
     let mounted = true;
     let settled = false;

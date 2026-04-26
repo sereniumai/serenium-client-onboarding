@@ -149,33 +149,63 @@ export default async function handler(req: Request): Promise<Response> {
 
   const adminUrl = `https://clients.sereniumai.com/admin/clients/${o.slug}`;
 
-  const html = renderTeamEmail({
-    subject: tpl.subject,
-    message: tpl.message,
-    businessName: o.business_name,
-    primaryContact: o.primary_contact_email,
-    adminUrl,
-  });
+  // Read admin's per-event channel toggles. Missing row = both channels on
+  // (safe default for any new event we add before seeding it).
+  const { data: setting } = await admin
+    .from('notification_settings')
+    .select('send_email, send_bell')
+    .eq('event_key', b.eventKey)
+    .maybeSingle();
+  const sendEmail = setting ? (setting as { send_email: boolean }).send_email : true;
+  const sendBell  = setting ? (setting as { send_bell:  boolean }).send_bell  : true;
 
-  const resp = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${resendKey}` },
-    body: JSON.stringify({
-      from: FROM_ADDRESS,
-      to: TEAM_RECIPIENTS,
-      subject: `[Serenium] ${tpl.subject} · ${o.business_name}`,
-      html,
-    }),
-  });
-  if (!resp.ok) {
-    const txt = await resp.text();
-    console.error('[send-team-notification] Resend error', resp.status, txt);
-    captureEdgeError(new Error(`Resend ${resp.status}`), {
-      endpoint: 'send-team-notification',
-      organizationId: b.organizationId,
-      extra: { status: resp.status, body: txt.slice(0, 500), eventKey: b.eventKey },
+  // Bell row first , fast, no external dependency. Even if email fails or is
+  // disabled, the admin still sees the event in the in-app feed.
+  if (sendBell) {
+    const { error: bellErr } = await admin.from('admin_notifications').insert({
+      event_key:       b.eventKey,
+      organization_id: b.organizationId,
+      payload: {
+        subject:        tpl.subject,
+        message:        tpl.message,
+        businessName:   o.business_name,
+        slug:           o.slug,
+        primaryContact: o.primary_contact_email,
+        deepLink:       `/admin/clients/${o.slug}`,
+      },
     });
-    return json({ error: 'Email send failed' }, 502);
+    if (bellErr) console.warn('[send-team-notification] bell insert failed', bellErr);
+  }
+
+  if (sendEmail) {
+    const html = renderTeamEmail({
+      subject: tpl.subject,
+      message: tpl.message,
+      businessName: o.business_name,
+      primaryContact: o.primary_contact_email,
+      adminUrl,
+    });
+
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${resendKey}` },
+      body: JSON.stringify({
+        from: FROM_ADDRESS,
+        to: TEAM_RECIPIENTS,
+        subject: `[Serenium] ${tpl.subject} · ${o.business_name}`,
+        html,
+      }),
+    });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      console.error('[send-team-notification] Resend error', resp.status, txt);
+      captureEdgeError(new Error(`Resend ${resp.status}`), {
+        endpoint: 'send-team-notification',
+        organizationId: b.organizationId,
+        extra: { status: resp.status, body: txt.slice(0, 500), eventKey: b.eventKey },
+      });
+      // Don't fail the whole request , bell row is in, that's most of the value.
+    }
   }
 
   // Lock the (org, event) pair so this never fires twice.

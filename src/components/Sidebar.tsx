@@ -17,6 +17,8 @@ export interface SidebarNavItem {
   end?: boolean;
   badge?: number | string;
   dot?: boolean;
+  /** Renders the item dimmed , used for "More from Serenium" upsell entries the client hasn't bought yet. */
+  muted?: boolean;
 }
 
 export interface SidebarSection {
@@ -192,7 +194,9 @@ function SidebarItem({ item, onNavigate }: { item: SidebarNavItem; onNavigate: (
     'relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
     isActive
       ? 'bg-orange/10 text-orange'
-      : 'text-white/65 hover:bg-bg-tertiary/60 hover:text-white',
+      : item.muted
+        ? 'text-white/35 hover:bg-bg-tertiary/40 hover:text-white/70'
+        : 'text-white/65 hover:bg-bg-tertiary/60 hover:text-white',
   );
 
   const inner = (

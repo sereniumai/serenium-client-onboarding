@@ -26,6 +26,10 @@ export function ReportsPage() {
     queryKey: ['reports', org?.id],
     queryFn: () => listReportsForOrg(org!.id),
     enabled: !!org?.id && isLive,
+    // Refetch when client tabs back so a newly uploaded report appears without
+    // a manual refresh. Overrides the global refetchOnWindowFocus: false.
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   useEffect(() => {
@@ -170,9 +174,14 @@ function MonthFolder({ period, reports, activeId, onPick }: {
   activeId: string | null;
   onPick: (id: string) => void;
 }) {
-  // One report per month is the new norm — drop service grouping and surface
+  // One report per month is the new norm , drop service grouping and surface
   // each report as a direct child of the month. The single-report case shows
   // the report inline; multi-report (legacy) lists them.
+  // Hook order must stay stable across renders, so useState lives above any
+  // conditional return.
+  const hasActive = reports.some(r => r.id === activeId);
+  const [open, setOpen] = useState(hasActive);
+
   const single = reports.length === 1 ? reports[0] : null;
   if (single) {
     const isActive = activeId === single.id;
@@ -191,9 +200,6 @@ function MonthFolder({ period, reports, activeId, onPick }: {
       </li>
     );
   }
-
-  const hasActive = reports.some(r => r.id === activeId);
-  const [open, setOpen] = useState(hasActive);
 
   return (
     <li>
@@ -240,7 +246,7 @@ function MonthFolder({ period, reports, activeId, onPick }: {
 
 function ReportDetail({ report }: { report: MonthlyReport }) {
   const embed = report.loomUrl ? videoEmbedUrl(report.loomUrl) : null;
-  // Highlights doubles as a stash for the optional second Loom URL — anything
+  // Highlights doubles as a stash for the optional second Loom URL , anything
   // prefixed "loom2://" is the second video. Strip those out for display.
   const allHighlights = report.highlights ?? [];
   const loom2Url = allHighlights.find(h => h.startsWith('loom2://'))?.slice('loom2://'.length) ?? null;
@@ -305,7 +311,7 @@ function ReportFileRow({ file }: { file: import('../../types').ReportFile & { de
   const [loading, setLoading] = useState(false);
   const isPdf = file.mimeType === 'application/pdf';
 
-  // View opens the file inline in a new tab — browsers render PDFs natively
+  // View opens the file inline in a new tab , browsers render PDFs natively
   // there, no iframe + signed-URL Content-Disposition headache.
   const view = async () => {
     setLoading(true);

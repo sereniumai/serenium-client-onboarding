@@ -1006,6 +1006,23 @@ function SubmissionValue({ field, value, uploads, fieldKey }: { field: Field; va
     );
   }
   if (field.type === 'repeatable' && Array.isArray(value)) {
+    if (field.pair) {
+      return (
+        <ol className="list-decimal list-inside space-y-2">
+          {value.map((v, i) => {
+            const p = (v ?? {}) as { q?: string; a?: string };
+            return (
+              <li key={i} className="text-white/80">
+                <div className="inline-block ml-1 align-top">
+                  <div><span className="text-white/40">Q:</span> {p.q || '·'}</div>
+                  <div><span className="text-white/40">A:</span> {p.a || '·'}</div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      );
+    }
     return (
       <ol className="list-decimal list-inside space-y-0.5">
         {value.map((v, i) => <li key={i} className="text-white/80">{typeof v === 'string' ? v : JSON.stringify(v)}</li>)}
@@ -1473,7 +1490,7 @@ function ReportEditor({ orgId, userId, existing, onSaved, onCancel }: {
   const [title, setTitle] = useState(existing?.title ?? '');
   const [summary, setSummary] = useState(existing?.summary ?? '');
   const [loomUrl, setLoomUrl] = useState(existing?.loomUrl ?? '');
-  // Second Loom slot — stored alongside the first in the highlights array
+  // Second Loom slot , stored alongside the first in the highlights array
   // under a marker so we don't need a schema migration. Anything starting
   // with "loom2://" is treated as the second video URL on read.
   const initialLoom2 = (existing?.highlights ?? []).find(h => h.startsWith('loom2://'))?.slice('loom2://'.length) ?? '';

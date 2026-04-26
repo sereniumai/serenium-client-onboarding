@@ -23,7 +23,7 @@ export function Markdown({ children }: { children: string }) {
 
 function renderInline(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  // Order matters — link regex first so we don't shred [text] before catching the URL.
+  // Order matters, link regex first so we don't shred [text] before catching the URL.
   const regex = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`)/g;
   let last = 0;
   let m;

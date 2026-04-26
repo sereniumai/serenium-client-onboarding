@@ -30,8 +30,23 @@ export function submissionIsFilled(
 
   switch (field.type) {
     case 'multiselect':
-    case 'repeatable':
       return Array.isArray(value) && value.filter(v => v != null && v !== '').length > 0;
+
+    case 'repeatable': {
+      if (!Array.isArray(value)) return false;
+      if (field.pair) {
+        const filled = value.filter(v => {
+          if (!v || typeof v !== 'object') return false;
+          const p = v as { q?: unknown; a?: unknown };
+          return p.q != null && p.q !== '' && p.a != null && p.a !== '';
+        });
+        const need = field.minItems ?? 1;
+        return filled.length >= need;
+      }
+      const filled = value.filter(v => v != null && v !== '');
+      const need = field.minItems ?? 1;
+      return filled.length >= need;
+    }
 
     case 'structured': {
       if (typeof value !== 'object' || Array.isArray(value)) return false;
