@@ -13,6 +13,10 @@ export interface EnvConfig {
   sentryDsn: string | undefined;       // optional, prod-only
   vercelEnv: string;                    // 'production' | 'preview' | 'development'
   vercelGitCommitSha: string | undefined;
+  /** Cloudflare Turnstile site key. Optional, when missing we skip the widget
+   *  (useful for local dev). When set the auth pages render the challenge
+   *  before sending credentials. */
+  turnstileSiteKey: string | undefined;
 }
 
 export function readEnv(): EnvConfig {
@@ -39,6 +43,7 @@ export function readEnv(): EnvConfig {
     sentryDsn: env.VITE_SENTRY_DSN as string | undefined,
     vercelEnv: (env.VITE_VERCEL_ENV as string | undefined) ?? 'development',
     vercelGitCommitSha: env.VITE_VERCEL_GIT_COMMIT_SHA as string | undefined,
+    turnstileSiteKey: env.VITE_TURNSTILE_SITE_KEY as string | undefined,
   };
 }
 

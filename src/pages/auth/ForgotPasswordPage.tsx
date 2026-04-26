@@ -1,23 +1,34 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { AuthLayout } from '../../components/AuthLayout';
+import { TurnstileGate } from '../../components/TurnstileGate';
 import { supabase } from '../../lib/supabase';
+import { env } from '../../lib/env';
 
 export function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const captchaRequired = !!env.turnstileSiteKey;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     const addr = email.trim().toLowerCase();
     if (!addr.includes('@')) { setErrorMsg("That doesn't look like a valid email."); return; }
+    if (captchaRequired && !captchaToken) {
+      setErrorMsg('Please complete the verification check above.');
+      return;
+    }
     setSubmitting(true);
     try {
       const redirectTo = `${window.location.origin}/reset-password`;
-      const { error } = await supabase.auth.resetPasswordForEmail(addr, { redirectTo });
+      const { error } = await supabase.auth.resetPasswordForEmail(addr, {
+        redirectTo,
+        ...(captchaToken ? { captchaToken } : {}),
+      });
       if (error) throw error;
       setSent(true);
     } catch (err) {
@@ -48,10 +59,11 @@ export function ForgotPasswordPage() {
             <input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)}
                    placeholder="you@company.com" className="input" autoComplete="email" />
           </div>
+          <TurnstileGate onToken={setCaptchaToken} />
           {errorMsg && (
             <div className="rounded-lg border border-error/40 bg-error/10 p-3 text-sm text-error">{errorMsg}</div>
           )}
-          <button type="submit" disabled={submitting} className="btn-primary w-full">
+          <button type="submit" disabled={submitting || (captchaRequired && !captchaToken)} className="btn-primary w-full">
             {submitting ? 'Sending…' : 'Send reset link'}
           </button>
         </form>

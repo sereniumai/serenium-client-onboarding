@@ -4,8 +4,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AuthLayout } from '../../components/AuthLayout';
+import { TurnstileGate } from '../../components/TurnstileGate';
 import { useAuth } from '../../auth/AuthContext';
 import { listOrgsForUser } from '../../lib/db/orgs';
+import { env } from '../../lib/env';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -22,6 +24,10 @@ export function LoginPage() {
   const invitedNotice = params.get('invited') === '1';
   const prefillEmail = params.get('email') ?? '';
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState('');
+  // When Turnstile is configured, we require a token before allowing submit.
+  // When not configured (local dev without VITE_TURNSTILE_SITE_KEY), we skip.
+  const captchaRequired = !!env.turnstileSiteKey;
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -30,6 +36,10 @@ export function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     setSubmitError(null);
+    if (captchaRequired && !captchaToken) {
+      setSubmitError('Please complete the verification check above.');
+      return;
+    }
     try {
       // Race signIn against a 15-second timeout so the button can never stick.
       // If any step hangs (cold start, stale session, etc) the user gets a
@@ -37,7 +47,7 @@ export function LoginPage() {
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("Sign-in is taking too long. Try refreshing the page.")), 15000),
       );
-      const profile = await Promise.race([signIn(data.email, data.password), timeout]);
+      const profile = await Promise.race([signIn(data.email, data.password, captchaToken || undefined), timeout]);
 
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
@@ -111,13 +121,15 @@ export function LoginPage() {
           {errors.password && <p className="mt-2 text-sm text-error">{errors.password.message}</p>}
         </div>
 
+        <TurnstileGate onToken={setCaptchaToken} />
+
         {submitError && (
           <div className="rounded-lg border border-error/40 bg-error/10 p-3 text-sm text-error">
             {submitError}
           </div>
         )}
 
-        <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+        <button type="submit" disabled={isSubmitting || (captchaRequired && !captchaToken)} className="btn-primary w-full">
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </button>
 

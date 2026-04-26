@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { AuthLayout } from '../../components/AuthLayout';
+import { TurnstileGate } from '../../components/TurnstileGate';
 import { supabase } from '../../lib/supabase';
+import { env } from '../../lib/env';
 import { getInvitationByToken, acceptInvitation, type InvitationLookup } from '../../lib/db/invitations';
 import { listOrgsForUser } from '../../lib/db/orgs';
 import { loadProfile } from '../../lib/db/auth';
@@ -35,6 +37,8 @@ export function RegisterPage() {
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
+  const [captchaToken, setCaptchaToken] = useState('');
+  const captchaRequired = !!env.turnstileSiteKey;
 
   useEffect(() => {
     if (!token) return;
@@ -65,6 +69,10 @@ export function RegisterPage() {
       return;
     }
     if (fullName.trim().length < 2) { setErrorMsg('Enter your full name.'); return; }
+    if (captchaRequired && !captchaToken) {
+      setErrorMsg('Please complete the verification check above.');
+      return;
+    }
     setStage('submitting');
 
     try {
@@ -73,6 +81,7 @@ export function RegisterPage() {
         password,
         options: {
           data: { full_name: fullName.trim(), role: 'client' },
+          ...(captchaToken ? { captchaToken } : {}),
         },
       });
       if (signUpErr) {
@@ -186,6 +195,7 @@ export function RegisterPage() {
           <label className="label" htmlFor="pw2">Confirm password</label>
           <input id="pw2" type="password" required className="input" value={password2} onChange={e => setPassword2(e.target.value)} />
         </div>
+        <TurnstileGate onToken={setCaptchaToken} />
         {errorMsg && (
           <div className="rounded-lg border border-error/40 bg-error/10 p-3 text-sm text-error">{errorMsg}</div>
         )}
@@ -195,7 +205,7 @@ export function RegisterPage() {
           and{' '}
           <Link to="/privacy" className="text-orange hover:text-orange-hover">Privacy Policy</Link>.
         </p>
-        <button type="submit" disabled={stage === 'submitting'} className="btn-primary w-full">
+        <button type="submit" disabled={stage === 'submitting' || (captchaRequired && !captchaToken)} className="btn-primary w-full">
           {stage === 'submitting' ? 'Creating account…' : 'Create account & sign in'}
         </button>
       </form>

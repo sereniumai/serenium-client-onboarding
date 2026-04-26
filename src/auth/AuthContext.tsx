@@ -8,7 +8,7 @@ import type { Profile } from '../types';
 interface AuthContextValue {
   user: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<Profile>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<Profile>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -171,8 +171,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const profile = await authSignIn(email, password);
+  const signIn = async (email: string, password: string, captchaToken?: string) => {
+    const profile = await authSignIn(email, password, captchaToken);
     setUser(profile);
     return profile;
   };

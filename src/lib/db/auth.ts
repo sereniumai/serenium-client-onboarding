@@ -14,7 +14,7 @@ import type { Profile } from '../../types';
  *
  * Throws on any failure (invalid credentials, network error, etc.).
  */
-export async function signIn(email: string, password: string): Promise<Profile> {
+export async function signIn(email: string, password: string, captchaToken?: string): Promise<Profile> {
   // Clear any stale session on disk. Don't block on it.
   try {
     const { data: { session: existing } } = await supabase.auth.getSession();
@@ -26,7 +26,11 @@ export async function signIn(email: string, password: string): Promise<Profile> 
     }
   } catch {}
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+    options: captchaToken ? { captchaToken } : undefined,
+  });
   if (error) throw error;
   if (!data.user) throw new Error('Sign-in returned no user');
 
@@ -58,6 +62,7 @@ export async function signUp(args: {
   password: string;
   fullName: string;
   role?: 'admin' | 'client';
+  captchaToken?: string;
 }): Promise<Profile> {
   const { data, error } = await supabase.auth.signUp({
     email: args.email,
@@ -67,6 +72,7 @@ export async function signUp(args: {
         full_name: args.fullName,
         role: args.role ?? 'client',
       },
+      ...(args.captchaToken ? { captchaToken: args.captchaToken } : {}),
     },
   });
   if (error) throw error;
@@ -89,9 +95,10 @@ export async function signInWithGoogle(redirectTo?: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function requestPasswordReset(email: string): Promise<void> {
+export async function requestPasswordReset(email: string, captchaToken?: string): Promise<void> {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/reset-password`,
+    ...(captchaToken ? { captchaToken } : {}),
   });
   if (error) throw error;
 }
