@@ -54,9 +54,11 @@ export async function getReportFileSignedUrl(storagePath: string, opts?: { downl
   // so the browser/iframe renders the PDF instead of triggering a download.
   // Default to inline (download false) so the in-portal viewer works; the
   // explicit Download button passes download:true to force the save flow.
+  // 10-minute TTL: a leaked report URL is only good for that window.
+  // Re-sign on each open if a viewing session needs longer.
   const { data, error } = await supabase.storage
     .from(BUCKET)
-    .createSignedUrl(storagePath, 3600, { download: opts?.download ?? false });
+    .createSignedUrl(storagePath, 600, { download: opts?.download ?? false });
   if (error) throw error;
   if (!data?.signedUrl) throw new Error('No signed URL returned');
   return data.signedUrl;

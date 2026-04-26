@@ -36,6 +36,43 @@ function validateFile(file: File): void {
   }
 }
 
+/** Match the file's actual first-bytes signature against the claimed MIME.
+ *  Defense against a renamed `.exe` posing as `image/png`, since browsers
+ *  set `file.type` from the file extension or sniffing, both spoofable.
+ *  Returns true if the bytes plausibly match the declared type or if we
+ *  don't have a signature for that type (text/, office formats etc).
+ */
+async function magicBytesMatch(file: File): Promise<boolean> {
+  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const mime = (file.type || '').toLowerCase();
+  const startsWith = (sig: number[]) => sig.every((b, i) => head[i] === b);
+
+  if (mime === 'application/pdf') return startsWith([0x25, 0x50, 0x44, 0x46]);                   // %PDF
+  if (mime === 'image/png')       return startsWith([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+  if (mime === 'image/jpeg')      return head[0] === 0xFF && head[1] === 0xD8 && head[2] === 0xFF;
+  if (mime === 'image/gif')       return startsWith([0x47, 0x49, 0x46, 0x38]);                   // GIF8
+  if (mime === 'image/webp')      return startsWith([0x52, 0x49, 0x46, 0x46]);                   // RIFF
+  if (mime === 'image/svg+xml')   return true; // SVG is text; checked separately if needed
+  // Office (DOCX/XLSX) and ZIP-based formats start with PK (0x50 0x4B).
+  if (mime.startsWith('application/vnd.openxmlformats') || mime === 'application/zip') {
+    return head[0] === 0x50 && head[1] === 0x4B;
+  }
+  // Legacy Office (.doc, .xls) start with the OLE compound document magic.
+  if (mime === 'application/msword' || mime === 'application/vnd.ms-excel') {
+    return startsWith([0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]);
+  }
+  // Plain text / unknown image subtypes: we don't have a reliable signature,
+  // accept based on the existing MIME allowlist.
+  return true;
+}
+
+async function validateFileBytes(file: File): Promise<void> {
+  validateFile(file);
+  if (!(await magicBytesMatch(file))) {
+    throw new Error(`File "${file.name}" content doesn't match its declared type. Re-export the file and try again.`);
+  }
+}
+
 export async function listUploads(orgId: string, category?: string): Promise<Upload[]> {
   let q = supabase.from('uploads').select('*').eq('organization_id', orgId);
   if (category) q = q.eq('category', category);
@@ -50,7 +87,7 @@ export async function uploadFile(args: {
   file: File;
   userId?: string;
 }): Promise<Upload> {
-  validateFile(args.file);
+  await validateFileBytes(args.file);
   const uuid = crypto.randomUUID();
   // Strip path traversal, control chars, and anything outside safe ASCII.
   // Keep the original extension for readability but cap the length.
@@ -107,10 +144,11 @@ export async function removeUpload(upload: Upload): Promise<void> {
 }
 
 /**
- * Returns a short-lived signed URL (1 hour) for rendering a private file.
- * Throws on failure, so call sites render the error surface they want.
+ * Returns a short-lived signed URL (10 minutes) for rendering a private file.
+ * Tightened from 1 hour, a leaked URL is good for less time. Re-sign per
+ * open if you need the file open longer than that.
  */
-export async function getUploadSignedUrl(storagePath: string, expiresInSeconds = 3600): Promise<string> {
+export async function getUploadSignedUrl(storagePath: string, expiresInSeconds = 600): Promise<string> {
   const { data, error } = await supabase.storage
     .from(BUCKET)
     .createSignedUrl(storagePath, expiresInSeconds);

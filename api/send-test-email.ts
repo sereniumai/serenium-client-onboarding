@@ -76,6 +76,15 @@ export default async function handler(req: Request): Promise<Response> {
   try { b = (await req.json()) as Body; } catch { return json({ error: 'Invalid JSON' }, 400); }
   if (!b.to || !b.subject || !b.body) return json({ error: 'Missing fields' }, 400);
   if (!b.to.includes('@')) return json({ error: 'Invalid email address' }, 400);
+  if (b.subject.length > 200) return json({ error: 'Subject too long' }, 400);
+  if (b.body.length > 5000)   return json({ error: 'Body too long' }, 400);
+
+  // Hardening: a "test email" endpoint can be abused as an open relay if the
+  // admin session is compromised. Lock recipient to the caller's own email.
+  // If the admin needs to test team delivery, run the actual send-followup.
+  if (user.email && b.to.toLowerCase() !== user.email.toLowerCase()) {
+    return json({ error: 'Test emails can only be sent to your own admin email.' }, 400);
+  }
 
   const interpolate = (t: string) => t.replace(/\{\{(\w+)\}\}/g, (_, k) => SAMPLE_VARS[`{{${k}}}`] ?? `{{${k}}}`);
   const subject = `[TEST] ${interpolate(b.subject)}`;

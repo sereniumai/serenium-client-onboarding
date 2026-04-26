@@ -48,7 +48,26 @@ export default async function handler(req: Request): Promise<Response> {
 
   let b: Body;
   try { b = (await req.json()) as Body; } catch { return json({ error: 'Invalid JSON' }, 400); }
-  if (!b.organizationId || !b.subject || !b.body) return json({ error: 'Missing required fields' }, 400);
+  if (!b.organizationId || !b.templateKey || !b.subject || !b.body) return json({ error: 'Missing required fields' }, 400);
+
+  // Hardening: cap subject + body lengths so a compromised admin session can't
+  // use this endpoint to dump kilobytes of content from the Serenium domain.
+  if (b.subject.length > 200) return json({ error: 'Subject too long' }, 400);
+  if (b.body.length > 5000)   return json({ error: 'Body too long' }, 400);
+
+  // Hardening: templateKey must match one of the configured templates. Stops
+  // abuse via a fabricated template_key in the audit log.
+  const { data: settingsRow } = await admin
+    .from('followup_settings')
+    .select('settings')
+    .eq('id', 1)
+    .maybeSingle();
+  const allowedKeys = new Set<string>(
+    (((settingsRow as { settings?: { templates?: Array<{ key?: string }> } } | null)?.settings?.templates) ?? [])
+      .map(t => t?.key)
+      .filter((k): k is string => typeof k === 'string'),
+  );
+  if (!allowedKeys.has(b.templateKey)) return json({ error: 'Unknown template' }, 400);
 
   // Pull the org's primary contact email.
   const { data: org, error: orgErr } = await admin

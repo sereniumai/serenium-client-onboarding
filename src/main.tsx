@@ -44,8 +44,9 @@ if (sentryDsn && vercelEnv === 'production') {
       'Importing a module script failed',
     ],
   });
-  // Expose for manual testing from the console: window.Sentry.captureMessage('...')
-  (window as unknown as { Sentry: typeof Sentry }).Sentry = Sentry;
+  // Note: we used to expose `window.Sentry` for console testing. Removed in
+  // production to shrink the XSS amplification surface, an injected script
+  // could otherwise call captureMessage with attacker-controlled data.
 } else if (!sentryDsn && vercelEnv === 'production') {
   console.warn('[sentry] DSN missing in production, error reporting disabled');
 }
