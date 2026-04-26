@@ -19,12 +19,15 @@ if (sentryDsn && vercelEnv === 'production') {
     environment: vercelEnv,
     release: env.vercelGitCommitSha?.slice(0, 7) ?? 'local',
     tracesSampleRate: 0.1,
-    replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: 1.0,
+    // Session replay was disabled because:
+    //  1) It bundled rrweb-snapshot which calls new Function(), tripping our
+    //     strict CSP (script-src 'self', no unsafe-eval) on /login load.
+    //  2) Replay captures full DOM by default. PII risk in a B2B portal where
+    //     forms hold contact info, even with scrub rules. Breadcrumbs +
+    //     stack traces give us enough to debug without recording sessions.
     integrations: [
       Sentry.browserTracingIntegration(),
       Sentry.globalHandlersIntegration({ onerror: true, onunhandledrejection: true }),
-      Sentry.replayIntegration(),
     ],
     // Scrub common PII fields before sending events.
     beforeSend(event) {
