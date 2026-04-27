@@ -87,7 +87,7 @@ const MODULE_SUGGESTIONS: Record<string, string[]> = {
   ],
   // AI SMS
   'ai_sms.ghl_calendar_setup': [
-    "Walk me through connecting Google Calendar to GHL",
+    "Walk me through connecting Google Calendar to the CRM",
     "What calendar events does the AI create?",
     "Can I block specific time windows?",
   ],

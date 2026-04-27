@@ -210,7 +210,7 @@ export function OnboardingDashboard() {
               const waitingMessage = waitingOnUs && svcKey === 'ai_receptionist'
                 ? "Waiting on Serenium to provision your AI number, we'll let you know the moment it's ready."
                 : waitingOnUs && svcKey === 'ai_sms'
-                ? "Waiting on Serenium to set up your GoHighLevel access, we'll let you know once it's live."
+                ? "Waiting on Serenium to set up your CRM access, we'll let you know once it's live."
                 : null;
 
               return (
