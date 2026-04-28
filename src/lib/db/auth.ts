@@ -14,6 +14,39 @@ import type { Profile } from '../../types';
  *
  * Throws on any failure (invalid credentials, network error, etc.).
  */
+/**
+ * Thrown by signIn() when the user has a verified MFA factor and needs
+ * to enter their 6-digit code before the session is fully authenticated.
+ * Caller (LoginPage) should switch to the MFA code prompt and call
+ * completeMfaChallenge() with the resulting code.
+ */
+export class MfaRequiredError extends Error {
+  factorId: string;
+  constructor(factorId: string) {
+    super('MFA_REQUIRED');
+    this.factorId = factorId;
+    this.name = 'MfaRequiredError';
+  }
+}
+
+/** Verify the 6-digit TOTP code against an active factor + new challenge. */
+export async function completeMfaChallenge(factorId: string, code: string): Promise<Profile> {
+  const { data: challenge, error: challengeErr } = await supabase.auth.mfa.challenge({ factorId });
+  if (challengeErr) throw challengeErr;
+  if (!challenge?.id) throw new Error('Could not start MFA challenge');
+
+  const { error: verifyErr } = await supabase.auth.mfa.verify({
+    factorId,
+    challengeId: challenge.id,
+    code: code.trim(),
+  });
+  if (verifyErr) throw verifyErr;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Lost session after MFA verify');
+  return loadProfile(user.id);
+}
+
 export async function signIn(email: string, password: string, captchaToken?: string): Promise<Profile> {
   // Clear any stale session on disk. Don't block on it.
   try {
@@ -33,6 +66,23 @@ export async function signIn(email: string, password: string, captchaToken?: str
   });
   if (error) throw error;
   if (!data.user) throw new Error('Sign-in returned no user');
+
+  // If the user has a verified MFA factor, the session is currently AAL1
+  // and must be elevated to AAL2 via a TOTP code before we treat them as
+  // signed in. Surface a typed error so LoginPage can swap to the code
+  // prompt without trying to navigate.
+  try {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2') {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const verified = (factors?.totp ?? []).find(f => f.status === 'verified');
+      if (verified) throw new MfaRequiredError(verified.id);
+    }
+  } catch (e) {
+    if (e instanceof MfaRequiredError) throw e;
+    // Fall through, AAL lookup failures shouldn't block sign-in.
+    console.warn('[auth] MFA AAL check failed, continuing', e);
+  }
 
   // Try to load the full profile with a short 3s budget. If the DB is slow,
   // fall back to a stub profile derived from the JWT metadata so the user

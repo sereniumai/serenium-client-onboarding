@@ -7,7 +7,9 @@ import { AuthLayout } from '../../components/AuthLayout';
 import { TurnstileGate } from '../../components/TurnstileGate';
 import { useAuth } from '../../auth/AuthContext';
 import { listOrgsForUser } from '../../lib/db/orgs';
+import { completeMfaChallenge, MfaRequiredError } from '../../lib/db/auth';
 import { env } from '../../lib/env';
+import type { Profile } from '../../types';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -29,10 +31,25 @@ export function LoginPage() {
   // When not configured (local dev without VITE_TURNSTILE_SITE_KEY), we skip.
   const captchaRequired = !!env.turnstileSiteKey;
 
+  // MFA challenge state, set when signIn throws MfaRequiredError. Swaps the
+  // form view to the 6-digit code prompt without leaving the page.
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaSubmitting, setMfaSubmitting] = useState(false);
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { email: prefillEmail },
   });
+
+  const navigateAfterAuth = async (profile: Profile) => {
+    const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
+    if (profile.role === 'admin') { navigate('/admin', { replace: true }); return; }
+    if (from) { navigate(from, { replace: true }); return; }
+    const orgs = await listOrgsForUser(profile.id).catch(() => []);
+    if (orgs[0]) navigate(`/onboarding/${orgs[0].slug}`, { replace: true });
+    else navigate('/', { replace: true });
+  };
 
   const onSubmit = async (data: FormData) => {
     setSubmitError(null);
@@ -48,28 +65,32 @@ export function LoginPage() {
         setTimeout(() => reject(new Error("Sign-in is taking too long. Try refreshing the page.")), 15000),
       );
       const profile = await Promise.race([signIn(data.email, data.password, captchaToken || undefined), timeout]);
-
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
-
-      // Admins always land on /admin after login. Deep-link "from" resume is
-      // only useful for clients (email invite link → login → continue to
-      // onboarding). Admins logging back in want the fresh client list, not
-      // whatever page their expired session last touched.
-      if (profile.role === 'admin') {
-        navigate('/admin', { replace: true });
+      await navigateAfterAuth(profile);
+    } catch (e) {
+      if (e instanceof MfaRequiredError) {
+        // Password was correct, now ask for the TOTP code instead of failing.
+        setMfaFactorId(e.factorId);
+        setSubmitError(null);
         return;
       }
-
-      if (from) { navigate(from, { replace: true }); return; }
-
-      {
-        const orgs = await Promise.race([listOrgsForUser(profile.id), timeout]).catch(() => []);
-        if (orgs[0]) navigate(`/onboarding/${orgs[0].slug}`, { replace: true });
-        else navigate('/', { replace: true });
-      }
-    } catch (e) {
       console.error('[login] failed', e);
       setSubmitError(e instanceof Error ? e.message : 'Sign in failed');
+    }
+  };
+
+  const onSubmitMfa = async () => {
+    if (!mfaFactorId || mfaCode.length !== 6) return;
+    setMfaSubmitting(true);
+    setSubmitError(null);
+    try {
+      const profile = await completeMfaChallenge(mfaFactorId, mfaCode);
+      await navigateAfterAuth(profile);
+    } catch (e) {
+      console.error('[login mfa] failed', e);
+      setSubmitError(e instanceof Error ? `Code didn't match. Try again with a fresh code.` : 'MFA verification failed');
+      setMfaCode('');
+    } finally {
+      setMfaSubmitting(false);
     }
   };
 
@@ -89,11 +110,50 @@ export function LoginPage() {
         </div>
       }
     >
-      {invitedNotice && (
+      {invitedNotice && !mfaFactorId && (
         <div className="mb-4 rounded-lg border border-orange/30 bg-orange/10 p-3 text-sm text-orange">
           You're already signed up. Log in below to continue.
         </div>
       )}
+
+      {mfaFactorId ? (
+        <form onSubmit={(e) => { e.preventDefault(); onSubmitMfa(); }} className="space-y-5" noValidate>
+          <div>
+            <label className="label" htmlFor="mfa-code">Two-factor code</label>
+            <p className="text-sm text-white/55 mb-2">Enter the 6-digit code from your authenticator app.</p>
+            <input
+              id="mfa-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+              maxLength={6}
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              className="input tabular-nums tracking-[0.4em] text-center text-lg"
+            />
+          </div>
+
+          {submitError && (
+            <div className="rounded-lg border border-error/40 bg-error/10 p-3 text-sm text-error">
+              {submitError}
+            </div>
+          )}
+
+          <button type="submit" disabled={mfaSubmitting || mfaCode.length !== 6} className="btn-primary w-full">
+            {mfaSubmitting ? 'Verifying…' : 'Verify and sign in'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setMfaFactorId(null); setMfaCode(''); setSubmitError(null); }}
+            className="text-sm text-white/55 hover:text-white"
+          >
+            Use a different account
+          </button>
+        </form>
+      ) : (
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
         <div>
           <label className="label" htmlFor="email">Email</label>
@@ -140,6 +200,7 @@ export function LoginPage() {
           <span className="text-white/55 text-xs">Invite-only · no public signup</span>
         </div>
       </form>
+      )}
     </AuthLayout>
   );
 }

@@ -6,6 +6,7 @@ import { getTheme, setTheme, type Theme } from '../../lib/theme';
 import { toast } from 'sonner';
 import { AppShell } from '../../components/AppShell';
 import { HeroGlow } from '../../components/HeroGlow';
+import { MfaCard } from '../../components/MfaCard';
 import { useAuth } from '../../auth/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/cn';
@@ -42,6 +43,7 @@ export function AccountPage() {
               onSaved={() => { refresh(); qc.invalidateQueries(); toast.success('Email updated, check your inbox to confirm the change'); }}
             />
             <PasswordCard />
+            <MfaCard />
             <AppearanceCard />
             <SessionCard />
           </div>
