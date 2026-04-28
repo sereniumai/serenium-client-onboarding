@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/react';
 import { supabase } from '../lib/supabase';
 import { loadProfile, signIn as authSignIn, signOut as authSignOut } from '../lib/db/auth';
 import { queryClient } from '../lib/queryClient';
+import { stopImpersonation } from '../lib/impersonation';
 import type { Profile } from '../types';
 
 interface AuthContextValue {
@@ -114,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
 
       if (event === 'SIGNED_OUT') {
+        stopImpersonation();
         setUser(null);
         queryClient.clear();
         markSettled();
@@ -178,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    stopImpersonation();
     await authSignOut();
     setUser(null);
     queryClient.clear();

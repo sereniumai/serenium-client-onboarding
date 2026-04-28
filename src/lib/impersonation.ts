@@ -1,35 +1,56 @@
 /**
- * Impersonation context helpers.
+ * Impersonation context.
  *
- * When an admin has `?impersonate=1` in the URL they're actively acting as
- * a client inside that client's onboarding view. Any mutations they make
- * should be auditable as admin-originated, not client-originated. Rather
- * than thread a flag through every call site we check the current URL at
- * write-time - cheap, always fresh, no stale cache headaches.
+ * "View as client" lets an admin experience a client's portal exactly as that
+ * client sees it (sidebar, dashboards, paused screens, the lot). The active
+ * impersonation slug lives in sessionStorage so it survives client-side
+ * navigation within the tab, is scoped to the tab (so opening a fresh admin
+ * tab doesn't inherit it), and is dropped on signOut.
  *
- * The admin_impersonation_audit table separately records the session
- * (when they opened the impersonation view) - this helper lets individual
- * writes be flagged too, so the activity_log shows which edits happened
- * inside an impersonation session.
+ * Mutations made during impersonation are tagged with `impersonating: true`
+ * in activity_log metadata so audit trails clearly show admin-originated
+ * edits. The admin_impersonation_audit table separately records the session.
  */
+const KEY = 'serenium.impersonation';
+export const IMPERSONATION_EVENT = 'serenium:impersonation-change';
 
-/**
- * Cheap, synchronous check. Reads the URL live each call; URLSearchParams
- * parsing is O(length) which is trivial at our scale.
- */
-export function isImpersonating(): boolean {
-  if (typeof window === 'undefined') return false;
+export function getImpersonatedOrgSlug(): string | null {
+  if (typeof window === 'undefined') return null;
   try {
-    return new URLSearchParams(window.location.search).get('impersonate') === '1';
+    return window.sessionStorage.getItem(KEY);
   } catch {
-    return false;
+    return null;
   }
 }
 
+export function startImpersonation(orgSlug: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(KEY, orgSlug);
+    window.dispatchEvent(new CustomEvent(IMPERSONATION_EVENT));
+  } catch {
+    // sessionStorage blocked, impersonation just won't activate, the admin
+    // sees the regular admin view of the client. Not worth surfacing.
+  }
+}
+
+export function stopImpersonation(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(KEY);
+    window.dispatchEvent(new CustomEvent(IMPERSONATION_EVENT));
+  } catch {
+    // sessionStorage blocked, nothing to do.
+  }
+}
+
+export function isImpersonating(): boolean {
+  return !!getImpersonatedOrgSlug();
+}
+
 /**
- * Returns a metadata object ready to spread into an activity_log insert.
- * Always includes `impersonating` (true or false) so the column is never
- * absent - makes filtering `metadata->>impersonating` in SQL reliable.
+ * Spread into activity_log inserts. Always includes the boolean so
+ * `metadata->>impersonating` is reliable for SQL filtering.
  */
 export function impersonationMetadata(): { impersonating: boolean } {
   return { impersonating: isImpersonating() };

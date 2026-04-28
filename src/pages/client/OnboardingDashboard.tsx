@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useParams, Navigate, Link, useLocation } from 'react-router-dom';
 import { FinalCelebration } from '../../components/FinalCelebration';
 import { PausedScreen } from '../../components/PausedScreen';
+import { useImpersonation } from '../../hooks/useImpersonation';
 import { motion } from 'framer-motion';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
@@ -37,7 +38,7 @@ export function OnboardingDashboard() {
   const { orgSlug } = useParams();
   const { user } = useAuth();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const { active: impersonating } = useImpersonation();
   const { data: org, isLoading: orgLoading } = useOrgBySlug(orgSlug);
   const { snapshot, isLoading: snapLoading } = useOrgSnapshot(org?.id);
 
@@ -71,10 +72,10 @@ export function OnboardingDashboard() {
     [snapshot, onboardingDone],
   );
 
-  // Admin landing on a client page without an explicit impersonate=1 flag
-  // almost always means they typed / bookmarked the URL. Bounce them to
-  // the admin view of that client.
-  if (user?.role === 'admin' && searchParams.get('impersonate') !== '1' && orgSlug) {
+  // Admin landing on a client page without an active "View as client"
+  // session almost always means they typed / bookmarked the URL. Bounce
+  // them to the admin view of that client.
+  if (user?.role === 'admin' && !impersonating && orgSlug) {
     return <Navigate to={`/admin/clients/${orgSlug}`} replace />;
   }
 
@@ -102,8 +103,9 @@ export function OnboardingDashboard() {
   // - otherwise → active onboarding dashboard
   // Paused / churned clients hit a soft block. Auth is fine, admin can flip
   // status back to 'live' and the same login walks straight in. All data is
-  // preserved.
-  if ((org.status === 'paused' || org.status === 'churned') && user?.role !== 'admin') {
+  // preserved. Admins viewing as client (impersonating) see the paused
+  // screen too so they can verify what the client experiences.
+  if ((org.status === 'paused' || org.status === 'churned') && (user?.role !== 'admin' || impersonating)) {
     return <PausedScreen businessName={org.businessName} status={org.status} />;
   }
   const isLive = org.status === 'live';

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { startImpersonation } from '../../lib/impersonation';
 import { ChevronLeft, Trash2, Copy, Mail, AlertTriangle, MessageCircle as MessageCircleIcon, Eye, Plus, Bell, Check, RotateCcw, DollarSign, Sparkles } from 'lucide-react';
 import { ServiceRevenueEditor } from '../../components/admin/ServiceRevenueEditor';
 import { listLinesForOrg, endActiveLinesForService } from '../../lib/db/revenue';
@@ -85,7 +86,8 @@ export function ClientDetail() {
                 <Mail className="h-4 w-4" /> Send follow-up
               </button>
               <Link
-                to={`/onboarding/${org.slug}?impersonate=1`}
+                to={`/onboarding/${org.slug}`}
+                onClick={() => startImpersonation(org.slug)}
                 className="btn-secondary"
               >
                 <Eye className="h-4 w-4" /> View as client

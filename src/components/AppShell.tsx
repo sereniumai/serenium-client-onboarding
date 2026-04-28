@@ -13,8 +13,9 @@ import { AdminBell } from './AdminBell';
 import { WelcomeVideoModal, openWelcomeVideo } from './WelcomeVideoModal';
 import { ReportsVideoModal, openReportsVideo } from './ReportsVideoModal';
 import { useAuth } from '../auth/AuthContext';
-import { useOrgsForUser } from '../hooks/useOrgs';
+import { useOrgsForUser, useOrgBySlug } from '../hooks/useOrgs';
 import { useOrgSnapshot } from '../hooks/useOnboarding';
+import { useImpersonation } from '../hooks/useImpersonation';
 import { getOrgProgress } from '../lib/progress';
 import { hasUnreadChangelog } from '../lib/changelog';
 import { getWelcomeVideo, getReportsVideo } from '../lib/db/welcomeVideo';
@@ -22,10 +23,23 @@ import { getWelcomeVideo, getReportsVideo } from '../lib/db/welcomeVideo';
 export function AppShell({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const location = useLocation();
+  const { orgSlug: impersonatedSlug, active: impersonating } = useImpersonation();
 
-  // Client context (only populated for client role)
-  const userOrgs = useOrgsForUser(user && user.role === 'client' ? user.id : undefined);
-  const org = userOrgs.data?.[0] ?? null;
+  // While impersonating, the admin sees exactly what the client sees, so the
+  // effective role is 'client' even though user.role is 'admin'. This drives
+  // sidebar layout, modal visibility, and the AdminBell hide.
+  const effectiveRole: 'admin' | 'client' | undefined = impersonating ? 'client' : user?.role;
+
+  // Real client lookup (skipped during admin impersonation).
+  const realClientOrgs = useOrgsForUser(
+    user && user.role === 'client' && !impersonating ? user.id : undefined,
+  );
+  // Impersonated org lookup by slug (skipped when not impersonating).
+  const impersonatedOrgQ = useOrgBySlug(impersonating ? impersonatedSlug ?? undefined : undefined);
+
+  const org = impersonating
+    ? impersonatedOrgQ.data ?? null
+    : realClientOrgs.data?.[0] ?? null;
   const orgSlug = org?.slug ?? null;
   const { snapshot } = useOrgSnapshot(org?.id);
   const progress = snapshot ? getOrgProgress(snapshot) : null;
@@ -36,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // away in favour of a single Reports entry.
   const isLive = org?.status === 'live';
 
-  const isClientInsideOnboarding = !!(user?.role === 'client' && org
+  const isClientInsideOnboarding = !!(effectiveRole === 'client' && org
     && location.pathname.startsWith(`/onboarding/${org.slug}/services`));
 
   // Fetch whether a welcome video is set - drives a "Welcome video" sidebar
@@ -45,23 +59,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: welcomeVideo } = useQuery({
     queryKey: ['welcome_video'],
     queryFn: getWelcomeVideo,
-    enabled: user?.role === 'client',
+    enabled: effectiveRole === 'client',
   });
   const hasWelcomeVideo = !!welcomeVideo?.videoUrl;
 
   const { data: reportsVideo } = useQuery({
     queryKey: ['reports_video'],
     queryFn: getReportsVideo,
-    enabled: user?.role === 'client',
+    enabled: effectiveRole === 'client',
   });
   const hasReportsVideo = !!reportsVideo?.videoUrl;
 
   const sections = buildSections({
-    userRole: user?.role,
+    userRole: effectiveRole,
     orgSlug,
     onboardingDone,
     isLive,
-    hasUnreadWhatsNew: user?.role === 'admin' ? hasUnreadChangelog() : false,
+    hasUnreadWhatsNew: effectiveRole === 'admin' ? hasUnreadChangelog() : false,
     progress,
     editingMode: isClientInsideOnboarding,
     hasWelcomeVideo,
@@ -90,7 +104,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Aria stays visible all the way through onboarding (even after the client
   // has hit 100% and is awaiting our review) and disappears only when the
   // account flips to live, at which point the experience pivots to reports.
-  const showAiChat = user.role === 'admin' || !isLive;
+  // During impersonation the admin should see what the client sees: chat
+  // visible until the org goes live, then hidden.
+  const showAiChat = effectiveRole === 'admin' ? true : !isLive;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -103,7 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Sidebar>
       <div className="flex-1 md:ml-[260px] min-w-0 flex flex-col">
         <ImpersonationBanner />
-        {user.role === 'admin' && (
+        {user.role === 'admin' && !impersonating && (
           <div className="hidden md:flex justify-end px-6 pt-4">
             <AdminBell />
           </div>
@@ -115,8 +131,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       {showAiChat && <AiHelperChat />}
-      {user.role === 'client' && !isLive && <WelcomeVideoModal />}
-      {user.role === 'client' && isLive && <ReportsVideoModal />}
+      {effectiveRole === 'client' && !isLive && <WelcomeVideoModal />}
+      {effectiveRole === 'client' && isLive && <ReportsVideoModal />}
     </div>
   );
 }
