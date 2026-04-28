@@ -137,6 +137,8 @@ function EmailCard({ initialEmail, onSaved }: { initialEmail: string; onSaved: (
 }
 
 function PasswordCard() {
+  const { user } = useAuth();
+  const [currentPw, setCurrentPw] = useState('');
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [showHints, setShowHints] = useState(false);
@@ -145,15 +147,26 @@ function PasswordCard() {
   const strength = calcStrength(pw);
   const tooShort = pw.length > 0 && pw.length < 10;
   const mismatch = pw2.length > 0 && pw !== pw2;
-  const canSave = pw.length >= 10 && pw === pw2 && !saving;
+  const canSave = currentPw.length > 0 && pw.length >= 10 && pw === pw2 && !saving;
 
   const save = async () => {
-    if (!canSave) return;
+    if (!canSave || !user) return;
     setSaving(true);
     try {
+      // Re-authenticate with the current password before letting the user
+      // change it. Stops a stolen session or an unattended unlocked browser
+      // from being used to lock the real owner out.
+      const { error: reauthErr } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPw,
+      });
+      if (reauthErr) {
+        toast.error("Current password didn't match");
+        return;
+      }
       const { error } = await supabase.auth.updateUser({ password: pw });
       if (error) throw error;
-      setPw(''); setPw2('');
+      setCurrentPw(''); setPw(''); setPw2('');
       toast.success('Password updated');
     } catch (err) {
       toast.error('Could not update password', { description: (err as Error).message });
@@ -165,6 +178,14 @@ function PasswordCard() {
   return (
     <SettingsCard icon={Lock} title="Password" subtitle="Pick at least 10 characters. Longer is better than complex.">
       <div className="space-y-3">
+        <input
+          type="password"
+          className="input"
+          placeholder="Current password"
+          value={currentPw}
+          onChange={e => setCurrentPw(e.target.value)}
+          autoComplete="current-password"
+        />
         <input
           type="password"
           className="input"
@@ -185,7 +206,7 @@ function PasswordCard() {
         <input
           type="password"
           className="input"
-          placeholder="Confirm password"
+          placeholder="Confirm new password"
           value={pw2}
           onChange={e => setPw2(e.target.value)}
           autoComplete="new-password"
