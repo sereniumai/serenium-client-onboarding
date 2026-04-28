@@ -403,7 +403,7 @@ export function AiHelperChat() {
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
                       placeholder="Ask Aria…"
                       rows={1}
-                      className="flex-1 resize-none bg-bg-tertiary/60 border border-border-subtle rounded-xl px-3 py-2 text-sm outline-none focus:border-orange/50 max-h-24"
+                      className="flex-1 resize-none bg-bg-tertiary/60 border border-border-subtle rounded-xl px-3 py-2 text-base md:text-sm outline-none focus:border-orange/50 max-h-24"
                     />
                     <button type="submit" disabled={!input.trim() || thinking} className="btn-primary !py-2 !px-3 shrink-0 !rounded-xl" aria-label="Send">
                       <Send className="h-3.5 w-3.5" />
@@ -490,7 +490,7 @@ function ThreadsList({
               value={search}
               onChange={e => onSearchChange(e.target.value)}
               placeholder="Search threads"
-              className="w-full bg-bg-tertiary/50 border border-border-subtle rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-white/35 outline-none focus:border-orange/40 transition-colors"
+              className="w-full bg-bg-tertiary/50 border border-border-subtle rounded-lg pl-8 pr-3 py-1.5 text-base md:text-xs text-white placeholder:text-white/35 outline-none focus:border-orange/40 transition-colors"
             />
           </div>
         )}
