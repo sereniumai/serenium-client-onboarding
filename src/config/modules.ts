@@ -1036,7 +1036,7 @@ const WEBSITE: ServiceDef = {
         },
         { key: 'registrar_help_namecheap', type: 'info',
           conditional: { field: 'registrar', op: 'eq', value: 'Namecheap' },
-          content: "**Share your domain with contact@sereniumai.com in Namecheap.** Tick these permissions:\n\n- Manage Nameservers\n- Manage DNS settings\n- Manage URL Forwarding\n- Manage Domain Privacy / WhoisGuard\n\n[→ Official guide for Namecheap](https://www.namecheap.com/support/knowledgebase/article.aspx/192/46/how-do-i-share-access-to-my-domain-with-other-users/)",
+          content: "**Share your domain with contact@sereniumai.com in Namecheap.** When you get to the permissions screen, tick these:\n\n- Manage Nameservers\n- DNS / Host Records → Manage Host Records (and Change DNS Type)\n- Manage URL Forwarding\n- Manage Domain Privacy\n\nLeave everything else unticked. Skip Auth Code, Domain Lock, and Billing.\n\n[→ Official guide for Namecheap](https://www.namecheap.com/support/knowledgebase/article.aspx/192/46/how-do-i-share-access-to-my-domain-with-other-users/)",
         },
         { key: 'registrar_help_cloudflare', type: 'info',
           conditional: { field: 'registrar', op: 'eq', value: 'Cloudflare' },
