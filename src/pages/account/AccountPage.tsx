@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { User, Mail, Lock, Save, ChevronLeft, Moon, Sun, ShieldOff } from 'lucide-react';
@@ -143,26 +143,53 @@ function PasswordCard() {
   const [pw2, setPw2] = useState('');
   const [showHints, setShowHints] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Whether this user has MFA enrolled. With MFA on, the active session is
+  // already AAL2 (they passed MFA at login), and Supabase enforces AAL2
+  // before letting updateUser change the password. That removes the stolen-
+  // session threat that the current-password re-auth was guarding against,
+  // so we hide the current-password field for MFA users entirely. We also
+  // skip the re-auth call because signInWithPassword would issue a fresh
+  // AAL1 session and updateUser would then fail with "AAL2 required".
+  const [hasMfa, setHasMfa] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.mfa.listFactors();
+        if (cancelled) return;
+        setHasMfa((data?.totp ?? []).some(f => f.status === 'verified'));
+      } catch {
+        if (!cancelled) setHasMfa(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const strength = calcStrength(pw);
   const tooShort = pw.length > 0 && pw.length < 10;
   const mismatch = pw2.length > 0 && pw !== pw2;
-  const canSave = currentPw.length > 0 && pw.length >= 10 && pw === pw2 && !saving;
+  const passwordsValid = pw.length >= 10 && pw === pw2;
+  const currentPwValid = hasMfa ? true : currentPw.length > 0;
+  const canSave = currentPwValid && passwordsValid && !saving && hasMfa !== null;
 
   const save = async () => {
     if (!canSave || !user) return;
     setSaving(true);
     try {
-      // Re-authenticate with the current password before letting the user
-      // change it. Stops a stolen session or an unattended unlocked browser
-      // from being used to lock the real owner out.
-      const { error: reauthErr } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: currentPw,
-      });
-      if (reauthErr) {
-        toast.error("Current password didn't match");
-        return;
+      // Without MFA, re-authenticate with the current password first to
+      // stop a stolen session or an unattended unlocked browser from being
+      // used to rotate the password. With MFA, the AAL2 requirement on
+      // updateUser already provides this protection.
+      if (!hasMfa) {
+        const { error: reauthErr } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: currentPw,
+        });
+        if (reauthErr) {
+          toast.error("Current password didn't match");
+          return;
+        }
       }
       const { error } = await supabase.auth.updateUser({ password: pw });
       if (error) throw error;
@@ -178,14 +205,16 @@ function PasswordCard() {
   return (
     <SettingsCard icon={Lock} title="Password" subtitle="Pick at least 10 characters. Longer is better than complex.">
       <div className="space-y-3">
-        <input
-          type="password"
-          className="input"
-          placeholder="Current password"
-          value={currentPw}
-          onChange={e => setCurrentPw(e.target.value)}
-          autoComplete="current-password"
-        />
+        {hasMfa === false && (
+          <input
+            type="password"
+            className="input"
+            placeholder="Current password"
+            value={currentPw}
+            onChange={e => setCurrentPw(e.target.value)}
+            autoComplete="current-password"
+          />
+        )}
         <input
           type="password"
           className="input"
