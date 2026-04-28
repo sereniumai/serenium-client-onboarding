@@ -810,7 +810,7 @@ function UsersTab({ orgId }: { orgId: string }) {
           <p className="text-sm text-white/50">No members yet. Invite someone below.</p>
         ) : (
           <div className="space-y-2">
-            {members.map(({ profile, member }) => (
+            {members.map(({ profile }) => (
               <div key={profile.id} className="flex items-center gap-3 p-3 rounded-lg border border-border-subtle">
                 <div className="h-9 w-9 rounded-full bg-orange/10 text-orange flex items-center justify-center text-xs font-bold">
                   {profile.fullName.split(' ').map(n => n[0]).slice(0, 2).join('')}
@@ -819,7 +819,6 @@ function UsersTab({ orgId }: { orgId: string }) {
                   <p className="font-medium truncate">{profile.fullName}</p>
                   <p className="text-xs text-white/50 truncate">{profile.email}</p>
                 </div>
-                <span className="text-xs text-white/40 uppercase">{member.role}</span>
               </div>
             ))}
           </div>

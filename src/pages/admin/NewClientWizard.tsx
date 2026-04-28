@@ -395,11 +395,6 @@ export function NewClientWizard() {
                     value={u.fullName} onChange={e => setUsers(arr => arr.map((x, j) => j === i ? { ...x, fullName: e.target.value } : x))} />
                   <input className="input flex-1" type="email" placeholder="name@company.com"
                     value={u.email} onChange={e => setUsers(arr => arr.map((x, j) => j === i ? { ...x, email: e.target.value } : x))} />
-                  <select className="input md:w-32"
-                    value={u.role} onChange={e => setUsers(arr => arr.map((x, j) => j === i ? { ...x, role: e.target.value as 'owner' | 'member' } : x))}>
-                    <option value="owner">Owner</option>
-                    <option value="member">Member</option>
-                  </select>
                   <button type="button" onClick={() => setUsers(arr => arr.filter((_, j) => j !== i))}
                     className="px-3 rounded-lg border border-border-subtle text-white/50 hover:text-error hover:border-error/40">
                     <Trash2 className="h-4 w-4" />
