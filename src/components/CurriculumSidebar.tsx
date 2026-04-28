@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Lock, PlayCircle, Circle, ChevronDown } from 'lucide-react';
@@ -16,6 +16,50 @@ export function CurriculumSidebar({ organizationId, orgSlug }: { organizationId:
   // service the client is currently inside; clicking another collapses
   // the rest. Clicking the active one toggles it closed.
   const [openService, setOpenService] = useState<string | null>(activeSvc ?? null);
+
+  // Scrollspy. On ServicePage (single service URL, no moduleKey) the page
+  // renders every module stacked vertically and the URL hash only updates
+  // when the user clicks a sidebar link, never when they free-scroll. We
+  // watch each `#module-<key>` element's top relative to the viewport and
+  // highlight whichever one the reader is currently sitting on.
+  const [scrolledMod, setScrolledMod] = useState<string | null>(null);
+  const onServicePageNoModule = !!activeSvc && !activeMod;
+  useEffect(() => {
+    if (!onServicePageNoModule || !snapshot || !activeSvc) {
+      setScrolledMod(null);
+      return;
+    }
+    const enabled = getEnabledModulesForService(snapshot, activeSvc as ServiceKey);
+    const keys = enabled.map(m => m.key);
+    if (keys.length === 0) return;
+
+    let raf = 0;
+    const compute = () => {
+      raf = 0;
+      const buffer = 140; // matches scroll-mt-24 (~96px) plus a comfort margin
+      let current = keys[0];
+      for (const k of keys) {
+        const el = document.getElementById(`module-${k}`);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top - buffer <= 0) current = k;
+        else break;
+      }
+      setScrolledMod(current);
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(compute);
+    };
+    compute();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [onServicePageNoModule, activeSvc, snapshot]);
+
   if (!snapshot) return null;
   const progress = getOrgProgress(snapshot);
 
@@ -49,7 +93,7 @@ export function CurriculumSidebar({ organizationId, orgSlug }: { organizationId:
             svcKey={svcKey}
             svcLabel={svc.label}
             modules={enabledMods.map((m, i) => ({ ...m, summary: summaries[i] }))}
-            activeModule={svcActive ? activeMod : undefined}
+            activeModule={svcActive ? (activeMod ?? scrolledMod ?? undefined) : undefined}
             orgSlug={orgSlug}
             done={done}
             total={summaries.length}
