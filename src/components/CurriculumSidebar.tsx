@@ -125,8 +125,13 @@ function ServiceGroup({
 
   return (
     <div>
-      <button
-        onClick={onToggle}
+      {/* Clicking the service header navigates to that service's page (same as
+          the dashboard service cards do) and auto-opens the module list below.
+          The chevron is now a visual indicator of open state, not its own
+          control - clicking another service collapses this one. */}
+      <Link
+        to={`/onboarding/${orgSlug}/services/${svcKey}`}
+        onClick={() => { if (!open) onToggle(); }}
         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-bg-tertiary/60 transition-colors group"
       >
         <div className="h-8 w-8 rounded-lg bg-orange/10 text-orange flex items-center justify-center shrink-0">
@@ -142,7 +147,7 @@ function ServiceGroup({
           </div>
         </div>
         <ChevronDown className={cn('h-4 w-4 text-white/40 transition-transform', open && 'rotate-180')} />
-      </button>
+      </Link>
 
       <AnimatePresence initial={false}>
         {open && (
