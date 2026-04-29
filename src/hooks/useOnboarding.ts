@@ -63,22 +63,33 @@ export function useSetModuleStatus() {
         ? previous.map(p => p.serviceKey === vars.serviceKey && p.moduleKey === vars.moduleKey ? { ...p, status: 'complete' } : p)
         : [...previous, { serviceKey: vars.serviceKey, moduleKey: vars.moduleKey, status: 'complete' }];
 
-      // Pull the org's enabled-services list from the cache (it's loaded
-      // alongside every snapshot). Without this the all-onboarding-complete
-      // notification would fire prematurely because module_progress rows
-      // only exist for touched modules.
-      const orgServices = qc.getQueryData<Array<{ serviceKey: import('../types').ServiceKey; enabled: boolean }>>(
-        qk.orgServices(vars.organizationId),
-      ) ?? [];
-      const enabledServices = orgServices.filter(s => s.enabled).map(s => s.serviceKey);
+      // Assemble before/after snapshots from the React Query cache so the
+      // team-notification logic can apply the same canStart / per-org-disabled
+      // / conditionally-hidden filtering the dashboard does. Without this the
+      // onboarding-complete email never fires for any client whose enabled
+      // services include admin-locked or conditionally-hidden modules.
+      const services        = qc.getQueryData<import('../types').OrganizationService[]>(qk.orgServices(vars.organizationId)) ?? [];
+      const submissions     = qc.getQueryData<import('../types').Submission[]>(qk.submissions(vars.organizationId)) ?? [];
+      const taskCompletions = qc.getQueryData<import('../types').TaskCompletion[]>(qk.taskCompletions(vars.organizationId)) ?? [];
+      const adminFlags      = qc.getQueryData<Record<string, boolean>>(qk.adminFlags(vars.organizationId)) ?? {};
+      const uploads         = qc.getQueryData<import('../types').Upload[]>(qk.uploads(vars.organizationId)) ?? [];
+
+      const buildSnapshot = (mp: import('../types').ModuleProgress[]): OrgSnapshot => ({
+        organizationId: vars.organizationId,
+        services,
+        submissions,
+        moduleProgress: mp,
+        taskCompletions,
+        adminFlags,
+        uploads,
+      });
 
       const { fireTeamNotifications } = await import('../lib/teamNotifications');
       fireTeamNotifications({
         organizationId: vars.organizationId,
-        previousProgress: previous as import('../types').ModuleProgress[],
-        nextProgress: withUpdate as import('../types').ModuleProgress[],
+        previousSnapshot: buildSnapshot(previous as import('../types').ModuleProgress[]),
+        nextSnapshot:     buildSnapshot(withUpdate as import('../types').ModuleProgress[]),
         justCompleted: { serviceKey: vars.serviceKey, moduleKey: vars.moduleKey },
-        enabledServices,
       }).catch(err => console.warn('[team-notif]', err));
     },
   });
