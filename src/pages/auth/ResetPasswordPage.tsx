@@ -94,7 +94,17 @@ export function ResetPasswordPage() {
       setDone(true);
       setTimeout(() => navigate('/login', { replace: true }), 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update password.');
+      // The most common updatePassword failure is an expired / already-used
+      // recovery link. Supabase surfaces that as "Auth session missing!" or
+      // similar - text that means nothing to a roofer. Detect it and tell
+      // the user what to actually do.
+      const raw = err instanceof Error ? err.message : '';
+      const expired = /session\s*missing|invalid.*token|expired|jwt.*expired/i.test(raw);
+      setError(
+        expired
+          ? "This reset link has expired or already been used. Request a fresh one from the Forgot password page and try again."
+          : (raw || 'Could not update password.'),
+      );
     } finally {
       setSubmitting(false);
     }

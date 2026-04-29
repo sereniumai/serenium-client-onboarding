@@ -108,7 +108,22 @@ export function RegisterPage() {
         return;
       }
 
-      await acceptInvitation(token);
+      // Once signUp succeeds the user is authenticated. If acceptInvitation
+      // then fails (RPC race, RLS hiccup, token already used in a parallel
+      // tab) they'd otherwise see a generic "Sign up failed" with no path
+      // forward - and they can't even retry registration because their email
+      // is now taken in auth.users. Catch this specifically and tell them to
+      // contact us, since we can fix it manually in seconds.
+      try {
+        await acceptInvitation(token);
+      } catch (acceptErr) {
+        console.error('[register] acceptInvitation failed after signUp', acceptErr);
+        setErrorMsg(
+          `Your account is set up but we couldn't link it to ${invitation.organizationName}. Please email contact@sereniumai.com and we'll sort it out within minutes.`,
+        );
+        setStage('ready');
+        return;
+      }
       // Force a token refresh so the new organization_members row is reflected
       // in the JWT before we query org membership.
       await supabase.auth.refreshSession().catch(() => {});
