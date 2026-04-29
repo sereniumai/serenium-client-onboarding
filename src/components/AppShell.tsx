@@ -80,6 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     editingMode: isClientInsideOnboarding,
     hasWelcomeVideo,
     hasReportsVideo,
+    showOtherServices: org?.showOtherServices !== false,
   });
 
   // Auth / public routes render without the shell chrome
@@ -138,7 +139,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function buildSections({
-  userRole, orgSlug, onboardingDone, isLive, hasUnreadWhatsNew, progress, editingMode, hasWelcomeVideo, hasReportsVideo,
+  userRole, orgSlug, onboardingDone, isLive, hasUnreadWhatsNew, progress, editingMode, hasWelcomeVideo, hasReportsVideo, showOtherServices,
 }: {
   userRole: 'admin' | 'client' | undefined;
   orgSlug: string | null;
@@ -149,6 +150,7 @@ function buildSections({
   editingMode: boolean;
   hasWelcomeVideo: boolean;
   hasReportsVideo: boolean;
+  showOtherServices: boolean;
 }): SidebarSection[] {
   if (userRole === 'admin') {
     return [
@@ -271,7 +273,7 @@ function buildSections({
   if (yourServiceItems.length > 0) {
     sections.push({ title: 'Your services', items: yourServiceItems });
   }
-  if (moreFromSereniumItems.length > 0) {
+  if (showOtherServices && moreFromSereniumItems.length > 0) {
     sections.push({ title: 'More from Serenium', items: moreFromSereniumItems });
   }
   if (supportSection.items.length > 0) {
