@@ -63,12 +63,22 @@ export function useSetModuleStatus() {
         ? previous.map(p => p.serviceKey === vars.serviceKey && p.moduleKey === vars.moduleKey ? { ...p, status: 'complete' } : p)
         : [...previous, { serviceKey: vars.serviceKey, moduleKey: vars.moduleKey, status: 'complete' }];
 
+      // Pull the org's enabled-services list from the cache (it's loaded
+      // alongside every snapshot). Without this the all-onboarding-complete
+      // notification would fire prematurely because module_progress rows
+      // only exist for touched modules.
+      const orgServices = qc.getQueryData<Array<{ serviceKey: import('../types').ServiceKey; enabled: boolean }>>(
+        qk.orgServices(vars.organizationId),
+      ) ?? [];
+      const enabledServices = orgServices.filter(s => s.enabled).map(s => s.serviceKey);
+
       const { fireTeamNotifications } = await import('../lib/teamNotifications');
       fireTeamNotifications({
         organizationId: vars.organizationId,
         previousProgress: previous as import('../types').ModuleProgress[],
         nextProgress: withUpdate as import('../types').ModuleProgress[],
         justCompleted: { serviceKey: vars.serviceKey, moduleKey: vars.moduleKey },
+        enabledServices,
       }).catch(err => console.warn('[team-notif]', err));
     },
   });

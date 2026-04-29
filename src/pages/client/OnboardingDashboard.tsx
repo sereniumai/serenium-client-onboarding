@@ -164,7 +164,18 @@ export function OnboardingDashboard() {
               <p className="text-white/55 text-base md:text-lg max-w-2xl leading-relaxed">
                 {isLive
                   ? "Everything we do for you is live. Reports drop monthly , find the latest in the sidebar."
-                  : motivation(progress.overall, reports.length > 0, !onboardingDone && !resume && progress.overall > 0)}
+                  : motivation(
+                      progress.overall,
+                      reports.length > 0,
+                      // True only when every module the client can complete
+                      // is already done, i.e. nothing left for them but
+                      // something admin-locked is still outstanding. The
+                      // previous "no resume target" check fired the moment
+                      // they finished one service while others sat untouched.
+                      !onboardingDone
+                        && progress.overall > 0
+                        && Object.values(progress.perService).flat().every(s => !s.canStart || s.status === 'complete'),
+                    )}
               </p>
 
               {!isLive && !onboardingDone && resume && (

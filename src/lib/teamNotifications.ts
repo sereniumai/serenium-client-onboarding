@@ -38,6 +38,11 @@ export interface FireArgs {
   nextProgress: ModuleProgress[];
   /** The most-recent change we just made. */
   justCompleted: { serviceKey: ServiceKey; moduleKey: string } | null;
+  /** Which services are enabled for this org. Required for the whole-onboarding
+   * completion check; without it the previous code was using
+   * `nextProgress.every(...)` which fires the moment a single service is done
+   * because module_progress rows only exist for touched modules. */
+  enabledServices: ServiceKey[];
 }
 
 export async function fireTeamNotifications(args: FireArgs): Promise<void> {
@@ -57,11 +62,12 @@ export async function fireTeamNotifications(args: FireArgs): Promise<void> {
     if (!wasComplete && isComplete) eventKeys.push(`service_completed:${svc.key}`);
   }
 
-  // 3. Whole-onboarding completion, fires once when every tracked module
-  // (across every enabled service) is complete. Lets us know it's time to
-  // review the submission and flip the account to live.
-  const wasAllComplete = args.previousProgress.length > 0 && args.previousProgress.every(p => p.status === 'complete');
-  const isAllComplete  = args.nextProgress.length > 0 && args.nextProgress.every(p => p.status === 'complete');
+  // 3. Whole-onboarding completion, fires once when every module of every
+  // ENABLED service is complete. Iterating enabledServices (not just the
+  // module_progress rows that happen to exist) prevents the trigger from
+  // firing the moment a single service finishes while others sit untouched.
+  const wasAllComplete = isOnboardingComplete(args.previousProgress, args.enabledServices);
+  const isAllComplete  = isOnboardingComplete(args.nextProgress,     args.enabledServices);
   if (!wasAllComplete && isAllComplete) eventKeys.push('onboarding:complete');
 
   for (const eventKey of eventKeys) {
@@ -84,6 +90,15 @@ function isServiceComplete(progress: ModuleProgress[], svcKey: ServiceKey, modul
   return moduleKeys.every(mk =>
     progress.find(p => p.serviceKey === svcKey && p.moduleKey === mk)?.status === 'complete'
   );
+}
+
+function isOnboardingComplete(progress: ModuleProgress[], enabledServices: ServiceKey[]): boolean {
+  if (enabledServices.length === 0) return false;
+  return enabledServices.every(svcKey => {
+    const svc = SERVICES.find(s => s.key === svcKey);
+    if (!svc) return true;
+    return isServiceComplete(progress, svcKey, svc.modules.map(m => m.key));
+  });
 }
 
 /**
