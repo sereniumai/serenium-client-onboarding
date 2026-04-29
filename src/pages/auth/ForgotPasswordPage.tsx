@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AuthLayout } from '../../components/AuthLayout';
-import { TurnstileGate } from '../../components/TurnstileGate';
+import { TurnstileGate, type TurnstileGateHandle } from '../../components/TurnstileGate';
 import { supabase } from '../../lib/supabase';
 import { env } from '../../lib/env';
 
@@ -11,6 +11,7 @@ export function ForgotPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
   const captchaRequired = !!env.turnstileSiteKey;
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -38,6 +39,9 @@ export function ForgotPasswordPage() {
       setSent(true);
     } finally {
       setSubmitting(false);
+      // Even on the soft-success path, the token is consumed. If the user
+      // hits "try again" we want a fresh challenge ready.
+      turnstileRef.current?.reset();
     }
   };
 
@@ -59,7 +63,7 @@ export function ForgotPasswordPage() {
             <input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)}
                    placeholder="you@company.com" className="input" autoComplete="email" />
           </div>
-          <TurnstileGate onToken={setCaptchaToken} />
+          <TurnstileGate ref={turnstileRef} onToken={setCaptchaToken} />
           {errorMsg && (
             <div className="rounded-lg border border-error/40 bg-error/10 p-3 text-sm text-error">{errorMsg}</div>
           )}

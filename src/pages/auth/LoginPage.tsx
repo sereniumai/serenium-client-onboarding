@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AuthLayout } from '../../components/AuthLayout';
-import { TurnstileGate } from '../../components/TurnstileGate';
+import { TurnstileGate, type TurnstileGateHandle } from '../../components/TurnstileGate';
 import { useAuth } from '../../auth/AuthContext';
 import { listOrgsForUser } from '../../lib/db/orgs';
 import { completeMfaChallenge, MfaRequiredError } from '../../lib/db/auth';
@@ -27,6 +27,7 @@ export function LoginPage() {
   const prefillEmail = params.get('email') ?? '';
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
   // When Turnstile is configured, we require a token before allowing submit.
   // When not configured (local dev without VITE_TURNSTILE_SITE_KEY), we skip.
   const captchaRequired = !!env.turnstileSiteKey;
@@ -75,6 +76,9 @@ export function LoginPage() {
       }
       console.error('[login] failed', e);
       setSubmitError(e instanceof Error ? e.message : 'Sign in failed');
+      // Turnstile tokens are single-use. On any failure we force a fresh
+      // challenge so the user can retry without hitting "timeout-or-duplicate".
+      turnstileRef.current?.reset();
     }
   };
 
@@ -181,7 +185,7 @@ export function LoginPage() {
           {errors.password && <p className="mt-2 text-sm text-error">{errors.password.message}</p>}
         </div>
 
-        <TurnstileGate onToken={setCaptchaToken} />
+        <TurnstileGate ref={turnstileRef} onToken={setCaptchaToken} />
 
         {submitError && (
           <div className="rounded-lg border border-error/40 bg-error/10 p-3 text-sm text-error">

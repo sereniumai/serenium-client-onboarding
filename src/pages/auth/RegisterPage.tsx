@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { AuthLayout } from '../../components/AuthLayout';
-import { TurnstileGate } from '../../components/TurnstileGate';
+import { TurnstileGate, type TurnstileGateHandle } from '../../components/TurnstileGate';
 import { supabase } from '../../lib/supabase';
 import { env } from '../../lib/env';
 import { getInvitationByToken, acceptInvitation, type InvitationLookup } from '../../lib/db/invitations';
@@ -38,6 +38,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
   const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
   const captchaRequired = !!env.turnstileSiteKey;
 
   useEffect(() => {
@@ -120,6 +121,9 @@ export function RegisterPage() {
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Sign up failed.');
       setStage('ready');
+      // Force a fresh Turnstile challenge so the user can retry without
+      // hitting "timeout-or-duplicate" on the now-consumed token.
+      turnstileRef.current?.reset();
     }
   };
 
@@ -195,7 +199,7 @@ export function RegisterPage() {
           <label className="label" htmlFor="pw2">Confirm password</label>
           <input id="pw2" type="password" required className="input" value={password2} onChange={e => setPassword2(e.target.value)} />
         </div>
-        <TurnstileGate onToken={setCaptchaToken} />
+        <TurnstileGate ref={turnstileRef} onToken={setCaptchaToken} />
         {errorMsg && (
           <div className="rounded-lg border border-error/40 bg-error/10 p-3 text-sm text-error">{errorMsg}</div>
         )}

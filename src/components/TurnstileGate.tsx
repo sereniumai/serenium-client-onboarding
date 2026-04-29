@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { env } from '../lib/env';
 
@@ -7,24 +7,38 @@ import { env } from '../lib/env';
  * token to the parent via onToken; supabase-js then forwards it as
  * `captchaToken` to signInWithPassword / signUp / resetPasswordForEmail.
  *
+ * Tokens are single-use and expire ~5 min after issue. To stop the
+ * "timeout-or-duplicate" rejection that hits users who:
+ *   - linger on the form longer than the token lifetime, or
+ *   - retry after a failed attempt that already consumed the token,
+ * we tell Turnstile to auto-refresh on both expiry and timeout, and
+ * expose a `reset()` via ref so callers can force a fresh challenge
+ * after their submit fails for any reason.
+ *
  * If VITE_TURNSTILE_SITE_KEY isn't set (local dev, preview without env)
  * we render nothing and immediately resolve onToken('') so callers can
  * still proceed without the challenge.
  */
-export function TurnstileGate({ onToken, theme = 'dark' }: {
+export type TurnstileGateHandle = {
+  reset: () => void;
+};
+
+export const TurnstileGate = forwardRef<TurnstileGateHandle, {
   onToken: (token: string) => void;
   theme?: 'light' | 'dark' | 'auto';
-}) {
-  const ref = useRef<TurnstileInstance | null>(null);
+}>(function TurnstileGate({ onToken, theme = 'dark' }, ref) {
+  const widgetRef = useRef<TurnstileInstance | null>(null);
   const siteKey = env.turnstileSiteKey;
 
+  useImperativeHandle(ref, () => ({
+    reset: () => {
+      onToken('');
+      widgetRef.current?.reset();
+    },
+  }), [onToken]);
+
   if (!siteKey) {
-    // No-op for local dev / previews without the env var. We deliberately
-    // hand back an empty string so the consuming form can still call its
-    // onSubmit, knowing supabase will reject if Supabase Auth has captcha
-    // required (it won't in dev because the secret isn't set there).
     if (typeof window !== 'undefined') {
-      // Defer to next tick so we don't update parent state during render.
       queueMicrotask(() => onToken(''));
     }
     return null;
@@ -32,7 +46,7 @@ export function TurnstileGate({ onToken, theme = 'dark' }: {
 
   return (
     <Turnstile
-      ref={ref}
+      ref={widgetRef}
       siteKey={siteKey}
       onSuccess={onToken}
       onExpire={() => onToken('')}
@@ -41,7 +55,9 @@ export function TurnstileGate({ onToken, theme = 'dark' }: {
         theme,
         size: 'flexible',
         action: 'auth',
+        refreshExpired: 'auto',
+        refreshTimeout: 'auto',
       }}
     />
   );
-}
+});
