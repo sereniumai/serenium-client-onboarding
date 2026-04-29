@@ -115,7 +115,16 @@ export function RegisterPage() {
       await refresh();
 
       const profile = await loadProfile(session.user.id);
-      const orgs = await listOrgsForUser(profile.id);
+      // The org-membership row was just inserted by acceptInvitation. PostgREST
+      // is read-after-write consistent, but tiny replication / connection-pool
+      // races have been seen in the wild on first invite acceptance. One brief
+      // retry costs us nothing and prevents a dead-end at /login for a user
+      // who is fully authenticated but whose first lookup happened to miss.
+      let orgs = await listOrgsForUser(profile.id).catch(() => [] as Awaited<ReturnType<typeof listOrgsForUser>>);
+      if (orgs.length === 0) {
+        await new Promise(r => setTimeout(r, 500));
+        orgs = await listOrgsForUser(profile.id).catch(() => [] as Awaited<ReturnType<typeof listOrgsForUser>>);
+      }
       if (orgs[0]) navigate(`/onboarding/${orgs[0].slug}`, { replace: true });
       else navigate('/', { replace: true });
     } catch (err) {

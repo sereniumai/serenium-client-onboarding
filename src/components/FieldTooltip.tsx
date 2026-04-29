@@ -43,7 +43,7 @@ export function FieldTooltip({ text }: { text: string }) {
         onClick={() => setOpen(o => !o)}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
-        className="text-white/30 hover:text-orange transition-colors inline-flex"
+        className="text-white/30 hover:text-orange transition-colors inline-flex items-center justify-center -m-2 p-2"
         aria-label="What does this mean?"
       >
         <HelpCircle className="h-3.5 w-3.5" />

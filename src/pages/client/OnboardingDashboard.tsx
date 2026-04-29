@@ -88,7 +88,26 @@ export function OnboardingDashboard() {
       </AppShell>
     );
   }
-  if (!org || !snapshot || !progress) return <Navigate to="/login" replace />;
+  // A transient query miss (RLS cache lag right after a brand-new client
+  // accepts an invite, a flaky network, etc.) used to bounce the user to
+  // /login while still signed in, which is a dead-end. Show a recoverable
+  // retry state instead so they can refresh their way out of it.
+  if (!org || !snapshot || !progress) {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+          <p className="eyebrow mb-3">Hmm</p>
+          <h2 className="font-display font-bold text-2xl mb-3">We couldn't load your workspace.</h2>
+          <p className="text-white/55 max-w-md mb-6 text-sm">
+            This usually clears up after a refresh. If it keeps happening, drop us a line at <a href="mailto:contact@sereniumai.com" className="text-orange hover:text-orange-hover">contact@sereniumai.com</a> and we'll sort it out.
+          </p>
+          <button onClick={() => window.location.reload()} className="btn-primary">
+            Refresh
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
 
   const firstName = user?.fullName.split(' ')[0] ?? 'there';
 
