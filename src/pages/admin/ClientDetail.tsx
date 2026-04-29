@@ -38,6 +38,13 @@ export function ClientDetail() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { data: org, isLoading, isError, error } = useOrgBySlug(orgSlug);
+  // Members are loaded so we can fall back to the first member's email when
+  // org.primaryContactEmail isn't filled in, which happens for any client
+  // whose wizard run didn't include a primary-contact-email entry.
+  const { data: members = [] } = useOrgMembers(org?.id);
+  const effectivePrimaryEmail =
+    (org?.primaryContactEmail ?? null) ||
+    (members[0]?.profile?.email ?? null);
   const initialTab = (searchParams.get('tab') as Tab) || 'overview';
   const [tab, setTab] = useState<Tab>(initialTab);
   const [followupOpen, setFollowupOpen] = useState(false);
@@ -117,13 +124,13 @@ export function ClientDetail() {
           {tab === 'reports' && <ReportsTab orgId={org.id} />}
           {tab === 'activity' && <ActivityTab orgId={org.id} />}
           {tab === 'ai' && <AiChatsTab orgId={org.id} />}
-          {tab === 'flagged' && <FlaggedTab orgId={org.id} primaryContactEmail={org.primaryContactEmail} />}
+          {tab === 'flagged' && <FlaggedTab orgId={org.id} primaryContactEmail={effectivePrimaryEmail ?? undefined} />}
           {tab === 'users' && <UsersTab orgId={org.id} />}
 
           {followupOpen && (
             <FollowupModal
               orgId={org.id}
-              primaryContactEmail={org.primaryContactEmail ?? null}
+              primaryContactEmail={effectivePrimaryEmail}
               onClose={() => setFollowupOpen(false)}
             />
           )}
