@@ -190,6 +190,44 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
   };
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetSlugInput, setResetSlugInput] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const qcReset = useQueryClient();
+
+  const runReset = async () => {
+    if (resetSlugInput !== org.slug) return;
+    setResetting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const res = await fetch('/api/reset-client-data', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ orgId: org.id, confirmSlug: org.slug }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error || `Reset failed (${res.status})`);
+      }
+      // Invalidate every query that holds per-org data so the admin UI
+      // reflects the wiped state immediately.
+      qcReset.invalidateQueries();
+      toast.success(`${org.businessName} reset`, {
+        description: 'All answers, progress, uploads and AI chats wiped.',
+      });
+      setResetOpen(false);
+      setResetSlugInput('');
+    } catch (err) {
+      toast.error('Reset failed', { description: (err as Error).message });
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const runDelete = async () => {
     setShowDeleteConfirm(false);
     try {
@@ -311,6 +349,14 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
         )}
 
         <div className="border-t border-error/20 pt-5">
+          <p className="text-sm font-semibold text-white mb-1">Reset client answers</p>
+          <p className="text-xs text-white/55 mb-3">Wipes every submission, module status, task tick, file upload and Aria chat for this client. Keeps services, members, monthly reports and audit log. Useful after admin test-driving the client view.</p>
+          <button onClick={() => setResetOpen(true)} disabled={resetting} className="btn-secondary !py-2 !px-4">
+            <RotateCcw className="h-4 w-4" /> {resetting ? 'Resetting…' : 'Reset answers'}
+          </button>
+        </div>
+
+        <div className="border-t border-error/20 pt-5">
           <p className="text-sm font-semibold text-white mb-1">Delete this client</p>
           <p className="text-xs text-white/55 mb-3">Permanently removes the organisation, all submissions, all uploads, and revokes access for every invited user. Cannot be undone.</p>
           <button onClick={() => setShowDeleteConfirm(true)} disabled={deleteOrg.isPending} className="btn-danger !py-2 !px-4">
@@ -329,6 +375,57 @@ function OverviewTab({ org, onDelete }: { org: NonNullable<ReturnType<typeof use
         onConfirm={runDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />
+
+      {resetOpen && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => !resetting && setResetOpen(false)}
+        >
+          <div
+            className="card max-w-md w-full border-orange/40"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="h-10 w-10 rounded-lg bg-orange/15 text-orange flex items-center justify-center shrink-0">
+                <RotateCcw className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-lg">Reset {org.businessName}?</h3>
+                <p className="text-sm text-white/60 mt-1">
+                  Wipes every submission, module status, task tick, file upload and Aria chat. Services, members, monthly reports and audit log are kept. Cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="label">Type <span className="text-orange tabular-nums">{org.slug}</span> to confirm</label>
+              <input
+                type="text"
+                autoFocus
+                value={resetSlugInput}
+                onChange={e => setResetSlugInput(e.target.value)}
+                placeholder={org.slug}
+                className="input tabular-nums"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-5">
+              <button
+                onClick={() => { setResetOpen(false); setResetSlugInput(''); }}
+                disabled={resetting}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={runReset}
+                disabled={resetting || resetSlugInput !== org.slug}
+                className="btn-primary"
+              >
+                {resetting ? 'Resetting…' : 'Reset answers'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
