@@ -8,6 +8,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { captureEdgeError } from './_sentry';
+import { resolveRecipient } from './_recipient';
 
 export const config = { runtime: 'edge' };
 
@@ -69,31 +70,23 @@ export default async function handler(req: Request): Promise<Response> {
   );
   if (!allowedKeys.has(b.templateKey)) return json({ error: 'Unknown template' }, 400);
 
-  // Pull the org's primary contact email.
-  const { data: org, error: orgErr } = await admin
-    .from('organizations')
-    .select('primary_contact_email, primary_contact_name, business_name')
-    .eq('id', b.organizationId)
-    .maybeSingle();
-  if (orgErr || !org) return json({ error: 'Organization not found' }, 404);
-  const o = org as { primary_contact_email: string | null; primary_contact_name: string | null; business_name: string };
-  if (!o.primary_contact_email) return json({ error: 'No primary contact email on file' }, 400);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.primary_contact_email)) {
-    return json({ error: 'Primary contact email on file is not a valid email address' }, 400);
-  }
-
-  const firstName = (o.primary_contact_name ?? '').split(' ')[0] || 'there';
+  // Resolve the recipient. Falls back to the first member's profile email
+  // when the org-level primary_contact_email is unset, matching what the
+  // Send-follow-up modal shows the admin in the To: field.
+  const recipient = await resolveRecipient(admin, b.organizationId);
+  if (!recipient) return json({ error: 'No contact email on file for this client' }, 400);
+  const { email: toEmail, firstName, businessName } = recipient;
   const portalUrl = 'https://clients.sereniumai.com';
 
   // Template substitution. Simple regex, no dependencies.
-  const subject = interpolate(b.subject, { firstName, businessName: o.business_name, portalUrl });
-  const body    = interpolate(b.body,    { firstName, businessName: o.business_name, portalUrl });
+  const subject = interpolate(b.subject, { firstName, businessName, portalUrl });
+  const body    = interpolate(b.body,    { firstName, businessName, portalUrl });
   const html = renderFollowupEmail(body);
 
   const resp = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${resendKey}` },
-    body: JSON.stringify({ from: FROM_ADDRESS, to: o.primary_contact_email, subject, html, text: body }),
+    body: JSON.stringify({ from: FROM_ADDRESS, to: toEmail, subject, html, text: body }),
   });
   if (!resp.ok) {
     const txt = await resp.text();

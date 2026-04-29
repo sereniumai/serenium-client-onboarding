@@ -11,6 +11,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { captureEdgeError } from './_sentry';
+import { resolveRecipient } from './_recipient';
 
 export const config = { runtime: 'edge' };
 
@@ -62,21 +63,21 @@ export default async function handler(req: Request): Promise<Response> {
 
   const { data: org } = await admin
     .from('organizations')
-    .select('business_name, slug, primary_contact_email, primary_contact_name')
+    .select('slug')
     .eq('id', b.organizationId)
     .maybeSingle();
   if (!org) return json({ error: 'Organization not found' }, 404);
-  const o = org as { business_name: string; slug: string; primary_contact_email: string | null; primary_contact_name: string | null };
+  const slug = (org as { slug: string }).slug;
 
-  if (!o.primary_contact_email) return json({ error: 'Client has no primary contact email' }, 400);
+  const recipient = await resolveRecipient(admin, b.organizationId);
+  if (!recipient) return json({ error: 'Client has no contact email on file' }, 400);
 
-  const portalUrl = `https://clients.sereniumai.com/onboarding/${o.slug}/services/${b.serviceKey}`;
-  const firstName = (o.primary_contact_name ?? '').split(' ')[0] || 'there';
+  const portalUrl = `https://clients.sereniumai.com/onboarding/${slug}/services/${b.serviceKey}`;
 
   const subject = `${b.serviceLabel} just got added to your Serenium plan`;
   const html = renderEmail({
-    firstName,
-    businessName: o.business_name,
+    firstName: recipient.firstName,
+    businessName: recipient.businessName,
     serviceLabel: b.serviceLabel,
     portalUrl,
   });
@@ -86,7 +87,7 @@ export default async function handler(req: Request): Promise<Response> {
     headers: { 'content-type': 'application/json', authorization: `Bearer ${resendKey}` },
     body: JSON.stringify({
       from: FROM_ADDRESS,
-      to: o.primary_contact_email,
+      to: recipient.email,
       subject,
       html,
     }),

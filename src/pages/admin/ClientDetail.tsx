@@ -486,37 +486,53 @@ function ServicesTab({ orgId, org }: { orgId: string; org: Organization }) {
     mutationFn: async ({ key, enabled, notify, label }: { key: ServiceKey; enabled: boolean; notify?: boolean; label?: string }) => {
       if (enabled) {
         await enableService(orgId, key);
-        // If admin opted to notify, fire the email after the service is in.
-        // Business Profile is excluded since it's not a billable service the
-        // client thinks of as "added".
+        // Track whether the client-notification email actually went out so the
+        // toast can tell the truth. Previously we always claimed "client
+        // notified by email" even when the endpoint had returned 400.
+        let notifyResult: 'sent' | 'skipped' | 'failed' = 'skipped';
         if (notify && label && key !== 'business_profile') {
           try {
             const { data: { session } } = await supabase.auth.getSession();
             const token = session?.access_token;
             if (token) {
-              await fetch('/api/notify-service-added', {
+              const resp = await fetch('/api/notify-service-added', {
                 method: 'POST',
                 headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
                 body: JSON.stringify({ organizationId: orgId, serviceKey: key, serviceLabel: label }),
               });
+              if (resp.ok) {
+                const j = await resp.json().catch(() => ({} as { disabled?: boolean }));
+                notifyResult = (j as { disabled?: boolean })?.disabled ? 'skipped' : 'sent';
+              } else {
+                notifyResult = 'failed';
+                const txt = await resp.text().catch(() => '');
+                console.warn('[service-added] notify email failed', resp.status, txt);
+              }
             }
           } catch (err) {
+            notifyResult = 'failed';
             console.warn('[service-added] notify email failed (non-fatal)', err);
           }
         }
-      } else {
-        await disableService(orgId, key);
+        return { enabled, notify: !!notify, label, notifyResult };
       }
+      await disableService(orgId, key);
+      return { enabled, notify: false, label, notifyResult: 'skipped' as const };
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (result, vars) => {
       qc.refetchQueries({ queryKey: qk.orgServices(orgId) });
       qc.invalidateQueries({ queryKey: qk.activity(orgId) });
       if (vars.enabled) {
-        toast.success(
-          vars.notify
-            ? `${vars.label ?? 'Service'} enabled, client notified by email`
-            : `${vars.label ?? 'Service'} enabled silently, client not notified`,
-        );
+        const label = vars.label ?? 'Service';
+        if (!vars.notify) {
+          toast.success(`${label} enabled silently, client not notified`);
+        } else if (result.notifyResult === 'sent') {
+          toast.success(`${label} enabled, client notified by email`);
+        } else if (result.notifyResult === 'skipped') {
+          toast.success(`${label} enabled`, { description: 'Client email is disabled in notification settings.' });
+        } else {
+          toast.success(`${label} enabled`, { description: "Couldn't send the client email - send a follow-up manually." });
+        }
       }
     },
   });
@@ -1357,27 +1373,48 @@ function AdminSetupCard({ orgId }: { orgId: string }) {
       }).then(({ error }) => { if (error) console.warn('[activity] flag log failed', error); });
 
       // On false -> true, send the client an email letting them know their AI
-      // receptionist is ready to wire up. Skip silently if the endpoint is
-      // unreachable or the org has no contact email, log toggle still succeeds.
+      // receptionist is ready to wire up. Track whether the email actually
+      // sent so the success toast tells the truth - the previous code just
+      // claimed "client notified by email" even when the endpoint had
+      // returned 400 (no contact email on file, etc.).
+      let notifyResult: 'sent' | 'skipped' | 'failed' = 'skipped';
       if (wasOff && value) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           const token = session?.access_token;
           if (token) {
-            await fetch('/api/notify-ai-ready', {
+            const resp = await fetch('/api/notify-ai-ready', {
               method: 'POST',
               headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
               body: JSON.stringify({ organizationId: orgId }),
             });
+            if (resp.ok) {
+              const j = await resp.json().catch(() => ({} as { disabled?: boolean }));
+              notifyResult = (j as { disabled?: boolean })?.disabled ? 'skipped' : 'sent';
+            } else {
+              notifyResult = 'failed';
+              const txt = await resp.text().catch(() => '');
+              console.warn('[ai-ready] notify email failed', resp.status, txt);
+            }
           }
         } catch (err) {
+          notifyResult = 'failed';
           console.warn('[ai-ready] notify email failed (non-fatal)', err);
         }
       }
+      return { value, notifyResult };
     },
-    onSuccess: (_, value) => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: qk.adminFlags(orgId) });
-      toast.success(value ? 'AI ready, client notified by email' : 'Setup flag updated');
+      if (!result.value) {
+        toast.success('Setup flag updated');
+      } else if (result.notifyResult === 'sent') {
+        toast.success('AI ready, client notified by email');
+      } else if (result.notifyResult === 'skipped') {
+        toast.success('AI ready', { description: 'Client email is disabled in notification settings.' });
+      } else {
+        toast.success('AI ready', { description: "Couldn't send the client email - send a follow-up manually." });
+      }
     },
     onError: (err: Error) => toast.error('Save failed', { description: err.message }),
   });
